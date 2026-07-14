@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ja" translate="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>支障日申請｜神殿奉仕当番表システム</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #f9f7f4;
+    --surface: #ffffff;
+    --border: #e4e0d8;
+    --border-strong: #c8c2b4;
+    --text: #1a1814;
+    --text-muted: #6b6560;
+    --text-hint: #9e9890;
+    --accent: #4a5e3a;
+    --accent-light: #e8eedf;
+    --accent-dark: #2e3d22;
+    --danger: #e89090;
+    --danger-light: #fceaea;
+    --info: #1a4a7a;
+    --radius: 10px;
+    --radius-lg: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Hiragino Kaku Gothic Pro', 'Meiryo', sans-serif;
+    background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.6;
+    padding-bottom: 40px;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 0 14px; }
+
+  header.app-header {
+    background: var(--accent-dark); color: #fff; padding: 14px 16px;
+    text-align: center; margin-bottom: 18px;
+  }
+  header.app-header h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.03em; }
+  header.app-header .subtitle { font-size: 11px; opacity: 0.7; margin-top: 2px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 20px 18px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+  }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--accent-dark); margin-bottom: 12px; }
+
+  label { display: block; font-size: 12px; color: var(--text-muted); font-weight: 500; margin-bottom: 6px; }
+  input[type="password"], input[type="text"], input[type="tel"] {
+    width: 100%; border: 1px solid var(--border-strong); border-radius: var(--radius);
+    padding: 14px 12px; font-size: 22px; letter-spacing: 0.4em; text-align: center;
+    background: #fff; color: var(--text);
+  }
+  input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    border: 1px solid var(--border-strong); background: #fff; color: var(--text);
+    border-radius: var(--radius); padding: 12px 16px; font-size: 14px; cursor: pointer;
+    font-family: inherit; -webkit-appearance: none; appearance: none;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--accent-dark); color: #fff; border-color: var(--accent-dark); font-weight: 600; }
+  .btn-block { width: 100%; }
+  .btn-sm { padding: 8px 12px; font-size: 13px; }
+  .btn-danger { color: var(--info); border-color: var(--border-strong); }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .btn-row .btn { flex: 1 1 0; }
+  .btn:disabled { opacity: 0.45; cursor: default; }
+
+  .checkbox-row { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 13px; color: var(--text-muted); }
+  .checkbox-row input { width: 18px; height: 18px; }
+
+  #login-msg, #save-msg { margin-top: 10px; font-size: 13px; min-height: 18px; }
+  .msg-error { color: #b3261e; }
+  .msg-success { color: var(--accent-dark); }
+  .msg-info { color: var(--text-muted); }
+
+  .member-badge {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--accent-light); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 16px;
+  }
+  .member-badge .name { font-weight: 700; font-size: 15px; color: var(--accent-dark); }
+  .member-badge .dept { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+  .member-badge .logout-link { font-size: 12px; color: var(--info); background: none; border: none; text-decoration: underline; cursor: pointer; font-family: inherit; padding: 4px; }
+
+  .month-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .month-nav .month-label { font-size: 17px; font-weight: 700; color: var(--accent-dark); }
+  .month-nav button { width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--border-strong); background: #fff; font-size: 16px; cursor: pointer; }
+
+  table.cal { border-collapse: collapse; width: 100%; table-layout: fixed; }
+  table.cal th { font-size: 11px; color: var(--text-muted); padding: 4px 0; text-align: center; font-weight: 500; }
+  table.cal td { padding: 3px; }
+  table.cal td.empty-cell {}
+  .day-cell {
+    width: 100%; aspect-ratio: 1 / 1; min-height: 42px; border-radius: 10px; border: 1.5px solid var(--border);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 14px; cursor: pointer; background: #fff; color: var(--text); position: relative; user-select: none;
+  }
+  .day-cell .hol-badge { font-size: 8px; line-height: 1; margin-top: 1px; color: inherit; }
+  .day-cell.sunday-col { color: #c0392b; }
+  .day-cell.saturday-col { color: var(--info); }
+  .day-cell.today-cell { border-color: var(--accent); border-width: 2px; }
+  .day-cell.registered { background: var(--danger-light); border-color: var(--danger); color: #a33; font-weight: 700; }
+  .day-cell.confirmed { background: #e3f2d6; border-color: #7cb342; color: #33691e; font-weight: 700; }
+  .day-cell .confirm-check { position: absolute; top: 1px; right: 3px; font-size: 9px; line-height: 1; color: #33691e; font-weight: 700; }
+  .day-cell.pending-add { background: #fff3b0; border-color: #d4af00; color: var(--text); font-weight: 700; }
+  .day-cell.pending-remove { background: #eee; border-color: #bbb; color: #999; text-decoration: line-through; }
+  .day-cell.pending-remove::after { content: "取消"; position: absolute; bottom: 2px; font-size: 8px; }
+
+  .confirm-banner { border-radius: var(--radius); padding: 8px 12px; font-size: 12.5px; font-weight: 600; margin-bottom: 12px; line-height: 1.4; }
+  .confirm-banner.ok { background: #e3f2d6; border: 1px solid #7cb342; color: #33691e; }
+  .confirm-banner.pending { background: #fff7e6; border: 1px solid #e0b45a; color: #8a5a00; }
+
+  .lock-banner { background: #f2e7e5; border: 1px solid #c98b83; color: #7a2e24; border-radius: var(--radius); padding: 9px 12px; font-size: 12.5px; font-weight: 600; margin-bottom: 12px; line-height: 1.5; display: flex; gap: 6px; align-items: flex-start; }
+  .lock-banner::before { content: "🔒"; }
+  .day-cell.locked { cursor: default; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; font-size: 11px; color: var(--text-muted); }
+  .legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 3px; vertical-align: -2px; }
+
+  .footer-note { text-align: center; font-size: 11px; color: var(--text-hint); margin-top: 18px; line-height: 1.7; }
+  .hidden { display: none !important; }
+  .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .picker-item {
+    display: flex; align-items: center; justify-content: space-between;
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px; cursor: pointer;
+  }
+  .picker-item:active { background: var(--accent-light); }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>支障日申請</h1>
+  <div class="subtitle">神殿奉仕当番表作成システム（詰員用）</div>
+</header>
+
+<div class="wrap">
+
+  <!-- ログイン画面 -->
+  <div id="login-view" class="card">
+    <div class="card-title">ログインパスワードを入力してください</div>
+    <input id="login-code" type="password" inputmode="numeric" pattern="\d*" maxlength="4" autocomplete="off" aria-label="ログインパスワード">
+    <div class="checkbox-row">
+      <input type="checkbox" id="remember-me">
+      <label for="remember-me" style="margin:0">この端末を記憶する（次回から自動ログイン）</label>
+    </div>
+    <div class="btn-row">
+      <button id="login-btn" class="btn btn-primary btn-block" onclick="doLogin()">ログイン</button>
+    </div>
+    <div id="login-msg"></div>
+  </div>
+
+  <!-- 複数名該当時の選択画面 -->
+  <div id="picker-view" class="card hidden">
+    <div class="card-title">この番号に複数名が登録されています。ご自身のお名前を選んでください。</div>
+    <div id="picker-list"></div>
+    <div class="btn-row">
+      <button class="btn btn-block" onclick="backToLogin()">戻る</button>
+    </div>
+  </div>
+
+  <!-- メイン画面 -->
+  <div id="main-view" class="hidden">
+    <div class="member-badge">
+      <div>
+        <div class="name" id="badge-name"></div>
+        <div class="dept" id="badge-dept"></div>
+      </div>
+      <button class="logout-link" onclick="doLogout()">別の人でログイン</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">支障日を選択してください</div>
+      <p id="edit-intro" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.5">
+        当番に入れない日をタップして選択し、下の「登録する」ボタンを押してください。すでに登録済みの日をタップすると、取り消し（削除）を予約できます。
+      </p>
+
+      <div class="month-nav">
+        <button onclick="shiftCalMonth(-1)" aria-label="前の月">◀</button>
+        <div class="month-label" id="month-label"></div>
+        <button onclick="shiftCalMonth(1)" aria-label="次の月">▶</button>
+      </div>
+
+      <div id="lock-banner" class="hidden"></div>
+      <div id="confirm-status-banner"></div>
+
+      <table class="cal">
+        <thead><tr id="cal-dow-row"></tr></thead>
+        <tbody id="cal-body"></tbody>
+      </table>
+
+      <div class="legend">
+        <span><span class="sw" style="background:var(--danger-light);border:1.5px solid var(--danger)"></span>登録済み（確認待ち）</span>
+        <span><span class="sw" style="background:#e3f2d6;border:1.5px solid #7cb342"></span>確認済み（管理者確認）</span>
+        <span><span class="sw" style="background:#fff3b0;border:1.5px solid #d4af00"></span>登録予定（未保存）</span>
+        <span><span class="sw" style="background:#eee;border:1.5px solid #bbb"></span>取消予定（未保存）</span>
+      </div>
+
+      <div class="btn-row" id="edit-btn-row">
+        <button class="btn btn-primary" id="save-btn" onclick="saveChanges()">この内容で登録する</button>
+        <button class="btn" onclick="clearPending()">選択をリセット</button>
+      </div>
+      <div id="save-msg"></div>
+    </div>
+
+    <div class="footer-note">
+      登録内容の最終確認・変更は管理者にもご確認いただけます。<br>
+      ご不明な点があれば担当者までお問い合わせください。
+    </div>
+  </div>
+
+</div>
+
+<script>
+// =============================================
+// Supabase 接続（本体システムと同じプロジェクトを利用）
+// =============================================
+const SUPABASE_URL = localStorage.getItem('sb_url') || 'https://thwlerletbndqqtrodub.supabase.co';
+const SUPABASE_KEY = localStorage.getItem('sb_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRod2xlcmxldGJuZHFxdHJvZHViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MTkzNzQsImV4cCI6MjA5NzM5NTM3NH0.DZDm7ofonli2ncqjQF4fUP3c83V3qLwOf12lc5cltEo';
+const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const DOW_JP = ['日','月','火','水','木','金','土'];
+const REMEMBER_KEY = 'toban_member_code';
+
+let holidays = {};
+let currentMember = null;   // { id, member_no, name, department, phone }
+let calYear, calMonth;      // 1-12
+let registeredDates = new Set();
+let confirmedDates = new Set();   // 管理者が確認済みにした支障日（registeredDatesの部分集合）
+let pendingAdd = new Set();
+let pendingRemove = new Set();
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+function lastDayOfMonthStr(y, m) { return `${y}-${pad2(m)}-${pad2(new Date(y, m, 0).getDate())}`; }
+// ログイン番号の比較用正規化：数字以外（前ゼロを含む記号・空白）を取り除き、
+// 数値としての詰員番号に変換する。これにより「0043」「43」いずれの入力でも
+// 詰員番号43番として同じ人に一致させられる（NaN の場合は null を返す）。
+function normalizeCode(str) {
+  const digits = String(str == null ? '' : str).replace(/[^0-9]/g, '');
+  if (!digits) return null;
+  const n = parseInt(digits, 10);
+  return Number.isNaN(n) ? null : n;
+}
+// 詰員番号を「00」付きの4桁表記に整形する（例：43 → "0043"）。
+function memberCodeStr(m) {
+  if (m == null || m.member_no == null || m.member_no === '') return '';
+  return String(m.member_no).padStart(4, '0');
+}
+function showMsg(elId, html, type) {
+  const el = document.getElementById(elId);
+  el.innerHTML = html;
+  el.className = type ? ('msg-' + type) : '';
+}
+
+async function loadHolidays() {
+  try {
+    const { data } = await sbClient.from('holidays').select('*');
+    (data || []).forEach(h => { holidays[h.date] = h.name; });
+  } catch (e) { /* 祝日表示は補助情報のため失敗しても致命的ではない */ }
+}
+
+// =============================================
+// ログイン
+// =============================================
+async function findMembersByCode(code) {
+  const target = normalizeCode(code);
+  if (target == null) return [];
+  const { data, error } = await sbClient.from('members').select('*').eq('is_active', true);
+  if (error) throw error;
+  // 詰員番号（member_no）を数値として比較。前ゼロの有無を問わず一致させる。
+  return (data || []).filter(m => normalizeCode(m.member_no) === target);
+}
+
+async function doLogin() {
+  const code = document.getElementById('login-code').value.trim();
+  if (normalizeCode(code) == null) {
+    showMsg('login-msg', 'ログイン番号（4桁）を入力してください', 'error');
+    return;
+  }
+  showMsg('login-msg', '<span class="spinner"></span> 確認中...', 'info');
+  try {
+    const matches = await findMembersByCode(code);
+    if (matches.length === 0) {
+      showMsg('login-msg', 'この番号に一致する詰員が見つかりませんでした。管理者にご確認ください。', 'error');
+      return;
+    }
+    if (matches.length === 1) {
+      await enterAsMember(matches[0]);
+      return;
+    }
+    // 万一同じ詰員番号に複数名が紐づいている場合は選択させる
+    showPicker(matches);
+  } catch (e) {
+    showMsg('login-msg', '接続エラー: ' + e.message, 'error');
+  }
+}
+
+function showPicker(matches) {
+  document.getElementById('login-view').classList.add('hidden');
+  const list = document.getElementById('picker-list');
+  list.innerHTML = '';
+  matches.forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'picker-item';
+    div.innerHTML = `<span>${m.name}</span><span style="color:var(--text-muted);font-size:12px">${m.department || ''}</span>`;
+    div.onclick = () => enterAsMember(m);
+    list.appendChild(div);
+  });
+  document.getElementById('picker-view').classList.remove('hidden');
+}
+
+function backToLogin() {
+  document.getElementById('picker-view').classList.add('hidden');
+  document.getElementById('login-view').classList.remove('hidden');
+  showMsg('login-msg', '', '');
+}
+
+async function enterAsMember(member) {
+  currentMember = member;
+  if (document.getElementById('remember-me').checked) {
+    try { localStorage.setItem(REMEMBER_KEY, memberCodeStr(member)); } catch (e) {}
+  }
+  document.getElementById('login-view').classList.add('hidden');
+  document.getElementById('picker-view').classList.add('hidden');
+  document.getElementById('main-view').classList.remove('hidden');
+  document.getElementById('badge-name').textContent = member.name + ' さん';
+  document.getElementById('badge-dept').textContent = member.department || '';
+
+  await loadHolidays();
+  const today = new Date();
+  calYear = today.getFullYear();
+  calMonth = today.getMonth() + 1;
+  await renderCalendar();
+}
+
+function doLogout() {
+  try { localStorage.removeItem(REMEMBER_KEY); } catch (e) {}
+  currentMember = null;
+  pendingAdd.clear();
+  pendingRemove.clear();
+  document.getElementById('login-code').value = '';
+  document.getElementById('remember-me').checked = false;
+  document.getElementById('main-view').classList.add('hidden');
+  document.getElementById('picker-view').classList.add('hidden');
+  document.getElementById('login-view').classList.remove('hidden');
+  showMsg('login-msg', '', '');
+}
+
+// =============================================
+// カレンダー表示
+// =============================================
+async function fetchRegisteredDates() {
+  registeredDates = new Set();
+  confirmedDates = new Set();
+  const mon = `${calYear}-${pad2(calMonth)}`;
+  const { data, error } = await sbClient
+    .from('unavailable_dates')
+    .select('blocked_date, confirmed')
+    .eq('member_id', currentMember.id)
+    .gte('blocked_date', mon + '-01')
+    .lte('blocked_date', lastDayOfMonthStr(calYear, calMonth));
+  if (!error) (data || []).forEach(r => {
+    registeredDates.add(r.blocked_date);
+    if (r.confirmed) confirmedDates.add(r.blocked_date);
+  });
+}
+
+// =============================================
+// 支障日の受付締切（ロック）
+// =============================================
+// 1月〜11月：その月の10日 16:00 で締切（それ以降その月の支障日は変更不可）
+// 12月：12月7日 16:00 で締切
+// 締切を過ぎた月は、詰員本人による追加・取消ができなくなる（管理者は引き続き変更可）。
+function getMonthDeadline(year, month) {
+  if (month === 12) return new Date(year, 11, 7, 16, 0, 0, 0);
+  return new Date(year, month - 1, 10, 16, 0, 0, 0);
+}
+function isMonthLocked(year, month) {
+  return Date.now() >= getMonthDeadline(year, month).getTime();
+}
+
+async function renderCalendar() {
+  document.getElementById('month-label').textContent = `${calYear}年${calMonth}月`;
+  const dowRow = document.getElementById('cal-dow-row');
+  dowRow.innerHTML = DOW_JP.map((d, i) => `<th style="${i===0?'color:#c0392b':i===6?'color:var(--info)':''}">${d}</th>`).join('');
+
+  await fetchRegisteredDates();
+
+  const locked = isMonthLocked(calYear, calMonth);
+  const firstDay = new Date(calYear, calMonth - 1, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  let html = '<tr>';
+  for (let i = 0; i < firstDay; i++) html += '<td class="empty-cell"></td>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${calYear}-${pad2(calMonth)}-${pad2(d)}`;
+    const dow = (firstDay + d - 1) % 7;
+    const isHol = !!holidays[dateStr];
+    const isRegistered = registeredDates.has(dateStr);
+    const isPendingAdd = pendingAdd.has(dateStr);
+    const isPendingRemove = pendingRemove.has(dateStr);
+
+    const isConfirmed = confirmedDates.has(dateStr);
+
+    let cls = 'day-cell';
+    if (dow === 0 || isHol) cls += ' sunday-col';
+    else if (dow === 6) cls += ' saturday-col';
+    if (dateStr === todayStr) cls += ' today-cell';
+    if (isRegistered && !isPendingRemove) cls += isConfirmed ? ' confirmed' : ' registered';
+    if (isPendingRemove) cls += ' pending-remove';
+    if (isPendingAdd) cls += ' pending-add';
+    if (locked) cls += ' locked';
+
+    const checkMark = (isRegistered && !isPendingRemove && isConfirmed) ? '<span class="confirm-check">✓</span>' : '';
+    const holBadge = isHol ? '<span class="hol-badge">祝</span>' : '';
+    html += `<td><div class="${cls}" onclick="toggleDate('${dateStr}')">${checkMark}${d}${holBadge}</div></td>`;
+    if ((firstDay + d) % 7 === 0 && d < daysInMonth) html += '</tr><tr>';
+  }
+  html += '</tr>';
+  document.getElementById('cal-body').innerHTML = html;
+  applyLockState(locked);
+  updateConfirmBanner();
+  updateSaveButtonState();
+}
+
+// 締切済みの月では、案内文・登録ボタンを隠し、締切メッセージを表示する
+function applyLockState(locked) {
+  const lockBanner = document.getElementById('lock-banner');
+  const btnRow = document.getElementById('edit-btn-row');
+  const intro = document.getElementById('edit-intro');
+  if (locked) {
+    const dl = getMonthDeadline(calYear, calMonth);
+    if (lockBanner) {
+      lockBanner.className = 'lock-banner';
+      lockBanner.innerHTML = `<span>${calYear}年${calMonth}月の支障日の受付は終了しました（締切：${calMonth}月${dl.getDate()}日 16時）。変更が必要な場合は当番表作成者にご連絡ください。</span>`;
+    }
+    if (btnRow) btnRow.style.display = 'none';
+    if (intro) intro.style.display = 'none';
+  } else {
+    if (lockBanner) { lockBanner.className = 'hidden'; lockBanner.innerHTML = ''; }
+    if (btnRow) btnRow.style.display = '';
+    if (intro) intro.style.display = '';
+  }
+}
+
+// 表示中の月について、管理者の確認状況をまとめて上部に表示する。
+// 保存済みの登録状態（registeredDates / confirmedDates）を基準に判定する。
+function updateConfirmBanner() {
+  const banner = document.getElementById('confirm-status-banner');
+  if (!banner) return;
+  const total = registeredDates.size;
+  if (total === 0) { banner.className = ''; banner.textContent = ''; return; }
+  let confirmed = 0;
+  registeredDates.forEach(d => { if (confirmedDates.has(d)) confirmed++; });
+  if (confirmed >= total) {
+    banner.className = 'confirm-banner ok';
+    banner.textContent = `✓ 管理者が確認しました（${total}件すべて確認済み）`;
+  } else {
+    banner.className = 'confirm-banner pending';
+    banner.textContent = `管理者の確認待ちです（確認済み ${confirmed}／${total}件）`;
+  }
+}
+
+function toggleDate(dateStr) {
+  // 締切を過ぎた月は変更不可（タップしても何もしない）
+  if (isMonthLocked(calYear, calMonth)) return;
+  if (registeredDates.has(dateStr)) {
+    if (pendingRemove.has(dateStr)) pendingRemove.delete(dateStr);
+    else pendingRemove.add(dateStr);
+  } else {
+    if (pendingAdd.has(dateStr)) pendingAdd.delete(dateStr);
+    else pendingAdd.add(dateStr);
+  }
+  renderCalendar();
+}
+
+function updateSaveButtonState() {
+  const total = pendingAdd.size + pendingRemove.size;
+  document.getElementById('save-btn').disabled = total === 0;
+}
+
+async function shiftCalMonth(delta) {
+  if (pendingAdd.size + pendingRemove.size > 0) {
+    if (!confirm('保存されていない変更があります。移動すると変更内容は破棄されます。よろしいですか？')) return;
+  }
+  pendingAdd.clear();
+  pendingRemove.clear();
+  calMonth += delta;
+  if (calMonth < 1) { calMonth = 12; calYear--; }
+  if (calMonth > 12) { calMonth = 1; calYear++; }
+  showMsg('save-msg', '', '');
+  await renderCalendar();
+}
+
+function clearPending() {
+  pendingAdd.clear();
+  pendingRemove.clear();
+  showMsg('save-msg', '', '');
+  renderCalendar();
+}
+
+let isSaving = false;
+async function saveChanges() {
+  if (isSaving) return;
+  if (pendingAdd.size === 0 && pendingRemove.size === 0) return;
+  // 締切後（ページを開いたまま締切時刻を過ぎた場合など）は保存させない
+  if (isMonthLocked(calYear, calMonth)) {
+    pendingAdd.clear(); pendingRemove.clear();
+    await renderCalendar();
+    showMsg('save-msg', 'この月の支障日の受付は終了しました。変更は当番表作成者にご連絡ください。', 'error');
+    return;
+  }
+  isSaving = true;
+  document.getElementById('save-btn').disabled = true;
+  showMsg('save-msg', '<span class="spinner" style="border-color:rgba(0,0,0,0.2);border-top-color:var(--accent-dark)"></span> 保存中...', 'info');
+
+  try {
+    if (pendingAdd.size > 0) {
+      const rows = [...pendingAdd].map(date => ({ member_id: currentMember.id, blocked_date: date, reason: null }));
+      const { error } = await sbClient.from('unavailable_dates').upsert(rows, { onConflict: 'member_id,blocked_date' });
+      if (error) throw error;
+    }
+    if (pendingRemove.size > 0) {
+      const { error } = await sbClient.from('unavailable_dates')
+        .delete()
+        .eq('member_id', currentMember.id)
+        .in('blocked_date', [...pendingRemove]);
+      if (error) throw error;
+    }
+    const addedCount = pendingAdd.size, removedCount = pendingRemove.size;
+    pendingAdd.clear();
+    pendingRemove.clear();
+    await renderCalendar();
+    const parts = [];
+    if (addedCount) parts.push(`${addedCount}件登録`);
+    if (removedCount) parts.push(`${removedCount}件取消`);
+    showMsg('save-msg', parts.join('・') + ' しました ✓', 'success');
+  } catch (e) {
+    showMsg('save-msg', '保存に失敗しました: ' + e.message, 'error');
+  } finally {
+    isSaving = false;
+    updateSaveButtonState();
+  }
+}
+
+// =============================================
+// 起動時：この端末を記憶している場合は自動ログイン
+// =============================================
+window.addEventListener('DOMContentLoaded', async () => {
+  let remembered = null;
+  try { remembered = localStorage.getItem(REMEMBER_KEY); } catch (e) {}
+  if (remembered && normalizeCode(remembered) != null) {
+    showMsg('login-msg', '<span class="spinner" style="border-color:rgba(0,0,0,0.2);border-top-color:var(--accent-dark)"></span> 自動ログイン中...', 'info');
+    try {
+      const matches = await findMembersByCode(remembered);
+      if (matches.length === 1) {
+        document.getElementById('remember-me').checked = true;
+        await enterAsMember(matches[0]);
+        return;
+      } else if (matches.length > 1) {
+        showPicker(matches);
+        return;
+      } else {
+        showMsg('login-msg', '', '');
+      }
+    } catch (e) {
+      showMsg('login-msg', '', '');
+    }
+  }
+  document.getElementById('login-code').focus();
+});
+</script>
+</body>
+</html>
