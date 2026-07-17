@@ -147,6 +147,14 @@
     font-size: 9px; font-weight: 700; color: var(--accent-dark); line-height: 1.15;
     max-width: 96%; white-space: normal; word-break: break-all; text-align: center;
   }
+  /* スマホ幅では1マスが狭くなるため、名前が2段にならないよう文字サイズを少し縮小 */
+  @media (max-width: 420px) {
+    .day-cell .duty-name { font-size: 7.5px; }
+    .day-cell.roster-cell { padding-top: 3px; }
+  }
+  @media (max-width: 360px) {
+    .day-cell .duty-name { font-size: 6.8px; }
+  }
 </style>
 </head>
 <body>
