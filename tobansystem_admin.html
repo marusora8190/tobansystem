@@ -1803,7 +1803,7 @@ function renderMultiHolTable2(years) {
       // 縦位置がずれて表示が崩れることがあるため、rowspanは使わず、12ヶ月分すべての行に
       // 同じ背景色のセルを敷いて、1月の行だけ年度を表示することで見た目上の結合を再現する
       // （年度は縦書きにして列幅を最小限に抑える）
-      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;padding:2px 0;${mon < 12 ? 'border-bottom:none;' : ''}">${mon === 1 ? `<span style="display:inline-block;writing-mode:vertical-rl;text-orientation:upright;letter-spacing:1px;font-size:11px">${y}年</span>` : ''}</td>`;
+      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:10px;padding:2px 0;${mon < 12 ? 'border-bottom:none;' : ''}">${mon === 1 ? (y + '年') : ''}</td>`;
       const memberCellsHtml = members.map(m => {
         const cell = getMultiCell(y, m.id);
         const checked = cell.hol.includes(mon);
