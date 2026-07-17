@@ -131,6 +131,20 @@
     border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px; cursor: pointer;
   }
   .picker-item:active { background: var(--accent-light); }
+
+  .tab-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tab-btn {
+    flex: 1; padding: 11px; border-radius: var(--radius); border: 1px solid var(--border-strong);
+    background: #fff; color: var(--text-muted); font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: inherit; -webkit-appearance: none; appearance: none;
+  }
+  .tab-btn.active { background: var(--accent-dark); color: #fff; border-color: var(--accent-dark); }
+
+  .day-cell.roster-cell { cursor: default; gap: 1px; padding-top: 5px; }
+  .day-cell .duty-name {
+    font-size: 9px; font-weight: 700; color: var(--accent-dark); line-height: 1.1;
+    max-width: 92%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
 </style>
 </head>
 <body>
@@ -174,6 +188,12 @@
       </div>
     </div>
 
+    <div class="tab-bar">
+      <button id="tab-btn-input" class="tab-btn active" onclick="switchTab('input')">支障日入力</button>
+      <button id="tab-btn-roster" class="tab-btn" onclick="switchTab('roster')">当番表</button>
+    </div>
+
+    <div id="tab-panel-input">
     <div class="card">
       <div class="card-title">支障日を選択してください</div>
       <p id="edit-intro" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.5">
@@ -210,6 +230,32 @@
       </div>
       <div id="save-msg"></div>
     </div>
+    </div>
+
+    <div id="tab-panel-roster" class="hidden">
+      <div class="card">
+        <div class="card-title">当番表</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.5">
+          当番表作成者が作成した当番表です（確認用・変更はできません）。
+        </p>
+
+        <div class="month-nav">
+          <button onclick="shiftRosterMonth(-1)" aria-label="前の月">◀</button>
+          <div>
+            <div class="month-label" id="roster-month-label"></div>
+            <div id="roster-month-sub-note" style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:2px"></div>
+          </div>
+          <button onclick="shiftRosterMonth(1)" aria-label="次の月">▶</button>
+        </div>
+
+        <div id="roster-loading" style="text-align:center;font-size:12px;color:var(--text-muted);margin:8px 0"></div>
+
+        <table class="cal">
+          <thead><tr id="roster-dow-row"></tr></thead>
+          <tbody id="roster-cal-body"></tbody>
+        </table>
+      </div>
+    </div>
 
     <div class="footer-note">
       登録内容の最終確認・変更は当番表作成者にもご確認いただけます。<br>
@@ -233,6 +279,8 @@ const REMEMBER_KEY = 'toban_member_code';
 let holidays = {};
 let currentMember = null;   // { id, member_no, name, department, phone }
 let calYear, calMonth;      // 1-12
+let rosterYear, rosterMonth; // 当番表タブ用（支障日入力タブとは独立して月を移動できる）
+let rosterLoadedOnce = false;
 let registeredDates = new Set();
 let confirmedDates = new Set();   // 当番表作成者が確認済みにした支障日（registeredDatesの部分集合）
 let pendingAdd = new Set();
@@ -363,6 +411,8 @@ async function enterAsMember(member) {
   const today = new Date();
   calYear = today.getFullYear();
   calMonth = today.getMonth() + 1;
+  rosterYear = today.getFullYear();
+  rosterMonth = today.getMonth() + 1;
   await renderCalendar();
 }
 
@@ -587,6 +637,92 @@ async function saveChanges() {
     isSaving = false;
     updateSaveButtonState();
   }
+}
+
+// =============================================
+// タブ切り替え（支障日入力／当番表）
+// =============================================
+function switchTab(tab) {
+  const isInput = tab === 'input';
+  document.getElementById('tab-btn-input').classList.toggle('active', isInput);
+  document.getElementById('tab-btn-roster').classList.toggle('active', !isInput);
+  document.getElementById('tab-panel-input').classList.toggle('hidden', !isInput);
+  document.getElementById('tab-panel-roster').classList.toggle('hidden', isInput);
+  if (!isInput) {
+    // 初回表示時、またはまだ読み込んでいない場合のみ描画（タブ切替のたびに読み込み直さない）
+    if (!rosterLoadedOnce) {
+      rosterLoadedOnce = true;
+      renderRosterCalendar();
+    }
+  }
+}
+
+// =============================================
+// 当番表（読み取り専用カレンダー）
+// =============================================
+async function fetchRosterForRange(dayList) {
+  const first = dayList[0], last = dayList[dayList.length - 1];
+  const startStr = `${first.y}-${pad2(first.m)}-${pad2(first.d)}`;
+  const endStr = `${last.y}-${pad2(last.m)}-${pad2(last.d)}`;
+  const map = {};
+  try {
+    const { data, error } = await sbClient
+      .from('schedules')
+      .select('date, note, member_id, members(name)')
+      .gte('date', startStr)
+      .lte('date', endStr);
+    if (!error) (data || []).forEach(r => { map[r.date] = r; });
+  } catch (e) { /* 取得できない場合は空のまま表示 */ }
+  return map;
+}
+
+async function renderRosterCalendar() {
+  const dayList = getCalendarDayList(rosterYear, rosterMonth);
+  document.getElementById('roster-month-label').textContent = getMonthLabel(rosterYear, rosterMonth);
+  document.getElementById('roster-month-sub-note').textContent = getMonthSubNote(rosterYear, rosterMonth);
+  const dowRow = document.getElementById('roster-dow-row');
+  dowRow.innerHTML = DOW_JP.map((d, i) => `<th style="${i===0?'color:#c0392b':i===6?'color:var(--info)':''}">${d}</th>`).join('');
+
+  const loadingEl = document.getElementById('roster-loading');
+  loadingEl.textContent = '読み込み中...';
+  const rosterMap = await fetchRosterForRange(dayList);
+  loadingEl.textContent = '';
+
+  const first = dayList[0];
+  const firstDay = new Date(first.y, first.m - 1, first.d).getDay();
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  let html = '<tr>';
+  for (let i = 0; i < firstDay; i++) html += '<td class="empty-cell"></td>';
+  dayList.forEach((day, idx) => {
+    const dateStr = `${day.y}-${pad2(day.m)}-${pad2(day.d)}`;
+    const dow = (firstDay + idx) % 7;
+    const isHol = !!holidays[dateStr];
+    const isNextMonth = day.m !== rosterMonth;
+    const entry = rosterMap[dateStr];
+    const dutyName = entry && entry.members ? entry.members.name : '';
+
+    let cls = 'day-cell roster-cell';
+    if (dow === 0 || isHol) cls += ' sunday-col';
+    else if (dow === 6) cls += ' saturday-col';
+    if (dateStr === todayStr) cls += ' today-cell';
+    if (isNextMonth) cls += ' next-month-day';
+
+    const holBadge = isHol ? '<span class="hol-badge">祝</span>' : '';
+    const dayLabel = isNextMonth ? `${day.m}/${day.d}` : String(day.d);
+    const nameHtml = dutyName ? `<span class="duty-name">${dutyName}</span>` : '';
+    html += `<td><div class="${cls}"><span class="day-num">${dayLabel}</span>${holBadge}${nameHtml}</div></td>`;
+    if ((firstDay + idx + 1) % 7 === 0 && idx < dayList.length - 1) html += '</tr><tr>';
+  });
+  html += '</tr>';
+  document.getElementById('roster-cal-body').innerHTML = html;
+}
+
+function shiftRosterMonth(delta) {
+  rosterMonth += delta;
+  if (rosterMonth < 1) { rosterMonth = 12; rosterYear--; }
+  if (rosterMonth > 12) { rosterMonth = 1; rosterYear++; }
+  renderRosterCalendar();
 }
 
 // =============================================
