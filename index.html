@@ -144,8 +144,8 @@
 
   <!-- ログイン画面 -->
   <div id="login-view" class="card">
-    <div class="card-title">ログインパスワードを入力してください</div>
-    <input id="login-code" type="password" inputmode="numeric" pattern="\d*" maxlength="4" autocomplete="off" aria-label="ログインパスワード" onkeydown="if(event.key==='Enter'){event.preventDefault();doLogin();}">
+    <div class="card-title">ログインナンバーを入力してください</div>
+    <input id="login-code" type="password" inputmode="numeric" pattern="\d*" maxlength="4" autocomplete="off" aria-label="ログインナンバー" onkeydown="if(event.key==='Enter'){event.preventDefault();doLogin();}">
     <div class="checkbox-row">
       <input type="checkbox" id="remember-me">
       <label for="remember-me" style="margin:0">この端末を記憶する（次回から自動ログイン）</label>
@@ -403,12 +403,15 @@ async function fetchRegisteredDates(dayList) {
 // =============================================
 // 支障日の受付締切（ロック）
 // =============================================
-// 1月〜11月：その月の10日 16:00 で締切（それ以降その月の支障日は変更不可）
-// 12月：12月7日 16:00 で締切
+// 締切は「前月」の10日 16:00（12月分＝翌1/4までの当番支障日のみ、前月＝11月の7日 16:00）
+// 例：6月分の締切は5月10日16:00、7月分の締切は6月10日16:00、12月分の締切は11月7日16:00
 // 締切を過ぎた月は、詰員本人による追加・取消ができなくなる（当番表作成者は引き続き変更可）。
 function getMonthDeadline(year, month) {
-  if (month === 12) return new Date(year, 11, 7, 16, 0, 0, 0);
-  return new Date(year, month - 1, 10, 16, 0, 0, 0);
+  let dYear = year;
+  let dMonth = month - 1; // 前月（1〜12の範囲に正規化）
+  if (dMonth === 0) { dMonth = 12; dYear = year - 1; }
+  const day = (month === 12) ? 7 : 10;
+  return new Date(dYear, dMonth - 1, day, 16, 0, 0, 0);
 }
 function isMonthLocked(year, month) {
   return Date.now() >= getMonthDeadline(year, month).getTime();
@@ -475,7 +478,7 @@ function applyLockState(locked) {
       : `${calYear}年${calMonth}月`;
     if (lockBanner) {
       lockBanner.className = 'lock-banner';
-      lockBanner.innerHTML = `<span>${periodLabel}の支障日の受付は終了しました（締切：${calMonth}月${dl.getDate()}日 16時）。変更が必要な場合は当番表作成者にご連絡ください。</span>`;
+      lockBanner.innerHTML = `<span>${periodLabel}の支障日の受付は終了しました（締切：${dl.getMonth() + 1}月${dl.getDate()}日 16時）。変更が必要な場合は当番表作成者にご連絡ください。</span>`;
     }
     if (btnRow) btnRow.style.display = 'none';
     if (intro) intro.style.display = 'none';
