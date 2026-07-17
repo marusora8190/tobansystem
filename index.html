@@ -148,14 +148,14 @@
     max-width: 96%; white-space: normal; word-break: break-all; text-align: center;
   }
   /* スマホ幅では1マスが狭くなるため、名前が2段にならないよう文字サイズを少し縮小 */
-  @media (max-width: 420px) {
-    .day-cell .duty-name { font-size: 7.5px; }
-    .day-cell .duty-name.name-long { font-size: 6.3px; letter-spacing: -0.3px; }
+  @media (max-width: 600px) {
+    .day-cell .duty-name { font-size: 7.3px; }
+    .day-cell .duty-name.name-long { font-size: 6px; letter-spacing: -0.3px; }
     .day-cell.roster-cell { padding-top: 3px; }
   }
-  @media (max-width: 360px) {
-    .day-cell .duty-name { font-size: 6.8px; }
-    .day-cell .duty-name.name-long { font-size: 5.6px; letter-spacing: -0.4px; }
+  @media (max-width: 400px) {
+    .day-cell .duty-name { font-size: 6.6px; }
+    .day-cell .duty-name.name-long { font-size: 5.3px; letter-spacing: -0.4px; }
   }
 </style>
 </head>
@@ -665,10 +665,12 @@ function switchTab(tab) {
   document.getElementById('tab-panel-input').classList.toggle('hidden', !isInput);
   document.getElementById('tab-panel-roster').classList.toggle('hidden', isInput);
   if (!isInput) {
-    // 初回表示時、またはまだ読み込んでいない場合のみ描画（タブ切替のたびに読み込み直さない）
+    // データの再取得は初回のみ。ただし文字サイズの再調整は毎回行う（画面回転などに対応するため）
     if (!rosterLoadedOnce) {
       rosterLoadedOnce = true;
       renderRosterCalendar();
+    } else {
+      fitDutyNameSizes();
     }
   }
 }
@@ -738,6 +740,25 @@ async function renderRosterCalendar() {
   });
   html += '</tr>';
   document.getElementById('roster-cal-body').innerHTML = html;
+  fitDutyNameSizes();
+}
+
+// 実際に描画された1マスの幅を測り、名前の文字サイズをその幅に合わせて自動計算する。
+// （画面幅の目安値に頼らないため、端末やブラウザのズーム状態が違っても確実に1行に収まる）
+function fitDutyNameSizes() {
+  const cellEl = document.querySelector('#roster-cal-body td:not(.empty-cell) .day-cell');
+  if (!cellEl) return;
+  const cellWidth = cellEl.getBoundingClientRect().width;
+  if (!cellWidth) return;
+  // 4文字までの名前・5文字以上の名前で、文字幅に対する比率を分けて計算
+  const normalSize = Math.max(6, Math.min(11, cellWidth * 0.205));
+  const longSize = Math.max(5, Math.min(9, cellWidth * 0.165));
+  document.querySelectorAll('#roster-cal-body .duty-name:not(.name-long)').forEach(el => {
+    el.style.fontSize = normalSize.toFixed(1) + 'px';
+  });
+  document.querySelectorAll('#roster-cal-body .duty-name.name-long').forEach(el => {
+    el.style.fontSize = longSize.toFixed(1) + 'px';
+  });
 }
 
 function shiftRosterMonth(delta) {
@@ -750,6 +771,16 @@ function shiftRosterMonth(delta) {
 // =============================================
 // 起動時：この端末を記憶している場合は自動ログイン
 // =============================================
+// 画面回転・ウィンドウサイズ変更時にも、当番表タブが表示中であれば文字サイズを再調整する
+let _resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(() => {
+    const rosterPanel = document.getElementById('tab-panel-roster');
+    if (rosterPanel && !rosterPanel.classList.contains('hidden')) fitDutyNameSizes();
+  }, 150);
+});
+
 window.addEventListener('DOMContentLoaded', async () => {
   let remembered = null;
   try { remembered = localStorage.getItem(REMEMBER_KEY); } catch (e) {}
