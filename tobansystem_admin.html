@@ -979,7 +979,7 @@ async function loadMembers() {
   if (data) data.forEach(m => { allMembersById[m.id] = m; });
   if (error) throw error;
   members = data || [];
-  members.sort((a, b) => (parseInt(a.member_no) || 9999) - (parseInt(b.member_no) || 9999));
+  members.sort((a, b) => (parseInt(a.staff_id) || 9999) - (parseInt(b.staff_id) || 9999));
   renderMembersTable();
   prefillNextMemberIds();
   return members;
