@@ -252,7 +252,7 @@
   /* 年度・月・日数の3列は、幅を狭くしすぎるとテキストが折り返して
      縦につぶれたように見えてしまうため、常に1行で収まるようにする
      （折り返しが必要な場合は列幅の方を自動的に広げる） */
-  .mc2-table .mc2-col1, .mc2-table .mc2-col2, .mc2-table .mc2-col3 {
+  .mc2-table .mc2-col1, .mc2-table .mc2-col2, .mc2-table .mc2-col3, .mc2-table .mc2-col4 {
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     /* 横スクロール中にブラウザの再描画が追いつかず、下に隠れているはずの
        セルが透けて見える不具合を防ぐため、固定列を独立した描画レイヤーにする */
@@ -261,7 +261,8 @@
   .mc2-table .mc2-col1 { position: sticky; left: 0; z-index: 4; background: var(--surface); border-right: 1px solid var(--border-strong); }
   .mc2-table .mc2-col2 { position: sticky; left: var(--mc2-col2-left, 50px); z-index: 4; background: var(--surface); border-right: 1px solid var(--border); }
   .mc2-table .mc2-col3 { position: sticky; left: var(--mc2-col3-left, 80px); z-index: 4; background: var(--surface); border-right: 1px solid var(--border-strong); }
-  .mc2-table thead .mc2-col1, .mc2-table thead .mc2-col2, .mc2-table thead .mc2-col3 { z-index: 11; }
+  .mc2-table .mc2-col4 { position: sticky; left: var(--mc2-col4-left, 136px); z-index: 4; background: var(--surface); border-right: 1px solid var(--border-strong); }
+  .mc2-table thead .mc2-col1, .mc2-table thead .mc2-col2, .mc2-table thead .mc2-col3, .mc2-table thead .mc2-col4 { z-index: 11; }
   .mc2-table tr.mc2-total-row td { background: #dbe7f5 !important; color: #1a4971; border-top: 3px double #8a8370; }
 
   /* 月ごとの当番回数②・各メンバーの年間設定：
@@ -1289,10 +1290,9 @@ function renderAnnualTable2(years) {
     <tr>
       <th class="mc2-col1" rowspan="2" style="width:50px">年度</th>
       <th class="mc2-col2" rowspan="2" style="width:30px">月</th>
-      <th class="mc2-col3" rowspan="2" style="width:28px">日数</th>
+      <th class="mc2-col3" rowspan="2" style="width:56px">当番計/<br>日数</th>
+      <th class="mc2-col4" rowspan="2" style="width:56px">日祝計/<br>日祝日数</th>
       ${nameRow}
-      <th rowspan="2" style="width:56px">当番計/<br>日数</th>
-      <th rowspan="2" style="width:56px">日祝計/<br>日祝日数</th>
     </tr>
     <tr>${subRow}</tr>
   `;
@@ -1300,7 +1300,6 @@ function renderAnnualTable2(years) {
   let bodyHtml = '';
   years.forEach(y => {
     for (let mon = 1; mon <= 12; mon++) {
-      const dim = daysInMonth(y, mon);
       // rowspanをsticky(横スクロール固定)列に使うと、ブラウザによって「年度」セルの
       // 縦位置がずれて表示が崩れることがあるため、rowspanは使わず、12ヶ月分すべての行に
       // 同じ背景色のセルを敷いて、1月の行だけ年度を表示することで見た目上の結合を再現する
@@ -1326,10 +1325,9 @@ function renderAnnualTable2(years) {
       }).join('');
       bodyHtml += `<tr>${yearCellHtml}
         <td class="mc2-col2" style="text-align:center;font-weight:500;font-size:11px;padding:2px 1px">${mon}月</td>
-        <td class="mc2-col3" style="text-align:center;color:var(--text-muted);font-size:11px;padding:2px 1px">${dim}</td>
+        <td id="annual2-row-count-${y}-${mon}" class="mc2-col3" style="text-align:center;font-size:10px;font-weight:600;padding:2px 1px"></td>
+        <td id="annual2-row-hol-${y}-${mon}" class="mc2-col4" style="text-align:center;font-size:10px;font-weight:600;padding:2px 1px"></td>
         ${cellsHtml}
-        <td id="annual2-row-count-${y}-${mon}" style="text-align:center;font-size:10px;font-weight:600;padding:2px 1px"></td>
-        <td id="annual2-row-hol-${y}-${mon}" style="text-align:center;font-size:10px;font-weight:600;padding:2px 1px"></td>
       </tr>`;
     }
     const totalCellsHtml = members.map(m => {
@@ -1337,7 +1335,7 @@ function renderAnnualTable2(years) {
       const countTotal = monthlyValsFromCell(cell);
       return `<td id="annual2-total-count-${m.id}-${y}" style="text-align:center;font-weight:700;font-size:11px">${countTotal}</td><td id="annual2-total-hol-${m.id}-${y}" style="text-align:center;font-weight:700;font-size:11px">${cell.hol.length}</td>`;
     }).join('');
-    bodyHtml += `<tr class="mc2-total-row"><td class="mc2-col1" colspan="3" style="white-space:nowrap;font-weight:700;padding:4px 4px;font-size:11px">${y}年 年間合計</td>${totalCellsHtml}<td id="annual2-grand-count-${y}" style="text-align:center;font-weight:700;font-size:10px;padding:2px 1px"></td><td id="annual2-grand-hol-${y}" style="text-align:center;font-weight:700;font-size:10px;padding:2px 1px"></td></tr>`;
+    bodyHtml += `<tr class="mc2-total-row"><td class="mc2-col1" colspan="2" style="white-space:nowrap;font-weight:700;padding:4px 4px;font-size:11px">${y}年 年間合計</td><td id="annual2-grand-count-${y}" class="mc2-col3" style="text-align:center;font-weight:700;font-size:10px;padding:2px 1px"></td><td id="annual2-grand-hol-${y}" class="mc2-col4" style="text-align:center;font-weight:700;font-size:10px;padding:2px 1px"></td>${totalCellsHtml}</tr>`;
   });
   body.innerHTML = bodyHtml;
 
@@ -1655,11 +1653,14 @@ function updateMc2StickyColOffsets() {
     if (!row) return;
     const c1 = row.querySelector(':scope > .mc2-col1');
     const c2 = row.querySelector(':scope > .mc2-col2');
+    const c3 = row.querySelector(':scope > .mc2-col3');
     if (!c1 || !c2) return;
     const w1 = c1.getBoundingClientRect().width;
     const w2 = c2.getBoundingClientRect().width;
+    const w3 = c3 ? c3.getBoundingClientRect().width : 0;
     if (w1 > 0) table.style.setProperty('--mc2-col2-left', w1 + 'px');
     if (w1 > 0 && w2 > 0) table.style.setProperty('--mc2-col3-left', (w1 + w2) + 'px');
+    if (w1 > 0 && w2 > 0 && w3 > 0) table.style.setProperty('--mc2-col4-left', (w1 + w2 + w3) + 'px');
   });
 }
 
@@ -1710,12 +1711,12 @@ function updateMc2RowValidationForYear(y) {
       cellEl.style.color = ok ? '#2e7d32' : '#e89090';
     }
   }
-  const okTotal = totalAssigned === totalExpected;
   const grandEl = document.getElementById(`mc2-grand-${y}`);
   if (grandEl) {
-    grandEl.textContent = `${totalAssigned}/${totalExpected} ${okTotal ? '✓' : '✗'}`;
-    grandEl.style.background = okTotal ? '#eaf7ea' : '#fdeaea';
-    grandEl.style.color = okTotal ? '#2e7d32' : '#e89090';
+    // 年間合計行の「合計/日数」セルは表示しない（各月の集計のみ表示する）
+    grandEl.textContent = '';
+    grandEl.style.background = '';
+    grandEl.style.color = '';
   }
 }
 
@@ -1854,12 +1855,12 @@ function updateMh2RowValidationForYear(y) {
       cellEl.style.color = ok ? '#2e7d32' : '#e89090';
     }
   }
-  const okTotal = totalAssigned === totalExpected;
   const grandEl = document.getElementById(`mh2-grand-${y}`);
   if (grandEl) {
-    grandEl.textContent = `${totalAssigned}/${totalExpected} ${okTotal ? '✓' : '✗'}`;
-    grandEl.style.background = okTotal ? '#eaf7ea' : '#fdeaea';
-    grandEl.style.color = okTotal ? '#2e7d32' : '#e89090';
+    // 年間合計行の「合計/日祝日数」セルは表示しない（各月の集計のみ表示する）
+    grandEl.textContent = '';
+    grandEl.style.background = '';
+    grandEl.style.color = '';
   }
 }
 
