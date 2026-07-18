@@ -999,7 +999,9 @@ function prefillNextMemberIds() {
   }, 0);
   const nextId = maxStaffId + 1;
   staffIdInput.value = nextId;
-  noInput.value = String(nextId * 2).padStart(4, '0');
+  // ログインナンバーの計算式：ID=69の人を「1190」を起点に、ID+1ごとに+7ずつ増加させる
+  // （例：ID69→1190、ID70→1197、ID71→1204）
+  noInput.value = String(7 * nextId + 707).padStart(4, '0');
 }
 
 async function loadHolidays() {
