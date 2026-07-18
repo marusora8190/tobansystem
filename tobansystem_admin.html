@@ -310,7 +310,7 @@
   .cal-day-body { flex: 1; display: flex; align-items: center; justify-content: center; }
   
   .cal-member-name-row { display: flex; align-items: center; justify-content: center; gap: 3px; }
-  .cal-member-name { font-weight: 600; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+  .cal-member-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
   .cal-lock-btn { border: none; background: transparent; cursor: pointer; font-size: 10px; line-height: 1; padding: 0 1px; flex-shrink: 0; opacity: 0.45; }
   .cal-lock-btn:hover { opacity: 1; }
   .cal-lock-btn.locked { opacity: 1; }
@@ -543,7 +543,7 @@
       </div>
       <div class="card" style="padding-bottom:14px;">
         <div class="card-title" style="margin-bottom:6px;">📌 各メンバーの年間設定</div>
-        <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.4">月ごとの当番回数（0=身上等／1=通常／2=通常または他の人の代わりに当番）と日祝当番の月を設定できます。各行の右端で当番人数合計・日祝当番人数合計が日数と一致しているか自動チェックします（<span style="color:#2e7d32;font-weight:600">✓一致</span> / <span style="color:#e89090;font-weight:600">✗不一致</span>）。</p>
+        <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.4">月ごとの当番回数（0=身上等／1=通常／2=通常または他の人の代わりに当番）と日祝当番の月を設定できます。各行の右端で当番人数合計・日祝当番人数合計が日数と一致しているか自動チェックします（<span style="color:#2e7d32;font-weight:600">✓一致</span> / <span style="color:#e89090;font-weight:600">×不一致</span>）。</p>
         <div class="annual-wrap annual-wrap-compact">
           <table class="mc2-table annual2-table">
             <thead id="annual2-head"></thead>
@@ -1358,9 +1358,9 @@ function updateAnnualTable2ValidationForYear(y) {
     totalExpectedDays += expectedDays;
     const cell = document.getElementById(`annual2-row-count-${y}-${mon}`);
     if (cell) {
-      cell.textContent = `${assignedCount}/${expectedDays} ${okCount ? '✓' : '✗'}`;
-      cell.style.color = okCount ? '#2e7d32' : '#e89090';
-      cell.style.background = okCount ? '#eaf7ea' : '#fdeaea';
+      cell.textContent = `${assignedCount}/${expectedDays} ${okCount ? '✓' : '×'}`;
+      cell.style.color = okCount ? '#2e7d32' : '#8a1f1f';
+      cell.style.background = okCount ? '#eaf7ea' : '#f3a6a6';
     }
 
     const expectedHol = sundayHolidayCountInMonth(y, mon);
@@ -1370,23 +1370,23 @@ function updateAnnualTable2ValidationForYear(y) {
     totalExpectedHol += expectedHol;
     const hcell = document.getElementById(`annual2-row-hol-${y}-${mon}`);
     if (hcell) {
-      hcell.textContent = `${assignedHol}/${expectedHol} ${okHol ? '✓' : '✗'}`;
-      hcell.style.color = okHol ? '#2e7d32' : '#e89090';
-      hcell.style.background = okHol ? '#eaf7ea' : '#fdeaea';
+      hcell.textContent = `${assignedHol}/${expectedHol} ${okHol ? '✓' : '×'}`;
+      hcell.style.color = okHol ? '#2e7d32' : '#8a1f1f';
+      hcell.style.background = okHol ? '#eaf7ea' : '#f3a6a6';
     }
   }
 
   const grandCountEl = document.getElementById(`annual2-grand-count-${y}`);
   if (grandCountEl) {
     const ok = totalAssignedCount === totalExpectedDays;
-    grandCountEl.textContent = `${totalAssignedCount}/${totalExpectedDays} ${ok ? '✓' : '✗'}`;
-    grandCountEl.style.color = ok ? '#2e7d32' : '#e89090';
+    grandCountEl.textContent = `${totalAssignedCount}/${totalExpectedDays} ${ok ? '✓' : '×'}`;
+    grandCountEl.style.color = ok ? '#2e7d32' : '#8a1f1f';
   }
   const grandHolEl = document.getElementById(`annual2-grand-hol-${y}`);
   if (grandHolEl) {
     const ok = totalAssignedHol === totalExpectedHol;
-    grandHolEl.textContent = `${totalAssignedHol}/${totalExpectedHol} ${ok ? '✓' : '✗'}`;
-    grandHolEl.style.color = ok ? '#2e7d32' : '#e89090';
+    grandHolEl.textContent = `${totalAssignedHol}/${totalExpectedHol} ${ok ? '✓' : '×'}`;
+    grandHolEl.style.color = ok ? '#2e7d32' : '#8a1f1f';
   }
 }
 
@@ -1705,9 +1705,9 @@ function updateMc2RowValidationForYear(y) {
     totalExpected += expectedDays;
     const cellEl = document.getElementById(`mc2-row-${y}-${mon}`);
     if (cellEl) {
-      cellEl.textContent = `${assignedCount}/${expectedDays} ${ok ? '✓' : '✗'}`;
-      cellEl.style.background = ok ? '#eaf7ea' : '#fdeaea';
-      cellEl.style.color = ok ? '#2e7d32' : '#e89090';
+      cellEl.textContent = `${assignedCount}/${expectedDays} ${ok ? '✓' : '×'}`;
+      cellEl.style.background = ok ? '#eaf7ea' : '#f3a6a6';
+      cellEl.style.color = ok ? '#2e7d32' : '#8a1f1f';
     }
   }
   const grandEl = document.getElementById(`mc2-grand-${y}`);
@@ -1849,9 +1849,9 @@ function updateMh2RowValidationForYear(y) {
     totalExpected += expectedHol;
     const cellEl = document.getElementById(`mh2-row-${y}-${mon}`);
     if (cellEl) {
-      cellEl.textContent = `${assignedHol}/${expectedHol} ${ok ? '✓' : '✗'}`;
-      cellEl.style.background = ok ? '#eaf7ea' : '#fdeaea';
-      cellEl.style.color = ok ? '#2e7d32' : '#e89090';
+      cellEl.textContent = `${assignedHol}/${expectedHol} ${ok ? '✓' : '×'}`;
+      cellEl.style.background = ok ? '#eaf7ea' : '#f3a6a6';
+      cellEl.style.color = ok ? '#2e7d32' : '#8a1f1f';
     }
   }
   const grandEl = document.getElementById(`mh2-grand-${y}`);
