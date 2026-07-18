@@ -2226,8 +2226,8 @@ async function loadUnavailable() {
       let clickAction = '';
 
       if (record) {
-        // 登録されている支障日はチェックマークを表示せず、背景の塗りつぶしのみで示す
-        cellContent = '';
+        // 登録されている支障日は、背景の塗りつぶしに加えて小さめの✓マークを表示する
+        cellContent = '<span style="font-size:9px;color:var(--accent);font-weight:bold">✓</span>';
         cellTitle += ' (登録済み支障日・クリックで削除)';
         clickAction = `onclick="removeMatrixRecord('${record.id}')"`;
         tdBg = '#fff1f1';
