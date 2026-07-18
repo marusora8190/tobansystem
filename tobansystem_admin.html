@@ -727,7 +727,7 @@
       </div>
       <div class="card">
         <div class="card-title">基本の祝日を一括登録</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:4px">元日・成人の日・建国記念の日など、法律で定められた基本の祝日を2026年〜2050年まで一括登録します。振替休日は含まれませんので、その都度個別に追加してください。</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:4px">元日・成人の日・建国記念の日など、法律で定められた祝日を2026年〜2050年まで一括登録します。振替休日・国民の休日（祝日に挟まれた平日）も自動計算して登録します。</p>
         <div class="btn-row">
           <button class="btn btn-primary" onclick="seedBasicHolidays()">基本の祝日を一括登録（2026〜2050年）</button>
         </div>
@@ -2007,14 +2007,33 @@ async function renderUnavailCalendar() {
     else if (dow === 6) cls += ' saturday';
     if (isRegistered) cls += ' registered';
     else if (isSelected) cls += ' selected';
-    html += `<td class="${cls.trim()}" onclick="toggleUnavailDate('${dateStr}')" data-date="${dateStr}"><div style="display:flex;align-items:center;justify-content:center"><span>${d}</span><span style="display:inline-block;width:36px;text-align:left;margin-left:5px;font-size:9px;white-space:nowrap">${holLabel}</span></div></td>`;
+    html += `<td class="${cls.trim()}" onclick="toggleUnavailDate('${dateStr}', ${isRegistered})" data-date="${dateStr}" title="${isRegistered ? 'クリックでこの支障日を取り消す' : ''}"><div style="display:flex;align-items:center;justify-content:center"><span>${d}</span><span style="display:inline-block;width:36px;text-align:left;margin-left:5px;font-size:9px;white-space:nowrap">${holLabel}</span></div></td>`;
     if ((firstDay + d) % 7 === 0 && d < daysInMonth) html += '</tr><tr>';
   }
   html += '</tr></tbody></table>';
   wrap.innerHTML = html;
 }
 
-async function toggleUnavailDate(dateStr) {
+async function toggleUnavailDate(dateStr, isRegistered) {
+  if (isRegistered) {
+    // すでに登録済みの支障日をクリックした場合は、確認の上でその場で取り消す（DBから削除する）
+    const mid = document.getElementById('u-member').value;
+    if (!mid) return;
+    if (!confirm(`${dateStr} の支障日を取り消しますか？`)) return;
+    try {
+      const { error } = await sbClient
+        .from('unavailable_dates')
+        .delete()
+        .eq('member_id', parseInt(mid))
+        .eq('blocked_date', dateStr);
+      if (error) throw error;
+      showMsg('unavail-msg', `${dateStr} の支障日を取り消しました`, 'success');
+    } catch (e) {
+      showMsg('unavail-msg', '取消に失敗しました: ' + e.message, 'error');
+    }
+    await renderUnavailCalendar();
+    return;
+  }
   if (selectedUnavailDates.has(dateStr)) { selectedUnavailDates.delete(dateStr); } else { selectedUnavailDates.add(dateStr); }
   await renderUnavailCalendar();
 }
@@ -3725,13 +3744,61 @@ function buildBasicHolidaysForYear(year) {
   return list;
 }
 
+// 日付オブジェクト -> "YYYY-MM-DD" 文字列
+function fmtYmd(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+
+// 「基本の祝日」のリストから、振替休日・国民の休日を計算する。
+// ・振替休日：祝日が日曜に当たる場合、その翌日以降で「祝日でない」最初の日を休日とする
+//   （連休が続く場合は、祝日でなくなるまで日をずらしていく）
+// ・国民の休日：前日・翌日がともに祝日で、その日自体は祝日でも日曜でもない日を休日とする
+//   （例：敬老の日と秋分の日に挟まれた平日）
+// 年をまたぐケース（12/31や1/1が日曜の祝日の場合など）を考慮し、対象年の前後1ヶ月分も
+// 参照できるよう、basicList には前年12月・翌年1月分も渡すことを推奨する。
+function buildDerivedHolidays(year, basicList) {
+  const dateSet = new Set(basicList.map(h => h.date));
+  const derived = [];
+
+  // ① 振替休日（結果が対象年(year)の範囲内のものだけを残す。前後年の祝日を参照して
+  //   計算する都合上、範囲外の日付が算出されることがあるため）
+  basicList
+    .filter(h => new Date(h.date + 'T00:00:00').getDay() === 0)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .forEach(h => {
+      let d = new Date(h.date + 'T00:00:00');
+      d.setDate(d.getDate() + 1);
+      while (dateSet.has(fmtYmd(d))) { d.setDate(d.getDate() + 1); }
+      const ds = fmtYmd(d);
+      dateSet.add(ds);
+      if (d.getFullYear() === year) derived.push({ date: ds, name: '振替休日' });
+    });
+
+  // ② 国民の休日（対象年の1/1〜12/31の範囲のみ判定・登録する）
+  for (let d = new Date(year, 0, 1); d.getFullYear() === year; d.setDate(d.getDate() + 1)) {
+    const ds = fmtYmd(d);
+    if (dateSet.has(ds) || d.getDay() === 0) continue;
+    const prev = new Date(d); prev.setDate(prev.getDate() - 1);
+    const next = new Date(d); next.setDate(next.getDate() + 1);
+    if (dateSet.has(fmtYmd(prev)) && dateSet.has(fmtYmd(next))) {
+      dateSet.add(ds);
+      derived.push({ date: ds, name: '国民の休日' });
+    }
+  }
+
+  return derived;
+}
+
 async function seedBasicHolidays() {
-  if (!confirm('2026年〜2050年の基本の祝日を一括登録します。振替休日は含まれません。よろしいですか？')) return;
+  if (!confirm('2026年〜2050年の祝日（振替休日・国民の休日を含む）を一括登録します。よろしいですか？')) return;
   showMsg('seed-holiday-msg', '<span class="spinner"></span> 登録中...', 'info');
 
   let rows = [];
   for (let y = 2026; y <= 2050; y++) {
-    rows = rows.concat(buildBasicHolidaysForYear(y));
+    const basic = buildBasicHolidaysForYear(y);
+    // 年またぎの振替休日判定に備え、前年12月・翌年1月の基本祝日も一時的に混ぜてから計算する
+    const prevDec = buildBasicHolidaysForYear(y - 1).filter(h => h.date.startsWith(`${y - 1}-12`));
+    const nextJan = buildBasicHolidaysForYear(y + 1).filter(h => h.date.startsWith(`${y + 1}-01`));
+    const derived = buildDerivedHolidays(y, [...prevDec, ...basic, ...nextJan]);
+    rows = rows.concat(basic, derived);
   }
 
   try {
@@ -3742,7 +3809,7 @@ async function seedBasicHolidays() {
     return;
   }
 
-  showMsg('seed-holiday-msg', `${rows.length}件の祝日を登録しました（2026〜2050年）`, 'success');
+  showMsg('seed-holiday-msg', `${rows.length}件の祝日を登録しました（2026〜2050年、振替休日・国民の休日を含む）`, 'success');
   await loadHolidays();
   await renderHolidaysTable();
   renderCalendar();
