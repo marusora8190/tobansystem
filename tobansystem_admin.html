@@ -2775,6 +2775,7 @@ async function generateSchedule() {
 
   const result = [];
   const monthCount = {};
+  const specialCount = {}; // 「2回当番かつ日祝対象」の人が、当月ですでに日祝当番に何回当たったかを記録する
 
   // 「月の予定回数（0回／1回／2回）」を基準に、各人の当月の上限回数を求める
   function maxMonthlyOf(m) { return twiceMembers.has(m.id) ? 2 : 1; }
@@ -2784,6 +2785,7 @@ async function generateSchedule() {
   //   ・月の予定回数が「0回」の人はその月は対象外
   //   ・月の上限回数（1回／2回）は超えない（候補が見つからない日は「未割当」のまま残す）
   //   ・日曜・祝日の当番は「日祝」設定のある人だけに限定する（未設定の人には割り当てない）
+  //   ・「2回当番」かつ「日祝対象」の人は、2回のうち必ず1回は日祝・もう1回は平日にする
   // それ以外（前回当番からの間隔／年間目標回数／平日での日祝限定者の除外）は、
   // 候補者がどうしても見つからない場合にのみ、下の tiers の順で段階的に緩める。
   function getCandidatesForTier(dateStr, isSpecialDay, opts) {
@@ -2815,6 +2817,17 @@ async function generateSchedule() {
       if (!opts.ignoreHolidayMatch) {
         // 平日は、月2回の人であれば日祝設定の有無を問わない
         if (!isSpecialDay && holidayMembers.has(m.id) && !twiceMembers.has(m.id)) return null;
+      }
+
+      // 「2回当番」かつ「日祝対象」の人は、2回のうち必ず1回は日祝、もう1回は平日に固定する
+      // （絶対条件・緩めない）：
+      //   ・すでに日祝を1回確保している人には、これ以上日祝を割り当てない
+      //   ・まだ日祝を確保していないのに、平日で2回目（最後の枠）を使わせない
+      //     （平日に2回とも消費してしまうと、日祝担当が0回になってしまうため）
+      if (twiceMembers.has(m.id) && holidayMembers.has(m.id)) {
+        const sc = specialCount[m.id] || 0;
+        if (isSpecialDay && sc >= 1) return null;
+        if (!isSpecialDay && sc === 0 && (monthCount[m.id] || 0) >= 1) return null;
       }
 
       return m;
@@ -2892,6 +2905,7 @@ async function generateSchedule() {
       lastAssigned[lockedMemberId] = dateStr;
       monthCount[lockedMemberId] = (monthCount[lockedMemberId] || 0) + 1;
       yearCount[lockedMemberId] = (yearCount[lockedMemberId] || 0) + 1;
+      if (isSpecialDay) specialCount[lockedMemberId] = (specialCount[lockedMemberId] || 0) + 1;
       continue;
     }
 
@@ -2913,6 +2927,7 @@ async function generateSchedule() {
       lastAssigned[chosen.id] = dateStr;
       monthCount[chosen.id] = (monthCount[chosen.id] || 0) + 1;
       yearCount[chosen.id] = (yearCount[chosen.id] || 0) + 1;
+      if (isSpecialDay) specialCount[chosen.id] = (specialCount[chosen.id] || 0) + 1;
     }
   }
 
