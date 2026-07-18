@@ -2189,7 +2189,6 @@ async function loadUnavailable() {
       const record = unavailMap[`${m.id}_${dateStr}`];
       
       let tdBg = '#ffffff';
-      if (dow === 0 || isHol) tdBg = '#fffafb';
 
       let cellContent = '';
       let cellTitle = `${m.name}: ${dateStr}`;
@@ -2413,10 +2412,8 @@ async function assignTwiceMembersFirst() {
         if ((yearCount[m.id] || 0) >= yearTgt) return null;
       }
 
-      // 日祝の日は「日祝」設定がある人を優先。平日は月2回の人であれば日祝設定の有無を問わない。
-      if (!opts.ignoreHolidayMatch) {
-        if (isSpecialDay && !holidayMembers.has(m.id)) return null;
-      }
+      // 日祝の日は「日祝」設定がある人だけに限定する（絶対条件・緩めない）
+      if (isSpecialDay && !holidayMembers.has(m.id)) return null;
 
       return m;
     }).filter(Boolean);
@@ -2436,13 +2433,13 @@ async function assignTwiceMembersFirst() {
   }
 
   // 月2回の人については「前回当番から8日間空ける」を絶対条件とし、どんな場合でも緩めない。
-  // 候補がどうしても見つからない場合は、日祝の可否→年間目標回数の順にのみ緩め、
+  // 「日祝の可否」も絶対条件とする（日祝設定のない人には日祝の当番を割り当てない）。
+  // 候補がどうしても見つからない場合は、年間目標回数のみを緩め、
   // それでも見つからなければその日は割り当てず「未割当」のままにする
   // （後で「当番表を作成」を押した際に、他のメンバーで埋められる）。
   const RELAX_TIERS = [
     { minGap: 8 },
-    { minGap: 8, ignoreHolidayMatch: true },
-    { minGap: 8, ignoreHolidayMatch: true, ignoreYearTarget: true }
+    { minGap: 8, ignoreYearTarget: true }
   ];
 
   function pick(dateStr, isSpecialDay) {
@@ -2614,13 +2611,12 @@ async function assignHolidayMembersFirst() {
     return list;
   }
 
-  // 候補がどうしても見つからない場合は、月の上限回数→年間目標回数の順にのみ緩め、
-  // それでも見つからなければその日は割り当てず「未割当」のままにする
+  // 候補がどうしても見つからない場合は、年間目標回数のみを緩め、
+  // 月の上限回数は絶対に緩めない。それでも見つからなければその日は割り当てず「未割当」のままにする
   // （後で「当番表を作成」を押した際に、他のメンバーで埋められる）。
   const RELAX_TIERS = [
     {},
-    { ignoreYearTarget: true },
-    { ignoreYearTarget: true, ignoreMonthlyCap: true }
+    { ignoreYearTarget: true }
   ];
 
   function pick(dateStr) {
@@ -2755,7 +2751,8 @@ async function generateSchedule() {
   //   ・支障日には割り当てない
   //   ・月の予定回数が「0回」の人はその月は対象外
   //   ・月の上限回数（1回／2回）は超えない（候補が見つからない日は「未割当」のまま残す）
-  // それ以外（前回当番からの間隔／年間目標回数／日祝の可否）は、
+  //   ・日曜・祝日の当番は「日祝」設定のある人だけに限定する（未設定の人には割り当てない）
+  // それ以外（前回当番からの間隔／年間目標回数／平日での日祝限定者の除外）は、
   // 候補者がどうしても見つからない場合にのみ、下の tiers の順で段階的に緩める。
   function getCandidatesForTier(dateStr, isSpecialDay, opts) {
     return members.map(m => {
@@ -2780,12 +2777,12 @@ async function generateSchedule() {
         if ((yearCount[m.id] || 0) >= yearTgt) return null;
       }
 
+      // 日祝の日は「日祝」設定がある人だけに限定する（絶対条件・緩めない）
+      if (isSpecialDay && !holidayMembers.has(m.id)) return null;
+
       if (!opts.ignoreHolidayMatch) {
-        if (isSpecialDay) {
-          if (!holidayMembers.has(m.id)) return null;
-        } else {
-          if (holidayMembers.has(m.id) && !twiceMembers.has(m.id)) return null;
-        }
+        // 平日は、月2回の人であれば日祝設定の有無を問わない
+        if (!isSpecialDay && holidayMembers.has(m.id) && !twiceMembers.has(m.id)) return null;
       }
 
       return m;
@@ -2814,7 +2811,8 @@ async function generateSchedule() {
   }
 
   // 候補者が見つからない場合に、制約を段階的に緩めながら選び直す。
-  // 「月の予定回数の上限（monthlyCap）」は、当番表作成者の方針により絶対に緩めない条件とする。
+  // 「月の予定回数の上限（monthlyCap）」「日祝当番は日祝設定のある人限定」は、
+  // 当番表作成者の方針により絶対に緩めない条件とする。
   // どうしても候補が見つからない日は、誰かに無理に割り当てず「未割当」のまま残す
   // （未割当の日は、当番表作成者が手動で確認・調整することを想定している）。
   const RELAX_TIERS = [
