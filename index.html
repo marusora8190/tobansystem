@@ -414,8 +414,8 @@ function backToLogin() {
 
 function getGreeting() {
   const hour = new Date().getHours();
-  if (hour >= 5 && hour < 11) return 'おはようございます';
-  if (hour >= 11 && hour < 17) return 'こんにちは';
+  if (hour >= 3 && hour < 10) return 'おはようございます';
+  if (hour >= 10 && hour < 17) return 'こんにちは';
   return 'こんばんは';
 }
 
