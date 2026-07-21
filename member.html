@@ -278,7 +278,7 @@
         </table>
 
         <div class="legend">
-          <span><span class="sw" style="background:#fff3b0;border:1.5px solid #d4af00"></span>ご自身の当番日</span>
+          <span><span class="sw" style="background:#fff3b0;border:1.5px solid #d4af00"></span><span id="roster-legend-label">ご自身の当番日</span></span>
         </div>
       </div>
     </div>
@@ -453,6 +453,8 @@ async function enterAsMember(member, token) {
   document.getElementById('badge-greeting').textContent = getGreeting();
   document.getElementById('badge-name').textContent = member.name + ' さん';
   document.getElementById('badge-dept').textContent = member.department || '';
+  const rosterLegendLabel = document.getElementById('roster-legend-label');
+  if (rosterLegendLabel) rosterLegendLabel.textContent = `${member.name}さんの当番日`;
 
   await loadHolidays();
   const today = new Date();
