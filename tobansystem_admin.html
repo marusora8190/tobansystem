@@ -104,11 +104,11 @@
   .members-table .btn-sm { padding: 2px 8px; font-size: 11px; }
   .members-table .badge { padding: 1px 6px; font-size: 10px; }
 
-  /* 新しいメンバーを追加：入力欄・ボタンの行の高さを最小限にする */
-  #member-add-card .form-group { gap: 2px; }
-  #member-add-card input { padding: 3px 8px; font-size: 12px; }
+  /* 新しいメンバーを追加：タイトル・入力欄・ボタンを1行に横並びし、エリアの高さを最小限にする */
+  #member-add-card input { padding: 4px 8px; font-size: 12px; }
   #member-add-card .btn { padding: 4px 10px; font-size: 12px; }
-  #member-add-card #member-msg { font-size: 12px; }
+  #member-add-card .card-title { font-size: 13px; }
+  #member-add-card #member-msg { font-size: 12px; min-height: 0; }
   .badge-gold { background: var(--gold-light); color: var(--gold); }
   .badge-red { background: var(--danger-light); color: var(--danger); }
   .badge-blue { background: var(--info-light); color: var(--info); }
@@ -311,12 +311,13 @@
   
   .cal-member-name-row { display: flex; align-items: center; justify-content: center; gap: 3px; }
   .cal-member-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
-  .cal-lock-btn { border: none; background: transparent; cursor: pointer; font-size: 10px; line-height: 1; padding: 0 1px; flex-shrink: 0; opacity: 0.45; }
-  .cal-lock-btn:hover { opacity: 1; }
-  .cal-lock-btn.locked { opacity: 1; }
-  .gen-lock-btn { border: none; background: transparent; cursor: pointer; font-size: 13px; line-height: 1; padding: 2px 4px; flex-shrink: 0; opacity: 0.45; }
-  .gen-lock-btn:hover { opacity: 1; }
-  .gen-lock-btn.locked { opacity: 1; }
+  .cal-lock-btn, .gen-lock-btn { border: none; cursor: pointer; line-height: 1; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--text-hint); background: var(--bg); transition: background 0.15s, color 0.15s; }
+  .cal-lock-btn svg, .gen-lock-btn svg { display: block; }
+  .cal-lock-btn:hover, .gen-lock-btn:hover { color: var(--text); background: var(--border); }
+  .cal-lock-btn.locked, .gen-lock-btn.locked { color: var(--gold); background: var(--gold-light); }
+  .cal-lock-btn.locked:hover, .gen-lock-btn.locked:hover { background: #ecdfb0; }
+  .cal-lock-btn { width: 18px; height: 18px; padding: 2px; font-size: 12px; }
+  .gen-lock-btn { width: 24px; height: 24px; padding: 3px; font-size: 16px; }
 
   .cal-empty { min-height: 0; }
 
@@ -419,17 +420,15 @@
 
     <div id="page-members" class="page">
       <div class="section-title">詰員名簿管理</div>
-      <div class="card" id="member-add-card" style="padding:6px 10px;margin-bottom:8px">
-        <div class="card-title" style="margin-bottom:3px">新しいメンバーを追加</div>
-        <div class="form-grid" style="grid-template-columns:repeat(5, 1fr);gap:6px">
-          <div class="form-group"><label>ID</label><input id="m-staffid" readonly style="background:var(--bg);color:var(--text-muted)" placeholder="自動採番"></div>
-          <div class="form-group"><label>ログインナンバー</label><input id="m-no" readonly style="background:var(--bg);color:var(--text-muted)" placeholder="自動採番"></div>
-          <div class="form-group"><label>氏名 *</label><input id="m-name" placeholder="山本 和幸"></div>
-          <div class="form-group"><label>部署</label><input id="m-dept" placeholder="運営課"></div>
-          <div class="form-group"><label>電話番号</label><input id="m-phone" placeholder="5401"></div>
-        </div>
-        <div class="btn-row" style="margin-top:4px">
-          <button class="btn btn-primary" onclick="addMember()">追加する</button>
+      <div class="card" id="member-add-card" style="padding:4px 10px;margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <div class="card-title" style="margin-bottom:0;white-space:nowrap;flex-shrink:0">新しいメンバーを追加</div>
+          <input id="m-staffid" readonly style="width:56px;flex:0 0 auto;background:var(--bg);color:var(--text-muted)" placeholder="ID">
+          <input id="m-no" readonly style="width:64px;flex:0 0 auto;background:var(--bg);color:var(--text-muted)" placeholder="番号">
+          <input id="m-name" style="width:150px;flex:0 0 auto" placeholder="氏名（必須）">
+          <input id="m-dept" style="width:110px;flex:0 0 auto" placeholder="部署">
+          <input id="m-phone" style="width:100px;flex:0 0 auto" placeholder="連絡先番号">
+          <button class="btn btn-primary" style="white-space:nowrap;flex-shrink:0" onclick="addMember()">追加する</button>
         </div>
         <div id="member-msg" style="margin-top:2px"></div>
       </div>
@@ -477,13 +476,13 @@
     </div>
 
     <div id="page-mh2" class="page">
-      <div class="section-title">日祝当番月（複数年）（メンバー横並び表示）</div>
-      <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.4">
-        メンバーを横に、年度/月を縦に並べたレイアウトで日祝当番の月を編集できます。
-      </p>
-      <div class="card" style="padding:12px 20px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-        <div class="card-title" style="margin-bottom:0;white-space:nowrap;">開始年度</div>
-        <select id="mh2-start-year" onchange="loadAndRenderMultiHol2()" style="width:110px">
+      <div class="section-title" style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+        <span>日祝当番月（複数年）（メンバー横並び表示）</span>
+        <span style="font-size:11px;font-weight:400;color:var(--text-muted)">メンバーを横に、年度/月を縦に並べたレイアウトで日祝当番の月を編集できます。</span>
+      </div>
+      <div class="card" style="padding:4px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div class="card-title" style="margin-bottom:0;white-space:nowrap;font-size:12px">開始年度</div>
+        <select id="mh2-start-year" onchange="loadAndRenderMultiHol2()" style="width:100px;padding:3px 6px;font-size:12px">
           <option value="2026" selected>2026年</option>
           <option value="2027">2027年</option>
           <option value="2028">2028年</option>
@@ -494,8 +493,8 @@
           <option value="2033">2033年</option>
           <option value="2034">2034年</option>
         </select>
-        <div class="card-title" style="margin-bottom:0;white-space:nowrap;">表示年数</div>
-        <select id="mh2-year-span" onchange="loadAndRenderMultiHol2()" style="width:90px">
+        <div class="card-title" style="margin-bottom:0;white-space:nowrap;font-size:12px">表示年数</div>
+        <select id="mh2-year-span" onchange="loadAndRenderMultiHol2()" style="width:80px;padding:3px 6px;font-size:12px">
           <option value="2">2年分</option>
           <option value="3" selected>3年分</option>
         </select>
@@ -823,7 +822,7 @@
     <div class="form-group" style="margin-top:12px">
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
         <input type="checkbox" id="day-modal-locked" style="width:14px;height:14px;cursor:pointer">
-        🔒 この日の当番をロックする（「当番表を作成」を押しても変更されなくなります）
+        <span style="display:inline-flex;align-items:center;color:var(--gold)"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M8 10V8a4 4 0 118 0v2h.5A1.5 1.5 0 0118 11.5v8A1.5 1.5 0 0116.5 21h-9A1.5 1.5 0 016 19.5v-8A1.5 1.5 0 017.5 10H8zm2 0h4V8a2 2 0 10-4 0v2z"/></svg></span> この日の当番をロックする（「当番表を作成」を押しても変更されなくなります）
       </label>
     </div>
     <div id="day-modal-msg" style="margin-top:8px"></div>
@@ -845,6 +844,15 @@ let members = [];
 let holidays = {};
 let schedules = {};
 let chotomeTimesData = {};
+
+// ロック中／未ロックの状態を表すアイコン（絵文字🔒🔓の代わり）。
+// 絵文字は環境によって小さく・薄く見えづらいため、currentColorで塗りつぶすSVGに統一し、
+// ボタン側のCSS（背景色・文字色）で状態をはっきり区別できるようにする。
+function lockIconSvg(locked) {
+  return locked
+    ? '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M8 10V8a4 4 0 118 0v2h.5A1.5 1.5 0 0118 11.5v8A1.5 1.5 0 0116.5 21h-9A1.5 1.5 0 016 19.5v-8A1.5 1.5 0 017.5 10H8zm2 0h4V8a2 2 0 10-4 0v2z"/></svg>'
+    : '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M8 10V8a4 4 0 017.94-.75 1 1 0 11-1.97.35A2 2 0 0010 8v2h8a1.5 1.5 0 011.5 1.5v8A1.5 1.5 0 0118 21H7.5A1.5 1.5 0 016 19.5v-8A1.5 1.5 0 017.5 10H8z"/></svg>';
+}
 
 // Supabase接続情報（ログイン時の認証チェック・通常のアプリ初期化の両方で使う共通値）
 function getSupabaseConfig() {
@@ -2597,7 +2605,7 @@ function renderGenPreview() {
             <option value="">未割当</option>
             ${members.map(m => `<option value="${m.id}" ${r.member_id == m.id ? 'selected' : ''}>${m.name}</option>`).join('')}
           </select>
-          <button type="button" class="gen-lock-btn ${r.locked ? 'locked' : ''}" title="${r.locked ? 'ロック中（クリックで解除）' : 'クリックでこの日の当番をロック（作成ボタンを押しても変更されなくなります）'}" onclick="togglePreviewLock(${i})">${r.locked ? '🔒' : '🔓'}</button>
+          <button type="button" class="gen-lock-btn ${r.locked ? 'locked' : ''}" title="${r.locked ? 'ロック中（クリックで解除）' : 'クリックでこの日の当番をロック（作成ボタンを押しても変更されなくなります）'}" onclick="togglePreviewLock(${i})">${lockIconSvg(r.locked)}</button>
         </div>
       </td>
       <td>${r.dow===0||r.isHol ? '<span class="badge badge-gold">日祝当番</span>' : '<span class="badge badge-green">平日当番</span>'}</td>
@@ -2619,7 +2627,7 @@ function togglePreviewLock(idx) {
     const btn = row.querySelector('.gen-lock-btn');
     select.disabled = r.locked;
     btn.classList.toggle('locked', r.locked);
-    btn.textContent = r.locked ? '🔒' : '🔓';
+    btn.innerHTML = lockIconSvg(r.locked);
     btn.title = r.locked ? 'ロック中（クリックで解除）' : 'クリックでこの日の当番をロック（作成ボタンを押しても変更されなくなります）';
   }
 }
@@ -2749,7 +2757,7 @@ function renderCalendar() {
           <div class="${boxClass}">
             <div class="cal-member-name-row">
               <span class="cal-member-name">${mInfo.name}</span>
-              <button type="button" class="cal-lock-btn ${isLocked ? 'locked' : ''}" title="${lockTitle}" onclick="toggleDutyLock('${dateStr}', event)">${isLocked ? '🔒' : '🔓'}</button>
+              <button type="button" class="cal-lock-btn ${isLocked ? 'locked' : ''}" title="${lockTitle}" onclick="toggleDutyLock('${dateStr}', event)">${lockIconSvg(isLocked)}</button>
             </div>
           </div>
         `;
