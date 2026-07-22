@@ -2973,16 +2973,15 @@ function printCalendar() {
     const phone = mInfo ? (mInfo.phone || mInfo.phone_number || mInfo.tel || '') : '';
     const subLine = [dept, phone].filter(Boolean).join('　');
     const subFontSize = subLine.length <= 12 ? 10 : subLine.length <= 16 ? 9 : subLine.length <= 20 ? 8 : subLine.length <= 25 ? 7 : 6;
-    const noteLine = note ? `<div style="font-size:9px;color:#333;margin-top:1px;">📝 ${note}</div>` : '';
+    const noteCellHtml = note ? `<div style="font-size:9px;color:#333;line-height:1.3;word-break:break-all;">📝 ${note}</div>` : '';
 
     const rowHtml = `<tr>
       <td style="width:48px;text-align:center;font-size:14px;font-weight:700;border:1px solid #555;padding:2px;white-space:nowrap;${dayBg}">${dowLabel}</td>
       <td style="border:1px solid #555;padding:2px 8px;">
         <div style="font-size:15px;font-weight:700;">${name}</div>
         <div style="font-size:${subFontSize}px;font-weight:700;color:#555;margin-top:1px;white-space:nowrap">${subLine}</div>
-        ${noteLine}
       </td>
-      <td style="border:1px solid #555;padding:2px;"></td>
+      <td style="border:1px solid #555;padding:2px 4px;vertical-align:middle;">${noteCellHtml}</td>
     </tr>`;
 
     if (idx < 15) rowsFirst += rowHtml; else rowsSecond += rowHtml;
@@ -3009,14 +3008,14 @@ function printCalendar() {
       <div style="float:left;width:calc(50% - 8px);">
         <div style="font-size:13px;font-weight:700;margin-bottom:6px;line-height:1.5">${subFirst}</div>
         <table style="${tableStyle}">
-          <colgroup><col style="width:48px"><col><col style="width:55px"></colgroup>
+          <colgroup><col style="width:48px"><col><col style="width:110px"></colgroup>
           <tbody>${rowsFirst}</tbody>
         </table>
       </div>
       <div style="float:right;width:calc(50% - 8px);">
         <div style="font-size:13px;font-weight:700;margin-bottom:6px;line-height:1.5">${subSecond}</div>
         <table style="${tableStyle}">
-          <colgroup><col style="width:48px"><col><col style="width:55px"></colgroup>
+          <colgroup><col style="width:48px"><col><col style="width:110px"></colgroup>
           <tbody>${rowsSecond}</tbody>
         </table>
       </div>
