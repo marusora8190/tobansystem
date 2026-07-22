@@ -754,7 +754,7 @@
     </div>
     <div id="page-nye-duty" class="page">
       <div class="section-title">年末年始当番予定（12/27〜1/4）</div>
-      <div class="alert alert-info">在籍中の詰員には、加入から辞退（引退）までの間に、年末年始期間（12月27日〜1月4日）の当番に最低3回は当たっていただく方針です。ここでは、各メンバーの通算回数（システム導入前の経験回数＋このシステムで記録された回数）と、達成状況を確認できます。名前の横のチェックボックスから、選択中の年度の当番日をその場で割り当てることもできます。</div>
+      <div class="alert alert-info">在籍中の詰員には、加入から辞退（引退）までの間に、年末年始期間（12月27日〜1月4日）の当番に最低3回は当たっていただく方針です。ここでは、各メンバーの通算回数（システム導入前の記録＋このシステムで記録された回数）を確認できます。下の「当番割り当て」欄から、選択中の年度の当番日をその場で割り当てることもできます。</div>
       <div class="card">
         <div class="card-title">表示・割り当て対象の年度</div>
         <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
@@ -765,19 +765,24 @@
         </div>
       </div>
       <div class="card">
-        <div class="card-title">メンバーごとの通算回数・当番割り当て</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:6px">「当番日を選択」のチェックボックスは、上で選んだ年度の12/27〜翌1/4の各日です。チェックすると、その日の当番としてすぐに保存されます（すでに他の人が割り当てられている日をチェックすると、割り当てが上書きされます）。「導入前の記録」は、本システム導入（2026年）より前に年末年始当番を経験した「年＋日付」を1件ずつ追加できます（日付が分からない場合は「日付不明」でも構いません）。追加した記録の件数が、そのまま導入前の回数として通算回数に加算されます。「システム記録分」「通算回数」は、年度に関わらず、これまでの全期間の実績です。詰員名簿と同じ並び順で表示しています。</p>
+        <div class="card-title">当番割り当て（選択年度）</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:6px">列が12/27〜翌1/4の日付、行が氏名です。当番に当たる日のチェックボックスにチェックを入れてください。チェックするとすぐに保存されます（すでに他の人にチェックが入っている日を選び直すと、割り当てが上書きされます）。</p>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>氏名</th><th>当番日を選択（12/27〜翌1/4）</th><th>導入前の記録（年・日付）</th><th>システム記録分</th><th>通算回数</th><th>達成状況</th></tr></thead>
-            <tbody id="nye-duty-body"><tr><td colspan="6" style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
+            <thead><tr id="nye-assign-head"></tr></thead>
+            <tbody id="nye-assign-body"><tr><td style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
           </table>
         </div>
       </div>
       <div class="card">
-        <div class="card-title">年ごとの当番実績（参考）</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:6px">本システムに記録されている、年末年始期間（12/27〜翌1/4）の当番実績を、年度ごとに一覧表示します。</p>
-        <div id="nye-duty-history-wrap" style="overflow-x:auto;display:flex;gap:12px;padding-bottom:8px"></div>
+        <div class="card-title">メンバーごとの通算回数</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:6px">「導入前の記録」は、本システム導入（2026年）より前に年末年始当番を経験した「年＋日付」を1件ずつ追加できます（日付が分からない場合は「日付不明」でも構いません）。追加した記録の件数が、そのまま導入前の回数として通算回数に加算されます。「システム記録分」「通算回数」は、年度に関わらず、これまでの全期間の実績です。詰員名簿と同じ並び順で表示しています。</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>氏名</th><th>導入前の記録（年・日付）</th><th>システム記録分</th><th>通算回数</th></tr></thead>
+            <tbody id="nye-duty-body"><tr><td colspan="4" style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
+          </table>
+        </div>
       </div>
     </div>
     <div id="page-chotome" class="page">
@@ -1366,10 +1371,8 @@ async function deleteNyePastRecord(recordId) {
 
 async function renderNyeDutyPage() {
   const body = document.getElementById('nye-duty-body');
-  const histWrap = document.getElementById('nye-duty-history-wrap');
   if (!body) return;
-  body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr>`;
-  if (histWrap) histWrap.innerHTML = '';
+  body.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr>`;
 
   populateNyeYearSelect();
   const seasonYear = parseInt(document.getElementById('nye-year-select')?.value) || getDefaultNyeSeasonYear();
@@ -1378,14 +1381,15 @@ async function renderNyeDutyPage() {
     await loadSchedules();
     await loadNyePastRecords();
   } catch (e) {
-    body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--danger)">読み込み失敗: ${e.message}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--danger)">読み込み失敗: ${e.message}</td></tr>`;
     return;
   }
   const rows = getNyeWindowRowsFromCache();
 
+  renderNyeAssignTable(seasonYear);
+
   if (!members.length) {
-    body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-hint)">在籍中のメンバーがいません</td></tr>`;
-    renderNyeHistoryTables(rows);
+    body.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-hint)">在籍中のメンバーがいません</td></tr>`;
     return;
   }
 
@@ -1398,50 +1402,58 @@ async function renderNyeDutyPage() {
     const past = (nyePastRecordsByMember[m.id] || []).length;
     const sys = sysCountByMember[m.id] || 0;
     const total = past + sys;
-    const achieved = total >= NYE_TARGET_COUNT;
-    const badge = achieved
-      ? `<span class="badge badge-green">✓ 達成</span>`
-      : `<span class="badge badge-red">あと${NYE_TARGET_COUNT - total}回</span>`;
     return `<tr>
       <td style="white-space:nowrap">${m.name}</td>
-      <td>${buildNyeDateCheckboxes(m.id, seasonYear)}</td>
       <td>${buildNyePastCell(m.id)}</td>
       <td style="text-align:center">${sys}</td>
       <td style="text-align:center;font-weight:600">${total}</td>
-      <td style="text-align:center">${badge}</td>
     </tr>`;
   }).join('');
-
-  renderNyeHistoryTables(rows);
 }
 
-function buildNyeDateCheckboxes(memberId, seasonYear) {
+// 列が12/27〜翌1/4の日付、行が氏名のチェックボックス形式の割り当て表。
+// チェックを入れる/外すことで annual_roster をその場で更新する。
+function renderNyeAssignTable(seasonYear) {
+  const head = document.getElementById('nye-assign-head');
+  const body = document.getElementById('nye-assign-body');
+  if (!head || !body) return;
+
   const dates = nyeSeasonDates(seasonYear);
-  return dates.map(dateStr => {
+  const dateHeaderCells = dates.map(dateStr => {
     const dow = new Date(dateStr + 'T00:00:00').getDay();
     const isHol = dow === 0 || !!holidays[dateStr];
-    const rec = schedules[dateStr];
-    const checked = rec && rec.member_id === memberId ? 'checked' : '';
-    const otherName = (rec && rec.member_id && rec.member_id !== memberId)
-      ? (allMembersById[rec.member_id]?.name || members.find(x => x.id == rec.member_id)?.name || '') : '';
     const [, mo, da] = dateStr.split('-');
-    const label = `${parseInt(mo)}/${parseInt(da)}`;
-    const labelStyle = isHol ? 'color:var(--danger)' : '';
-    return `<label style="display:inline-flex;align-items:center;gap:2px;font-size:11px;margin-right:6px;white-space:nowrap;${labelStyle}" title="${otherName ? otherName + 'が割当済み（チェックすると上書きされます）' : ''}">
-      <input type="checkbox" data-mid="${memberId}" data-date="${dateStr}" ${checked} onchange="onNyeDateToggle(this)" style="width:13px;height:13px;cursor:pointer;accent-color:var(--accent)">${label}
-    </label>`;
+    const style = isHol ? 'color:var(--danger)' : '';
+    return `<th style="text-align:center;white-space:nowrap;${style}">${parseInt(mo)}/${parseInt(da)}<br>(${DOW_JP[dow]})</th>`;
+  }).join('');
+  head.innerHTML = `<th>氏名</th>${dateHeaderCells}`;
+
+  if (!members.length) {
+    body.innerHTML = `<tr><td colspan="${dates.length + 1}" style="text-align:center;color:var(--text-hint)">在籍中のメンバーがいません</td></tr>`;
+    return;
+  }
+
+  // 詰員名簿と同じ並び順（membersは既にstaff_id順）でそのまま表示する
+  body.innerHTML = members.map(m => {
+    const cells = dates.map(dateStr => {
+      const rec = schedules[dateStr];
+      const checked = !!(rec && rec.member_id === m.id);
+      return `<td style="text-align:center"><input type="checkbox" data-date="${dateStr}" data-mid="${m.id}" ${checked ? 'checked' : ''} onchange="onNyeAssignCheckboxChange(this)"></td>`;
+    }).join('');
+    return `<tr><td style="white-space:nowrap;font-weight:500">${m.name}</td>${cells}</tr>`;
   }).join('');
 }
 
-async function onNyeDateToggle(el) {
-  const mid = Number(el.dataset.mid);
+async function onNyeAssignCheckboxChange(el) {
   const dateStr = el.dataset.date;
+  const mid = Number(el.dataset.mid);
+  const checked = el.checked;
   el.disabled = true;
   try {
     const existing = schedules[dateStr] || {};
     const d = new Date(dateStr + 'T00:00:00');
     const isHol = existing.hasOwnProperty('is_holiday') ? existing.is_holiday : (d.getDay() === 0 || !!holidays[dateStr]);
-    const newMemberId = el.checked ? mid : (existing.member_id === mid ? null : existing.member_id);
+    const newMemberId = checked ? mid : null;
     const { error } = await sbClient.from('annual_roster').upsert({
       duty_date: dateStr,
       member_id: newMemberId,
@@ -1454,47 +1466,6 @@ async function onNyeDateToggle(el) {
     alert('割り当ての更新に失敗しました: ' + e.message);
   }
   await renderNyeDutyPage();
-}
-
-function renderNyeHistoryTables(rows) {
-  const wrap = document.getElementById('nye-duty-history-wrap');
-  if (!wrap) return;
-  if (!rows.length) {
-    wrap.innerHTML = `<div style="padding:16px;color:var(--text-hint)">まだ記録がありません（年末年始期間の当番が「当番表作成」「割当確認」ページで登録されると、ここに表示されます）。</div>`;
-    return;
-  }
-  const byDate = {};
-  rows.forEach(r => { byDate[r.duty_date] = r.member_id; });
-
-  const seasonYears = Array.from(new Set(rows.map(r => nyeSeasonYear(r.duty_date)))).sort((a, b) => a - b);
-
-  wrap.innerHTML = seasonYears.map(sy => {
-    const dates = [];
-    for (let d = 27; d <= 31; d++) dates.push(`${sy}-12-${String(d).padStart(2, '0')}`);
-    for (let d = 1; d <= 4; d++) dates.push(`${sy + 1}-01-${String(d).padStart(2, '0')}`);
-    const bodyRows = dates.map(dateStr => {
-      const dow = new Date(dateStr + 'T00:00:00').getDay();
-      const mid = byDate[dateStr];
-      const name = mid ? (allMembersById[mid]?.name || members.find(x => x.id == mid)?.name || '?') : '';
-      const isHol = !!holidays[dateStr] || dow === 0;
-      const rowStyle = isHol ? 'style="background:var(--danger-light)"' : '';
-      const [, mo, da] = dateStr.split('-');
-      return `<tr ${rowStyle}>
-        <td style="text-align:center;white-space:nowrap;padding:0 6px;font-size:11px">${parseInt(mo)}/${parseInt(da)}(${DOW_JP[dow]})</td>
-        <td style="padding:0 6px;white-space:nowrap;font-size:12px">${name || '<span style="color:var(--text-hint)">—</span>'}</td>
-      </tr>`;
-    }).join('');
-    return `<div style="flex:0 0 auto;min-width:150px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
-      <div style="background:var(--accent-light);color:var(--accent-dark);text-align:center;font-size:13px;font-weight:600;padding:3px 4px;border-bottom:1px solid var(--border)">${sy}年末〜${sy + 1}年始</div>
-      <table style="width:100%;border-collapse:collapse">
-        <thead><tr>
-          <th style="text-align:center;font-size:10px;padding:1px 2px;border-bottom:1px solid var(--border);background:var(--bg)">日付</th>
-          <th style="text-align:left;font-size:10px;padding:1px 2px;border-bottom:1px solid var(--border);background:var(--bg)">名前</th>
-        </tr></thead>
-        <tbody>${bodyRows}</tbody>
-      </table>
-    </div>`;
-  }).join('');
 }
 
 async function addMember() {
