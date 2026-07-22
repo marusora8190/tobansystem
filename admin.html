@@ -104,11 +104,11 @@
   .members-table .btn-sm { padding: 2px 8px; font-size: 11px; }
   .members-table .badge { padding: 1px 6px; font-size: 10px; }
 
-  /* 新しいメンバーを追加：入力欄・ボタンの行の高さを最小限にする */
-  #member-add-card .form-group { gap: 2px; }
-  #member-add-card input { padding: 3px 8px; font-size: 12px; }
+  /* 新しいメンバーを追加：タイトル・入力欄・ボタンを1行に横並びし、エリアの高さを最小限にする */
+  #member-add-card input { padding: 4px 8px; font-size: 12px; }
   #member-add-card .btn { padding: 4px 10px; font-size: 12px; }
-  #member-add-card #member-msg { font-size: 12px; }
+  #member-add-card .card-title { font-size: 13px; }
+  #member-add-card #member-msg { font-size: 12px; min-height: 0; }
   .badge-gold { background: var(--gold-light); color: var(--gold); }
   .badge-red { background: var(--danger-light); color: var(--danger); }
   .badge-blue { background: var(--info-light); color: var(--info); }
@@ -130,7 +130,7 @@
   #page-holidays table tr td, #page-holidays table tr th { line-height: 1.1; }
   #page-holidays table td .btn-sm { padding: 1px 6px; font-size: 11px; }
 
-  /* 支障日登録：「登録状況」・「支障日を追加（管理者入力）」の
+  /* 支障日登録：「登録状況」・「支障日を追加（当番表作成者入力）」の
      各エリアの行の高さ・余白を最小限にする */
   #page-unavailable .section-title { margin-bottom: 8px; }
   #page-unavailable .alert { padding: 6px 10px; margin-bottom: 8px; }
@@ -239,8 +239,12 @@
     border-bottom: 1px solid var(--border-strong);
     will-change: transform; backface-visibility: hidden; transform: translateZ(0);
   }
-  .mc2-table thead tr:first-child th { top: 0; }
-  .mc2-table thead tr:last-child th { top: var(--mc2-head1-h, 32px); box-shadow: 0 2px 0 var(--border); }
+  .mc2-table thead tr th { top: 0; box-shadow: 0 2px 0 var(--border); }
+  /* annual2-table（各メンバーの年間設定）だけは、氏名の行・「回数/日祝」の行の
+     2行見出しになっているため、2行目は1行目の高さ分だけ下にずらして固定する
+     （他のテーブルは見出しが実質1行のみなので、上のtop:0のままでよい） */
+  .annual2-table thead tr:first-child th { top: 0; box-shadow: none; }
+  .annual2-table thead tr:last-child th { top: var(--mc2-head1-h, 96px); box-shadow: 0 2px 0 var(--border); }
   /* 年度・月・日数（相当）の3列を横スクロールで固定
      ※nth-childは、見出し2行目（メンバー氏名などrowspanの陰に隠れる行）や合計行（colspan=3）で
        実際のセル位置とズレて誤爆する（＝横スクロール時に崩れる原因）ため、
@@ -248,7 +252,7 @@
   /* 年度・月・日数の3列は、幅を狭くしすぎるとテキストが折り返して
      縦につぶれたように見えてしまうため、常に1行で収まるようにする
      （折り返しが必要な場合は列幅の方を自動的に広げる） */
-  .mc2-table .mc2-col1, .mc2-table .mc2-col2, .mc2-table .mc2-col3 {
+  .mc2-table .mc2-col1, .mc2-table .mc2-col2, .mc2-table .mc2-col3, .mc2-table .mc2-col4 {
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     /* 横スクロール中にブラウザの再描画が追いつかず、下に隠れているはずの
        セルが透けて見える不具合を防ぐため、固定列を独立した描画レイヤーにする */
@@ -257,7 +261,8 @@
   .mc2-table .mc2-col1 { position: sticky; left: 0; z-index: 4; background: var(--surface); border-right: 1px solid var(--border-strong); }
   .mc2-table .mc2-col2 { position: sticky; left: var(--mc2-col2-left, 50px); z-index: 4; background: var(--surface); border-right: 1px solid var(--border); }
   .mc2-table .mc2-col3 { position: sticky; left: var(--mc2-col3-left, 80px); z-index: 4; background: var(--surface); border-right: 1px solid var(--border-strong); }
-  .mc2-table thead .mc2-col1, .mc2-table thead .mc2-col2, .mc2-table thead .mc2-col3 { z-index: 11; }
+  .mc2-table .mc2-col4 { position: sticky; left: var(--mc2-col4-left, 136px); z-index: 4; background: var(--surface); border-right: 1px solid var(--border-strong); }
+  .mc2-table thead .mc2-col1, .mc2-table thead .mc2-col2, .mc2-table thead .mc2-col3, .mc2-table thead .mc2-col4 { z-index: 11; }
   .mc2-table tr.mc2-total-row td { background: #dbe7f5 !important; color: #1a4971; border-top: 3px double #8a8370; }
 
   /* 月ごとの当番回数②・各メンバーの年間設定：
@@ -305,13 +310,14 @@
   .cal-day-body { flex: 1; display: flex; align-items: center; justify-content: center; }
   
   .cal-member-name-row { display: flex; align-items: center; justify-content: center; gap: 3px; }
-  .cal-member-name { font-weight: 600; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
-  .cal-lock-btn { border: none; background: transparent; cursor: pointer; font-size: 10px; line-height: 1; padding: 0 1px; flex-shrink: 0; opacity: 0.45; }
-  .cal-lock-btn:hover { opacity: 1; }
-  .cal-lock-btn.locked { opacity: 1; }
-  .gen-lock-btn { border: none; background: transparent; cursor: pointer; font-size: 13px; line-height: 1; padding: 2px 4px; flex-shrink: 0; opacity: 0.45; }
-  .gen-lock-btn:hover { opacity: 1; }
-  .gen-lock-btn.locked { opacity: 1; }
+  .cal-member-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+  .cal-lock-btn, .gen-lock-btn { border: none; cursor: pointer; line-height: 1; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--text-hint); background: var(--bg); transition: background 0.15s, color 0.15s; }
+  .cal-lock-btn svg, .gen-lock-btn svg { display: block; }
+  .cal-lock-btn:hover, .gen-lock-btn:hover { color: var(--text); background: var(--border); }
+  .cal-lock-btn.locked, .gen-lock-btn.locked { color: var(--gold); background: var(--gold-light); }
+  .cal-lock-btn.locked:hover, .gen-lock-btn.locked:hover { background: #ecdfb0; }
+  .cal-lock-btn { width: 18px; height: 18px; padding: 2px; font-size: 12px; }
+  .gen-lock-btn { width: 24px; height: 24px; padding: 3px; font-size: 16px; }
 
   .cal-empty { min-height: 0; }
 
@@ -353,9 +359,9 @@
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px 28px;width:100%;max-width:320px;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
     <div style="text-align:center;margin-bottom:20px;">
       <div style="font-size:15px;font-weight:600;color:var(--text);">神殿奉仕当番表作成システム</div>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">管理者ログインナンバーを入力してください</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">ログインナンバーを入力してください</div>
     </div>
-    <input id="login-password" type="password" inputmode="numeric" pattern="\d*" maxlength="6" style="margin-bottom:12px;" onkeydown="if(event.key==='Enter') checkLoginPassword()">
+    <input id="login-password" type="text" inputmode="numeric" pattern="\d*" maxlength="6" autocomplete="off" autocapitalize="off" spellcheck="false" style="margin-bottom:12px;-webkit-text-security:disc;text-security:disc;" onkeydown="if(event.key==='Enter') checkLoginPassword()">
     <button class="btn btn-primary" style="width:100%;" onclick="checkLoginPassword()">ログイン</button>
     <div id="login-msg" style="margin-top:10px;font-size:12px;color:var(--danger);min-height:16px;text-align:center;"></div>
   </div>
@@ -372,6 +378,7 @@
   <div style="margin-left:auto;display:flex;align-items:center;gap:12px;">
     <span id="conn-status" style="font-size:12px;opacity:0.7">未接続</span>
     <button class="btn btn-sm" style="border-color:rgba(255,255,255,0.3);color:#fff;background:rgba(255,255,255,0.1)" onclick="showConfigModal()">⚙ 設定</button>
+    <button class="btn btn-sm" style="border-color:rgba(255,255,255,0.3);color:#fff;background:rgba(255,255,255,0.1)" onclick="doLogout()">🚪 ログアウト</button>
   </div>
 </header>
 
@@ -408,22 +415,21 @@
       <div class="cal-grid" id="cal-body" style="margin-top:4px"></div>
       <div class="cal-legend" style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap">
         <span style="font-size:12px;color:var(--text-muted)"><span style="background:transparent;border:1px solid var(--border-strong);padding:1px 6px;border-radius:3px;font-size:11px">氏名</span> 平日</span>
-        <span style="font-size:12px;color:var(--text-muted)"><span style="background:var(--gold);color:#fff;padding:1px 6px;border-radius:3px;font-size:11px">氏名</span> 日祝</span>
+        <span style="font-size:12px;color:var(--text-muted)"><span style="background:var(--danger);color:#fff;padding:1px 6px;border-radius:3px;font-size:11px">氏名</span> 日祝</span>
       </div>
     </div>
 
     <div id="page-members" class="page">
       <div class="section-title">詰員名簿管理</div>
-      <div class="card" id="member-add-card" style="padding:6px 10px;margin-bottom:8px">
-        <div class="card-title" style="margin-bottom:3px">新しいメンバーを追加</div>
-        <div class="form-grid" style="grid-template-columns:repeat(4, 1fr);gap:6px">
-          <div class="form-group"><label>ID</label><input id="m-no" placeholder="例: 23"></div>
-          <div class="form-group"><label>氏名 *</label><input id="m-name" placeholder="山本 和幸"></div>
-          <div class="form-group"><label>部署</label><input id="m-dept" placeholder="運営課"></div>
-          <div class="form-group"><label>電話番号</label><input id="m-phone" placeholder="5401"></div>
-        </div>
-        <div class="btn-row" style="margin-top:4px">
-          <button class="btn btn-primary" onclick="addMember()">追加する</button>
+      <div class="card" id="member-add-card" style="padding:4px 10px;margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <div class="card-title" style="margin-bottom:0;white-space:nowrap;flex-shrink:0">新しいメンバーを追加</div>
+          <input id="m-staffid" readonly style="width:56px;flex:0 0 auto;background:var(--bg);color:var(--text-muted)" placeholder="ID">
+          <input id="m-no" readonly style="width:64px;flex:0 0 auto;background:var(--bg);color:var(--text-muted)" placeholder="番号">
+          <input id="m-name" style="width:150px;flex:0 0 auto" placeholder="氏名（必須）">
+          <input id="m-dept" style="width:110px;flex:0 0 auto" placeholder="部署">
+          <input id="m-phone" style="width:100px;flex:0 0 auto" placeholder="連絡先番号">
+          <button class="btn btn-primary" style="white-space:nowrap;flex-shrink:0" onclick="addMember()">追加する</button>
         </div>
         <div id="member-msg" style="margin-top:2px"></div>
       </div>
@@ -431,8 +437,8 @@
         <div class="card-title">メンバー一覧 <span id="member-count" style="font-size:12px;color:var(--text-hint)"></span></div>
         <div class="table-wrap">
           <table class="members-table">
-            <thead><tr><th>ID</th><th>氏名</th><th>部署</th><th>電話</th><th>状態</th><th></th></tr></thead>
-            <tbody id="members-body"><tr><td colspan="6" style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
+            <thead><tr><th>ID</th><th>ログインナンバー</th><th>氏名</th><th>部署</th><th>電話</th><th>状態</th><th></th></tr></thead>
+            <tbody id="members-body"><tr><td colspan="7" style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -471,13 +477,13 @@
     </div>
 
     <div id="page-mh2" class="page">
-      <div class="section-title">日祝当番月（複数年）（メンバー横並び表示）</div>
-      <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.4">
-        メンバーを横に、年度/月を縦に並べたレイアウトで日祝当番の月を編集できます。
-      </p>
-      <div class="card" style="padding:12px 20px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-        <div class="card-title" style="margin-bottom:0;white-space:nowrap;">開始年度</div>
-        <select id="mh2-start-year" onchange="loadAndRenderMultiHol2()" style="width:110px">
+      <div class="section-title" style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+        <span>日祝当番月（複数年）（メンバー横並び表示）</span>
+        <span style="font-size:11px;font-weight:400;color:var(--text-muted)">メンバーを横に、年度/月を縦に並べたレイアウトで日祝当番の月を編集できます。</span>
+      </div>
+      <div class="card" style="padding:4px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div class="card-title" style="margin-bottom:0;white-space:nowrap;font-size:12px">開始年度</div>
+        <select id="mh2-start-year" onchange="loadAndRenderMultiHol2()" style="width:100px;padding:3px 6px;font-size:12px">
           <option value="2026" selected>2026年</option>
           <option value="2027">2027年</option>
           <option value="2028">2028年</option>
@@ -488,8 +494,8 @@
           <option value="2033">2033年</option>
           <option value="2034">2034年</option>
         </select>
-        <div class="card-title" style="margin-bottom:0;white-space:nowrap;">表示年数</div>
-        <select id="mh2-year-span" onchange="loadAndRenderMultiHol2()" style="width:90px">
+        <div class="card-title" style="margin-bottom:0;white-space:nowrap;font-size:12px">表示年数</div>
+        <select id="mh2-year-span" onchange="loadAndRenderMultiHol2()" style="width:80px;padding:3px 6px;font-size:12px">
           <option value="2">2年分</option>
           <option value="3" selected>3年分</option>
         </select>
@@ -537,9 +543,9 @@
       </div>
       <div class="card" style="padding-bottom:14px;">
         <div class="card-title" style="margin-bottom:6px;">📌 各メンバーの年間設定</div>
-        <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.4">月ごとの当番回数（0=身上等／1=通常／2=通常または他の人の代わりに当番）と日祝当番の月を設定できます。各行の右端で当番人数合計・日祝当番人数合計が日数と一致しているか自動チェックします（<span style="color:#2e7d32;font-weight:600">✓一致</span> / <span style="color:#e89090;font-weight:600">✗不一致</span>）。</p>
+        <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.4">月ごとの当番回数（0=身上等／1=通常／2=通常または他の人の代わりに当番）と日祝当番の月を設定できます。各行の右端で当番人数合計・日祝当番人数合計が日数と一致しているか自動チェックします（<span style="color:#2e7d32;font-weight:600">✓一致</span> / <span style="color:#e89090;font-weight:600">×不一致</span>）。</p>
         <div class="annual-wrap annual-wrap-compact">
-          <table class="mc2-table">
+          <table class="mc2-table annual2-table">
             <thead id="annual2-head"></thead>
             <tbody id="annual2-body"><tr><td style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
           </table>
@@ -570,7 +576,7 @@
       </div>
 
       <div class="card">
-        <div class="card-title">支障日を追加（管理者入力）</div>
+        <div class="card-title">支障日を追加（当番表作成者入力）</div>
         <div class="form-grid" style="margin-bottom:12px">
           <div class="form-group">
             <label>メンバー *</label>
@@ -650,8 +656,6 @@
         </div>
       </div>
       <div class="btn-row">
-        <button class="btn" onclick="assignTwiceMembersFirst()">2回の人だけ先に割り当てる</button>
-        <button class="btn" onclick="assignHolidayMembersFirst()">日祝当番の人を割り当てる</button>
         <button class="btn btn-primary" onclick="generateSchedule()">当番表を作成</button>
         <button class="btn" id="btn-save-gen" style="display:none" onclick="saveGeneratedSchedule()">保存する</button>
         <button class="btn btn-danger" onclick="resetMonthSchedule()">選択した月の当番表をリセット</button>
@@ -671,8 +675,7 @@
           <li>前回当番から原則 8 日間空ける（連続当番を避ける）</li>
           <li><strong>日曜・祝日（振替休日含む）は年間予定で「日祝」にチェックがある人を割り当てる</strong></li>
           <li style="color:var(--text-muted);font-size:12px">※ 支障日等の都合でどうしても人数が足りない場合のみ、上記の間隔・日祝・回数上限を順に緩めて必ず誰かを割り当てます（プレビューで内容を確認・手動調整できます）</li>
-          <li style="color:var(--text-muted);font-size:12px">※「2回の人だけ先に割り当てる」ボタンを押すと、月2回設定の人の枠だけを先にロック状態でプレビューに割り当てます（この割り当てでは前回当番から8日間空けることを絶対条件とし、間隔だけは緩めません）。続けて「当番表を作成」を押すと、その内容を維持したまま残りの日を自動で埋められます。</li>
-          <li style="color:var(--text-muted);font-size:12px">※「日祝当番の人を割り当てる」ボタンを押すと、日曜・祝日（振替休日含む）だけを対象に、年間予定で「日祝」にチェックがある人をロック状態でプレビューに割り当てます（平日の枠には触れません。前回当番から8日間空けることを絶対条件とし、間隔だけは緩めません）。続けて「当番表を作成」を押すと、その内容を維持したまま残りの日（平日など）を自動で埋められます。</li>
+          <li><strong>「2回当番」かつ「日祝対象」の人は、2回のうち必ず1回は日祝、もう1回は平日にする</strong></li>
         </ul>
       </div>
     </div>
@@ -713,21 +716,10 @@
 
     <div id="page-holidays" class="page">
       <div class="section-title">日曜祝日等管理</div>
-      <div class="alert alert-info">登録した日は「日祝当番」として扱われます（振替休日もここで登録してください）。</div>
-      <div class="card">
-        <div class="card-title">祝日を追加</div>
-        <div class="form-grid">
-          <div class="form-group"><label>日付 *</label><input id="hol-date" type="date"></div>
-          <div class="form-group"><label>名称 *</label><input id="hol-name" placeholder="例: 振替休日"></div>
-        </div>
-        <div class="btn-row">
-          <button class="btn btn-primary" onclick="addHoliday()">追加する</button>
-        </div>
-        <div id="holiday-msg" style="margin-top:8px"></div>
-      </div>
+      <div class="alert alert-info">登録した日は「日祝当番」として扱われます。振替休日・国民の休日は下の「基本の祝日を一括登録」で自動計算されるので、通常は個別に追加する必要はありません。</div>
       <div class="card">
         <div class="card-title">基本の祝日を一括登録</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:4px">元日・成人の日・建国記念の日など、法律で定められた基本の祝日を2026年〜2050年まで一括登録します。振替休日は含まれませんので、その都度個別に追加してください。</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:4px">元日・成人の日・建国記念の日など、法律で定められた祝日を2026年〜2050年まで一括登録します。振替休日・国民の休日（祝日に挟まれた平日）も自動計算して登録します。</p>
         <div class="btn-row">
           <button class="btn btn-primary" onclick="seedBasicHolidays()">基本の祝日を一括登録（2026〜2050年）</button>
         </div>
@@ -745,6 +737,18 @@
             <tbody id="holidays-body"><tr><td colspan="4" style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
           </table>
         </div>
+      </div>
+      <div class="card">
+        <div class="card-title">祝日を個別に追加</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:4px">上の一括登録に含まれない祝日や、特別な休日を個別に追加したい場合に使います。</p>
+        <div class="form-grid">
+          <div class="form-group"><label>日付 *</label><input id="hol-date" type="date"></div>
+          <div class="form-group"><label>名称 *</label><input id="hol-name" placeholder="例: 振替休日"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="addHoliday()">追加する</button>
+        </div>
+        <div id="holiday-msg" style="margin-top:8px"></div>
       </div>
     </div>
     <div id="page-chotome" class="page">
@@ -819,7 +823,7 @@
     <div class="form-group" style="margin-top:12px">
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
         <input type="checkbox" id="day-modal-locked" style="width:14px;height:14px;cursor:pointer">
-        🔒 この日の当番をロックする（「当番表を作成」を押しても変更されなくなります）
+        <span style="display:inline-flex;align-items:center;color:var(--gold)"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M8 10V8a4 4 0 118 0v2h.5A1.5 1.5 0 0118 11.5v8A1.5 1.5 0 0116.5 21h-9A1.5 1.5 0 016 19.5v-8A1.5 1.5 0 017.5 10H8zm2 0h4V8a2 2 0 10-4 0v2z"/></svg></span> この日の当番をロックする（「当番表を作成」を押しても変更されなくなります）
       </label>
     </div>
     <div id="day-modal-msg" style="margin-top:8px"></div>
@@ -841,6 +845,30 @@ let members = [];
 let holidays = {};
 let schedules = {};
 let chotomeTimesData = {};
+
+// ロック中／未ロックの状態を表すアイコン（絵文字🔒🔓の代わり）。
+// 絵文字は環境によって小さく・薄く見えづらいため、currentColorで塗りつぶすSVGに統一し、
+// ボタン側のCSS（背景色・文字色）で状態をはっきり区別できるようにする。
+function lockIconSvg(locked) {
+  return locked
+    ? '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M8 10V8a4 4 0 118 0v2h.5A1.5 1.5 0 0118 11.5v8A1.5 1.5 0 0116.5 21h-9A1.5 1.5 0 016 19.5v-8A1.5 1.5 0 017.5 10H8zm2 0h4V8a2 2 0 10-4 0v2z"/></svg>'
+    : '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M8 10V8a4 4 0 017.94-.75 1 1 0 11-1.97.35A2 2 0 0010 8v2h8a1.5 1.5 0 011.5 1.5v8A1.5 1.5 0 0118 21H7.5A1.5 1.5 0 016 19.5v-8A1.5 1.5 0 017.5 10H8z"/></svg>';
+}
+
+// Supabase接続情報（ログイン時の認証チェック・通常のアプリ初期化の両方で使う共通値）
+function getSupabaseConfig() {
+  return {
+    url: localStorage.getItem('sb_url') || 'https://thwlerletbndqqtrodub.supabase.co',
+    key: localStorage.getItem('sb_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRod2xlcmxldGJuZHFxdHJvZHViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MTkzNzQsImV4cCI6MjA5NzM5NTM3NH0.DZDm7ofonli2ncqjQF4fUP3c83V3qLwOf12lc5cltEo'
+  };
+}
+function ensureSbClient() {
+  if (!sbClient) {
+    const cfg = getSupabaseConfig();
+    sbClient = window.supabase.createClient(cfg.url, cfg.key);
+  }
+  return sbClient;
+}
 
 // 当番表の対象期間を返す共通ヘルパー
 // 通常月：1日〜末日。12月のみ特例で「12/1〜翌年1/4」を対象とする。
@@ -927,6 +955,7 @@ async function saveConfig() {
 
 async function initApp() {
   ensureSbClient();
+  document.getElementById('conn-status').textContent = '接続済み ✓';
 
   await loadMembers().catch(e => console.warn('[members]', e.message));
   await ensureAllMembersCache().catch(e => console.warn('[allMembers]', e.message));
@@ -959,9 +988,29 @@ async function loadMembers() {
   if (data) data.forEach(m => { allMembersById[m.id] = m; });
   if (error) throw error;
   members = data || [];
-  members.sort((a, b) => (parseInt(a.member_no) || 9999) - (parseInt(b.member_no) || 9999));
+  members.sort((a, b) => (parseInt(a.staff_id) || 9999) - (parseInt(b.staff_id) || 9999));
   renderMembersTable();
+  prefillNextMemberIds();
   return members;
+}
+
+// 新規メンバー追加フォームの「ID」「ログインナンバー」に、次の番号を自動で入力する。
+// 次のID＝現在アクティブなメンバーの中で最大のID＋1（ログインナンバーは常にID×2を4桁ゼロ埋め）。
+// すでに何か入力されている場合は上書きしない。
+function prefillNextMemberIds() {
+  const staffIdInput = document.getElementById('m-staffid');
+  const noInput = document.getElementById('m-no');
+  if (!staffIdInput || !noInput) return;
+  if (staffIdInput.value.trim() || noInput.value.trim()) return; // 入力中のものは上書きしない
+  const maxStaffId = members.reduce((max, m) => {
+    const v = parseInt(m.staff_id);
+    return (!isNaN(v) && v > max) ? v : max;
+  }, 0);
+  const nextId = maxStaffId + 1;
+  staffIdInput.value = nextId;
+  // ログインナンバーの計算式：ID=69の人を「1190」を起点に、ID+1ごとに+7ずつ増加させる
+  // （例：ID69→1190、ID70→1197、ID71→1204）
+  noInput.value = String(7 * nextId + 707).padStart(4, '0');
 }
 
 async function loadHolidays() {
@@ -1127,14 +1176,16 @@ async function loadSchedules() {
 function renderMembersTable() {
   document.getElementById('member-count').textContent = '';
   const body = document.getElementById('members-body');
-  if (!members.length) { body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-hint)">メンバーがいません</td></tr>'; return; }
+  if (!members.length) { body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-hint)">メンバーがいません</td></tr>'; return; }
   body.innerHTML = members.map(m => {
     const phoneField = m.hasOwnProperty('phone') ? 'phone' : (m.hasOwnProperty('phone_number') ? 'phone_number' : (m.hasOwnProperty('tel') ? 'tel' : 'phone'));
     const phoneVal = m.phone || m.phone_number || m.tel || '';
     const deptVal = m.department || '';
-    const noVal = m.member_no || '';
+    const noVal = (m.member_no !== null && m.member_no !== undefined && m.member_no !== '') ? String(m.member_no).padStart(4, '0') : '';
+    const staffIdVal = (m.staff_id !== null && m.staff_id !== undefined) ? String(m.staff_id) : '';
     return `
       <tr>
+        <td><input type="text" value="${staffIdVal.replace(/"/g,'&quot;')}" placeholder="—" style="width:60px;text-align:center" onchange="updateMemberField('${m.id}','staff_id',this.value)"></td>
         <td><input type="text" value="${String(noVal).replace(/"/g,'&quot;')}" placeholder="—" style="width:70px;text-align:center" onchange="updateMemberField('${m.id}','member_no',this.value)"></td>
         <td><input type="text" value="${String(m.name || '').replace(/"/g,'&quot;')}" placeholder="氏名未設定" style="width:100%;min-width:110px;font-weight:600" onchange="updateMemberField('${m.id}','name',this.value)"></td>
         <td><input type="text" value="${deptVal.replace(/"/g,'&quot;')}" placeholder="部署未設定" style="width:100%;min-width:100px" onchange="updateMemberField('${m.id}','department',this.value)"></td>
@@ -1167,9 +1218,11 @@ async function addMember() {
   if (!name) { showMsg('member-msg', '氏名を入力してください', 'error'); return; }
   
   const noVal = document.getElementById('m-no').value.trim();
+  const staffIdVal = document.getElementById('m-staffid').value.trim();
   const payload = { 
     name, 
     member_no: noVal || null,
+    staff_id: staffIdVal || null,
     department: document.getElementById('m-dept').value.trim() || null,
     phone: document.getElementById('m-phone').value.trim() || null
   };
@@ -1177,6 +1230,7 @@ async function addMember() {
   const { error } = await sbClient.from('members').insert(payload);
   if (error) { showMsg('member-msg', error.message, 'error'); return; }
   showMsg('member-msg', `${name} を追加しました`, 'success');
+  document.getElementById('m-staffid').value = '';
   document.getElementById('m-no').value = '';
   document.getElementById('m-name').value = '';
   document.getElementById('m-dept').value = '';
@@ -1244,10 +1298,9 @@ function renderAnnualTable2(years) {
     <tr>
       <th class="mc2-col1" rowspan="2" style="width:50px">年度</th>
       <th class="mc2-col2" rowspan="2" style="width:30px">月</th>
-      <th class="mc2-col3" rowspan="2" style="width:28px">日数</th>
+      <th class="mc2-col3" rowspan="2" style="width:56px">当番計/<br>日数</th>
+      <th class="mc2-col4" rowspan="2" style="width:56px">日祝計/<br>日祝日数</th>
       ${nameRow}
-      <th rowspan="2" style="width:56px">当番計/<br>日数</th>
-      <th rowspan="2" style="width:56px">日祝計/<br>日祝日数</th>
     </tr>
     <tr>${subRow}</tr>
   `;
@@ -1255,11 +1308,10 @@ function renderAnnualTable2(years) {
   let bodyHtml = '';
   years.forEach(y => {
     for (let mon = 1; mon <= 12; mon++) {
-      const dim = daysInMonth(y, mon);
       // rowspanをsticky(横スクロール固定)列に使うと、ブラウザによって「年度」セルの
       // 縦位置がずれて表示が崩れることがあるため、rowspanは使わず、12ヶ月分すべての行に
       // 同じ背景色のセルを敷いて、1月の行だけ年度を表示することで見た目上の結合を再現する
-      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;background:var(--accent-light);font-size:11px;padding:2px 1px;${mon < 12 ? 'border-bottom:none;' : ''}">${mon === 1 ? (y + '年') : ''}</td>`;
+      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:2px 1px;${mon < 12 ? 'border-bottom:none;' : ''}">${mon === 1 ? (y + '年') : ''}</td>`;
       const cellsHtml = members.map(m => {
         const cell = getMultiCell(y, m.id);
         let val = 1;
@@ -1281,10 +1333,9 @@ function renderAnnualTable2(years) {
       }).join('');
       bodyHtml += `<tr>${yearCellHtml}
         <td class="mc2-col2" style="text-align:center;font-weight:500;font-size:11px;padding:2px 1px">${mon}月</td>
-        <td class="mc2-col3" style="text-align:center;color:var(--text-muted);font-size:11px;padding:2px 1px">${dim}</td>
+        <td id="annual2-row-count-${y}-${mon}" class="mc2-col3" style="text-align:center;font-size:10px;font-weight:600;padding:2px 1px"></td>
+        <td id="annual2-row-hol-${y}-${mon}" class="mc2-col4" style="text-align:center;font-size:10px;font-weight:600;padding:2px 1px"></td>
         ${cellsHtml}
-        <td id="annual2-row-count-${y}-${mon}" style="text-align:center;font-size:10px;font-weight:600;padding:2px 1px"></td>
-        <td id="annual2-row-hol-${y}-${mon}" style="text-align:center;font-size:10px;font-weight:600;padding:2px 1px"></td>
       </tr>`;
     }
     const totalCellsHtml = members.map(m => {
@@ -1292,7 +1343,7 @@ function renderAnnualTable2(years) {
       const countTotal = monthlyValsFromCell(cell);
       return `<td id="annual2-total-count-${m.id}-${y}" style="text-align:center;font-weight:700;font-size:11px">${countTotal}</td><td id="annual2-total-hol-${m.id}-${y}" style="text-align:center;font-weight:700;font-size:11px">${cell.hol.length}</td>`;
     }).join('');
-    bodyHtml += `<tr class="mc2-total-row"><td class="mc2-col1" colspan="3" style="white-space:nowrap;font-weight:700;padding:4px 4px;font-size:11px">${y}年 年間合計</td>${totalCellsHtml}<td id="annual2-grand-count-${y}" style="text-align:center;font-weight:700;font-size:10px;padding:2px 1px"></td><td id="annual2-grand-hol-${y}" style="text-align:center;font-weight:700;font-size:10px;padding:2px 1px"></td></tr>`;
+    bodyHtml += `<tr class="mc2-total-row"><td class="mc2-col1" colspan="2" style="white-space:nowrap;font-weight:700;padding:4px 4px;font-size:11px">${y}年 年間合計</td><td id="annual2-grand-count-${y}" class="mc2-col3" style="text-align:center;font-weight:700;font-size:10px;padding:2px 1px"></td><td id="annual2-grand-hol-${y}" class="mc2-col4" style="text-align:center;font-weight:700;font-size:10px;padding:2px 1px"></td>${totalCellsHtml}</tr>`;
   });
   body.innerHTML = bodyHtml;
 
@@ -1316,9 +1367,9 @@ function updateAnnualTable2ValidationForYear(y) {
     totalExpectedDays += expectedDays;
     const cell = document.getElementById(`annual2-row-count-${y}-${mon}`);
     if (cell) {
-      cell.textContent = `${assignedCount}/${expectedDays} ${okCount ? '✓' : '✗'}`;
-      cell.style.color = okCount ? '#2e7d32' : '#e89090';
-      cell.style.background = okCount ? '#eaf7ea' : '#fdeaea';
+      cell.textContent = `${assignedCount}/${expectedDays} ${okCount ? '✓' : '×'}`;
+      cell.style.color = okCount ? '#2e7d32' : '#8a1f1f';
+      cell.style.background = okCount ? '#eaf7ea' : '#f3a6a6';
     }
 
     const expectedHol = sundayHolidayCountInMonth(y, mon);
@@ -1328,23 +1379,23 @@ function updateAnnualTable2ValidationForYear(y) {
     totalExpectedHol += expectedHol;
     const hcell = document.getElementById(`annual2-row-hol-${y}-${mon}`);
     if (hcell) {
-      hcell.textContent = `${assignedHol}/${expectedHol} ${okHol ? '✓' : '✗'}`;
-      hcell.style.color = okHol ? '#2e7d32' : '#e89090';
-      hcell.style.background = okHol ? '#eaf7ea' : '#fdeaea';
+      hcell.textContent = `${assignedHol}/${expectedHol} ${okHol ? '✓' : '×'}`;
+      hcell.style.color = okHol ? '#2e7d32' : '#8a1f1f';
+      hcell.style.background = okHol ? '#eaf7ea' : '#f3a6a6';
     }
   }
 
   const grandCountEl = document.getElementById(`annual2-grand-count-${y}`);
   if (grandCountEl) {
     const ok = totalAssignedCount === totalExpectedDays;
-    grandCountEl.textContent = `${totalAssignedCount}/${totalExpectedDays} ${ok ? '✓' : '✗'}`;
-    grandCountEl.style.color = ok ? '#2e7d32' : '#e89090';
+    grandCountEl.textContent = `${totalAssignedCount}/${totalExpectedDays} ${ok ? '✓' : '×'}`;
+    grandCountEl.style.color = ok ? '#2e7d32' : '#8a1f1f';
   }
   const grandHolEl = document.getElementById(`annual2-grand-hol-${y}`);
   if (grandHolEl) {
     const ok = totalAssignedHol === totalExpectedHol;
-    grandHolEl.textContent = `${totalAssignedHol}/${totalExpectedHol} ${ok ? '✓' : '✗'}`;
-    grandHolEl.style.color = ok ? '#2e7d32' : '#e89090';
+    grandHolEl.textContent = `${totalAssignedHol}/${totalExpectedHol} ${ok ? '✓' : '×'}`;
+    grandHolEl.style.color = ok ? '#2e7d32' : '#8a1f1f';
   }
 }
 
@@ -1542,30 +1593,25 @@ function renderMultiCount2Table(years) {
     return;
   }
 
-  // IDを表示する行
-  const idRow = members.map(m => `<th style="font-size:10px;padding:3px 1px;white-space:nowrap">${m.member_no || m.id}</th>`).join('');
-  // 名前を表示する行
-  const nameRow = members.map(m => `<th style="padding:0;height:76px;width:24px"><div style="display:table;width:100%;height:100%"><div style="display:table-cell;vertical-align:top;text-align:center;padding-top:10px"><span style="display:inline-block;font-size:11px;white-space:nowrap;writing-mode:vertical-rl;text-orientation:upright;letter-spacing:1px;color:#000">${m.name}</span></div></div></th>`).join('');
+  // 名前を表示する行（ログイン番号の行は表示しない）
+  const nameRow = members.map(m => `<th style="padding:0;height:76px;width:18px"><div style="display:table;width:100%;height:100%"><div style="display:table-cell;vertical-align:top;text-align:center;padding-top:6px"><span style="display:inline-block;font-size:11px;white-space:nowrap;writing-mode:vertical-rl;text-orientation:upright;letter-spacing:1px;color:#000">${m.name}</span></div></div></th>`).join('');
   
   head.innerHTML = `
     <tr>
-      <th class="mc2-col1" rowspan="2" style="width:50px">年度</th>
-      <th class="mc2-col2" rowspan="2" style="width:30px">月</th>
-      <th class="mc2-col3" rowspan="2" style="width:28px">日数</th>
-      ${idRow}
-      <th rowspan="2" style="width:56px">合計/<br>日数</th>
+      <th class="mc2-col1" style="width:50px">年度</th>
+      <th class="mc2-col2" style="width:30px">月</th>
+      <th class="mc2-col3" style="width:56px">合計/<br>日数</th>
+      ${nameRow}
     </tr>
-    <tr>${nameRow}</tr>
   `;
 
   let rowsHtml = '';
   years.forEach(y => {
     for (let mon = 1; mon <= 12; mon++) {
-      const dim = daysInMonth(y, mon);
       // rowspanをsticky(横スクロール固定)列に使うと、ブラウザによって「年度」セルの
       // 縦位置がずれて表示が崩れることがあるため、rowspanは使わず、12ヶ月分すべての行に
       // 同じ背景色のセルを敷いて、1月の行だけ年度を表示することで見た目上の結合を再現する
-      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;background:var(--accent-light);font-size:11px;padding:2px 1px;${mon < 12 ? 'border-bottom:none;' : ''}">${mon === 1 ? (y + '年') : ''}</td>`;
+      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:2px 1px;${mon < 12 ? 'border-bottom:none;' : ''}">${mon === 1 ? (y + '年') : ''}</td>`;
       const memberCellsHtml = members.map(m => {
         const cell = getMultiCell(y, m.id);
         let val = 1;
@@ -1574,20 +1620,20 @@ function renderMultiCount2Table(years) {
         const bg = val === 0 ? '#fceaea' : '#ffffff';
         const selColor = val === 2 ? 'color:#000;font-weight:700;background:#e89090;' : '';
         return `<td style="text-align:center;background:${bg};padding:1px 0">
-          <select data-mid="${m.id}" data-year="${y}" data-month="${mon}" onchange="onMultiCount2Change(this)" style="width:18px;font-size:10px;padding:1px 0;border-radius:4px;text-align:center;text-align-last:center;${selColor}">
+          <select data-mid="${m.id}" data-year="${y}" data-month="${mon}" onchange="onMultiCount2Change(this)" style="width:16px;font-size:10px;padding:1px 0;border-radius:4px;text-align:center;text-align-last:center;${selColor}">
             <option value="1" ${val === 1 ? 'selected' : ''}>1</option>
             <option value="2" ${val === 2 ? 'selected' : ''}>2</option>
             <option value="0" ${val === 0 ? 'selected' : ''}>0</option>
           </select>
         </td>`;
       }).join('');
-      rowsHtml += `<tr>${yearCellHtml}<td class="mc2-col2" style="text-align:center;font-weight:500;font-size:11px;padding:2px 1px">${mon}月</td><td class="mc2-col3" style="text-align:center;color:var(--text-muted);font-size:11px;padding:2px 1px">${dim}</td>${memberCellsHtml}<td id="mc2-row-${y}-${mon}" style="text-align:center;font-size:10px;font-weight:600;padding:2px 1px"></td></tr>`;
+      rowsHtml += `<tr>${yearCellHtml}<td class="mc2-col2" style="text-align:center;font-weight:500;font-size:11px;padding:2px 1px">${mon}月</td><td id="mc2-row-${y}-${mon}" class="mc2-col3" style="text-align:center;font-size:10px;font-weight:600;padding:2px 1px"></td>${memberCellsHtml}</tr>`;
     }
     const memberTotalsHtml = members.map(m => {
       const total = monthlyValsFromCell(getMultiCell(y, m.id));
       return `<td id="mc2-year-total-${m.id}-${y}" style="text-align:center;font-weight:700;font-size:11px">${total}</td>`;
     }).join('');
-    rowsHtml += `<tr class="mc2-total-row"><td class="mc2-col1" colspan="3" style="white-space:nowrap;font-weight:700;padding:4px 4px;font-size:11px">${y}年 年間合計</td>${memberTotalsHtml}<td id="mc2-grand-${y}" style="text-align:center;font-weight:700;font-size:10px;padding:2px 1px"></td></tr>`;
+    rowsHtml += `<tr class="mc2-total-row"><td class="mc2-col1" colspan="2" style="white-space:nowrap;font-weight:700;padding:4px 4px;font-size:11px">${y}年 年間合計</td><td id="mc2-grand-${y}" class="mc2-col3" style="text-align:center;font-weight:700;font-size:10px;padding:2px 1px"></td>${memberTotalsHtml}</tr>`;
   });
   body.innerHTML = rowsHtml;
 
@@ -1615,11 +1661,14 @@ function updateMc2StickyColOffsets() {
     if (!row) return;
     const c1 = row.querySelector(':scope > .mc2-col1');
     const c2 = row.querySelector(':scope > .mc2-col2');
+    const c3 = row.querySelector(':scope > .mc2-col3');
     if (!c1 || !c2) return;
     const w1 = c1.getBoundingClientRect().width;
     const w2 = c2.getBoundingClientRect().width;
+    const w3 = c3 ? c3.getBoundingClientRect().width : 0;
     if (w1 > 0) table.style.setProperty('--mc2-col2-left', w1 + 'px');
     if (w1 > 0 && w2 > 0) table.style.setProperty('--mc2-col3-left', (w1 + w2) + 'px');
+    if (w1 > 0 && w2 > 0 && w3 > 0) table.style.setProperty('--mc2-col4-left', (w1 + w2 + w3) + 'px');
   });
 }
 
@@ -1665,17 +1714,17 @@ function updateMc2RowValidationForYear(y) {
     totalExpected += expectedDays;
     const cellEl = document.getElementById(`mc2-row-${y}-${mon}`);
     if (cellEl) {
-      cellEl.textContent = `${assignedCount}/${expectedDays} ${ok ? '✓' : '✗'}`;
-      cellEl.style.background = ok ? '#eaf7ea' : '#fdeaea';
-      cellEl.style.color = ok ? '#2e7d32' : '#e89090';
+      cellEl.textContent = `${assignedCount}/${expectedDays} ${ok ? '✓' : '×'}`;
+      cellEl.style.background = ok ? '#eaf7ea' : '#f3a6a6';
+      cellEl.style.color = ok ? '#2e7d32' : '#8a1f1f';
     }
   }
-  const okTotal = totalAssigned === totalExpected;
   const grandEl = document.getElementById(`mc2-grand-${y}`);
   if (grandEl) {
-    grandEl.textContent = `${totalAssigned}/${totalExpected} ${okTotal ? '✓' : '✗'}`;
-    grandEl.style.background = okTotal ? '#eaf7ea' : '#fdeaea';
-    grandEl.style.color = okTotal ? '#2e7d32' : '#e89090';
+    // 年間合計行の「合計/日数」セルは表示しない（各月の集計のみ表示する）
+    grandEl.textContent = '';
+    grandEl.style.background = '';
+    grandEl.style.color = '';
   }
 }
 
@@ -1760,11 +1809,10 @@ function renderMultiHolTable2(years) {
 
   head.innerHTML = `
     <tr>
-      <th class="mc2-col1" rowspan="2" style="width:50px">年度</th>
+      <th class="mc2-col1" rowspan="2" style="width:22px">年<br>度</th>
       <th class="mc2-col2" rowspan="2" style="width:30px">月</th>
-      <th class="mc2-col3" rowspan="2" style="width:28px">日祝<br>日数</th>
+      <th class="mc2-col3" rowspan="2" style="width:56px">合計/<br>日祝日数</th>
       ${nameRow}
-      <th rowspan="2" style="width:56px">合計/<br>日祝日数</th>
     </tr>
     <tr></tr>
   `;
@@ -1772,23 +1820,23 @@ function renderMultiHolTable2(years) {
   let rowsHtml = '';
   years.forEach(y => {
     for (let mon = 1; mon <= 12; mon++) {
-      const expectedHol = sundayHolidayCountInMonth(y, mon);
       // rowspanをsticky(横スクロール固定)列に使うと、ブラウザによって「年度」セルの
       // 縦位置がずれて表示が崩れることがあるため、rowspanは使わず、12ヶ月分すべての行に
       // 同じ背景色のセルを敷いて、1月の行だけ年度を表示することで見た目上の結合を再現する
-      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;background:var(--accent-light);font-size:11px;padding:2px 1px;${mon < 12 ? 'border-bottom:none;' : ''}">${mon === 1 ? (y + '年') : ''}</td>`;
+      // （年度は縦書きにして列幅を最小限に抑える）
+      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:10px;padding:2px 0;${mon < 12 ? 'border-bottom:none;' : ''}">${mon === 1 ? (y + '年') : ''}</td>`;
       const memberCellsHtml = members.map(m => {
         const cell = getMultiCell(y, m.id);
         const checked = cell.hol.includes(mon);
         return `<td style="text-align:center;padding:1px 0"><input type="checkbox" data-mid="${m.id}" data-year="${y}" data-month="${mon}" ${checked ? 'checked' : ''} onchange="onMultiHol2Change(this)" style="width:14px;height:14px;cursor:pointer;accent-color:#e89090"></td>`;
       }).join('');
-      rowsHtml += `<tr>${yearCellHtml}<td class="mc2-col2" style="text-align:center;font-weight:500;font-size:11px;padding:2px 1px">${mon}月</td><td class="mc2-col3" style="text-align:center;color:var(--text-muted);font-size:11px;padding:2px 1px">${expectedHol}</td>${memberCellsHtml}<td id="mh2-row-${y}-${mon}" style="text-align:center;font-size:10px;font-weight:600;padding:2px 1px"></td></tr>`;
+      rowsHtml += `<tr>${yearCellHtml}<td class="mc2-col2" style="text-align:center;font-weight:500;font-size:11px;padding:2px 1px">${mon}月</td><td id="mh2-row-${y}-${mon}" class="mc2-col3" style="text-align:center;font-size:10px;font-weight:600;padding:2px 1px"></td>${memberCellsHtml}</tr>`;
     }
     const memberTotalsHtml = members.map(m => {
       const total = getMultiCell(y, m.id).hol.length;
       return `<td id="mh2-year-total-${m.id}-${y}" style="text-align:center;font-weight:700;font-size:11px">${total}</td>`;
     }).join('');
-    rowsHtml += `<tr class="mc2-total-row"><td class="mc2-col1" colspan="3" style="white-space:nowrap;font-weight:700;padding:4px 4px;font-size:11px">${y}年 年間合計</td>${memberTotalsHtml}<td id="mh2-grand-${y}" style="text-align:center;font-weight:700;font-size:10px;padding:2px 1px"></td></tr>`;
+    rowsHtml += `<tr class="mc2-total-row"><td class="mc2-col1" colspan="2" style="white-space:nowrap;font-weight:700;padding:4px 4px;font-size:11px">${y}年 年間合計</td><td id="mh2-grand-${y}" class="mc2-col3" style="text-align:center;font-weight:700;font-size:10px;padding:2px 1px"></td>${memberTotalsHtml}</tr>`;
   });
   body.innerHTML = rowsHtml;
 
@@ -1810,17 +1858,17 @@ function updateMh2RowValidationForYear(y) {
     totalExpected += expectedHol;
     const cellEl = document.getElementById(`mh2-row-${y}-${mon}`);
     if (cellEl) {
-      cellEl.textContent = `${assignedHol}/${expectedHol} ${ok ? '✓' : '✗'}`;
-      cellEl.style.background = ok ? '#eaf7ea' : '#fdeaea';
-      cellEl.style.color = ok ? '#2e7d32' : '#e89090';
+      cellEl.textContent = `${assignedHol}/${expectedHol} ${ok ? '✓' : '×'}`;
+      cellEl.style.background = ok ? '#eaf7ea' : '#f3a6a6';
+      cellEl.style.color = ok ? '#2e7d32' : '#8a1f1f';
     }
   }
-  const okTotal = totalAssigned === totalExpected;
   const grandEl = document.getElementById(`mh2-grand-${y}`);
   if (grandEl) {
-    grandEl.textContent = `${totalAssigned}/${totalExpected} ${okTotal ? '✓' : '✗'}`;
-    grandEl.style.background = okTotal ? '#eaf7ea' : '#fdeaea';
-    grandEl.style.color = okTotal ? '#2e7d32' : '#e89090';
+    // 年間合計行の「合計/日祝日数」セルは表示しない（各月の集計のみ表示する）
+    grandEl.textContent = '';
+    grandEl.style.background = '';
+    grandEl.style.color = '';
   }
 }
 
@@ -1960,7 +2008,7 @@ async function renderUnavailCalendar() {
     console.warn('[renderUnavailCalendar]', e.message);
   }
 
-  let html = '<style>.unavail-cal{border-collapse:collapse;width:100%}.unavail-cal th{background:var(--accent-light);padding:6px;font-size:12px;text-align:center;border:1px solid var(--border)}.unavail-cal td{width:14.28%;padding:4px;text-align:center;border:1px solid var(--border);cursor:pointer;font-size:13px;vertical-align:top;min-height:36px}.unavail-cal td.empty{cursor:default;background:var(--accent-light)}.unavail-cal td.selected{background:#fee2e2;color:#e89090;font-weight:600}.unavail-cal td.registered{background:#fecaca;color:#e89090;font-weight:600}.unavail-cal td.sunday{color:var(--danger)}.unavail-cal td.saturday{color:var(--info)}</style>';
+  let html = '<style>.unavail-cal{border-collapse:collapse;width:100%}.unavail-cal th{padding:6px;font-size:12px;text-align:center;border:1px solid var(--border)}.unavail-cal td{width:14.28%;padding:4px;text-align:center;border:1px solid var(--border);cursor:pointer;font-size:13px;vertical-align:top;min-height:36px}.unavail-cal td.empty{cursor:default}.unavail-cal td.selected{background:#fee2e2;color:#e89090;font-weight:600}.unavail-cal td.registered{background:#fecaca;color:#e89090;font-weight:600}.unavail-cal td.sunday{color:var(--danger)}.unavail-cal td.saturday{color:var(--info)}</style>';
   html += '<table class="unavail-cal"><thead><tr>';
   DOW_JP.forEach((d, i) => {
     const color = i===0?'color:var(--danger)':i===6?'color:var(--info)':'';
@@ -1974,19 +2022,39 @@ async function renderUnavailCalendar() {
     const isSelected = selectedUnavailDates.has(dateStr);
     const isRegistered = registeredDates.has(dateStr);
     const isHol = !!holidays[dateStr];
+    const holLabel = isHol ? ((/振.?替.?え?休日/.test(holidays[dateStr])) ? '振替休日' : '祝') : '';
     let cls = '';
     if (dow === 0 || isHol) cls += ' sunday';
     else if (dow === 6) cls += ' saturday';
     if (isRegistered) cls += ' registered';
     else if (isSelected) cls += ' selected';
-    html += `<td class="${cls.trim()}" onclick="toggleUnavailDate('${dateStr}')" data-date="${dateStr}">${d}${isHol?'<br><span style="font-size:9px">祝</span>':''}</td>`;
+    html += `<td class="${cls.trim()}" onclick="toggleUnavailDate('${dateStr}', ${isRegistered})" data-date="${dateStr}" title="${isRegistered ? 'クリックでこの支障日を取り消す' : ''}"><div style="display:flex;align-items:center;justify-content:center"><span>${d}</span><span style="display:inline-block;width:36px;text-align:left;margin-left:5px;font-size:9px;white-space:nowrap">${holLabel}</span></div></td>`;
     if ((firstDay + d) % 7 === 0 && d < daysInMonth) html += '</tr><tr>';
   }
   html += '</tr></tbody></table>';
   wrap.innerHTML = html;
 }
 
-async function toggleUnavailDate(dateStr) {
+async function toggleUnavailDate(dateStr, isRegistered) {
+  if (isRegistered) {
+    // すでに登録済みの支障日をクリックした場合は、確認の上でその場で取り消す（DBから削除する）
+    const mid = document.getElementById('u-member').value;
+    if (!mid) return;
+    if (!confirm(`${dateStr} の支障日を取り消しますか？`)) return;
+    try {
+      const { error } = await sbClient
+        .from('unavailable_dates')
+        .delete()
+        .eq('member_id', parseInt(mid))
+        .eq('blocked_date', dateStr);
+      if (error) throw error;
+      showMsg('unavail-msg', `${dateStr} の支障日を取り消しました`, 'success');
+    } catch (e) {
+      showMsg('unavail-msg', '取消に失敗しました: ' + e.message, 'error');
+    }
+    await renderUnavailCalendar();
+    return;
+  }
   if (selectedUnavailDates.has(dateStr)) { selectedUnavailDates.delete(dateStr); } else { selectedUnavailDates.add(dateStr); }
   await renderUnavailCalendar();
 }
@@ -2161,15 +2229,14 @@ async function loadUnavailable() {
       const record = unavailMap[`${m.id}_${dateStr}`];
       
       let tdBg = '#ffffff';
-      if (dow === 0 || isHol) tdBg = '#fffafb';
 
       let cellContent = '';
       let cellTitle = `${m.name}: ${dateStr}`;
       let clickAction = '';
 
       if (record) {
-        // 登録されている支障日はチェックマークを表示せず、背景の塗りつぶしのみで示す
-        cellContent = '';
+        // 登録されている支障日は、背景の塗りつぶしに加えて小さめの✓マークを表示する
+        cellContent = '<span style="font-size:9px;color:var(--accent);font-weight:bold">✓</span>';
         cellTitle += ' (登録済み支障日・クリックで削除)';
         clickAction = `onclick="removeMatrixRecord('${record.id}')"`;
         tdBg = '#fff1f1';
@@ -2301,369 +2368,8 @@ async function unconfirmMemberMonth(memberId) {
 // =============================================
 // Auto Generator Logic
 // =============================================
-// 「２回の人だけ先に割り当てる」：月2回設定の人だけを対象に、支障日・前回当番からの間隔（8日間、絶対条件）・
-// 日祝適性・年間目標回数などを考慮しながら、その月の2回分の枠を優先的にプレビューへ割り当てる。
-// ここで割り当てられた日はロック状態でプレビューに反映されるため、続けて「当番表を作成」を押すと
-// 残りの日だけが他のメンバーで自動的に埋まる（月2回の人の枠を後から動かされる心配がない）。
-async function assignTwiceMembersFirst() {
-  const monthStr = document.getElementById('gen-month').value;
-  if (!monthStr) { showMsg('gen-msg', '対象月を選択してください', 'error'); return; }
-  if (!members.length) { showMsg('gen-msg', 'メンバーが登録されていません', 'error'); return; }
-
-  showMsg('gen-msg', '<span class="spinner"></span> 月2回の人を優先割り当て中...', 'info');
-
-  const [year, month] = monthStr.split('-').map(Number);
-  const serviceDays = getServiceMonthDays(year, month);
-  const monthNum = month;
-  const rangeStart = serviceDays[0].dateStr;
-  const rangeEnd = serviceDays[serviceDays.length - 1].dateStr;
-
-  // 既にプレビュー上でロックされている日はそのまま維持する
-  const prevPreviewLocked = {};
-  generatedSchedule.forEach(r => { if (r.locked && r.member_id) prevPreviewLocked[r.date] = r.member_id; });
-
-  const { data: unavailData } = await sbClient.from('unavailable_dates').select('member_id, blocked_date').gte('blocked_date', rangeStart).lte('blocked_date', rangeEnd);
-  const unavailMap = {};
-  (unavailData || []).forEach(u => {
-    if (!unavailMap[u.blocked_date]) unavailMap[u.blocked_date] = new Set();
-    unavailMap[u.blocked_date].add(u.member_id);
-  });
-
-  const prevDate = new Date(year, month - 2, 1);
-  const { data: prevSched } = await sbClient.from('annual_roster').select('duty_date, member_id').gte('duty_date', prevDate.toISOString().slice(0,10)).lt('duty_date', `${year}-${String(month).padStart(2,'0')}-01`);
-  const lastAssigned = {};
-  (prevSched || []).forEach(s => {
-    if (!lastAssigned[s.member_id] || s.duty_date > lastAssigned[s.member_id]) { lastAssigned[s.member_id] = s.duty_date; }
-  });
-
-  const { data: plans } = await sbClient.from('annual_plans').select('*').eq('year', year);
-  const planMap = {};
-  (plans || []).forEach(p => { planMap[p.member_id] = p; });
-
-  const { data: yearSched } = await sbClient.from('annual_roster').select('duty_date, member_id, is_holiday').gte('duty_date', `${year}-01-01`).lt('duty_date', `${year}-${String(month).padStart(2,'0')}-01`);
-  const yearCount = {};
-  (yearSched || []).forEach(s => { yearCount[s.member_id] = (yearCount[s.member_id] || 0) + 1; });
-
-  const twiceMembers = new Set();
-  const holidayMembers = new Set();
-  members.forEach(m => {
-    const p = planMap[m.id];
-    if (p && (p.monthly_twice_months || []).includes(monthNum)) twiceMembers.add(m.id);
-    if (p && (p.holiday_months || []).map(Number).includes(monthNum)) holidayMembers.add(m.id);
-  });
-
-  const twiceMemberList = members.filter(m => twiceMembers.has(m.id));
-  if (!twiceMemberList.length) {
-    showMsg('gen-msg', 'この月は「月2回」設定の人がいません', 'error');
-    return;
-  }
-
-  const monthCount = {};
-
-  // hard 制約（支障日）はどの段階でも絶対に緩めない。それ以外（前回当番からの間隔／
-  // 日祝の可否／年間目標回数）は、月2回の人の中で候補がどうしても見つからない場合にのみ
-  // 段階的に緩める（generateSchedule() の考え方と同じ）。
-  function getCandidates(dateStr, isSpecialDay, opts) {
-    return twiceMemberList.map(m => {
-      if ((unavailMap[dateStr] || new Set()).has(m.id)) return null; // hard: 支障日
-
-      if (!opts.ignoreInterval) {
-        const lastDate = lastAssigned[m.id];
-        if (lastDate) {
-          const diff = (new Date(dateStr) - new Date(lastDate)) / 86400000;
-          if (diff < opts.minGap) return null;
-        }
-      }
-
-      if (!opts.ignoreMonthlyCap) {
-        if ((monthCount[m.id] || 0) >= 2) return null;
-      }
-
-      if (!opts.ignoreYearTarget) {
-        const p = planMap[m.id];
-        const yearTgt = p ? (p.target_count || 12) : 12;
-        if ((yearCount[m.id] || 0) >= yearTgt) return null;
-      }
-
-      // 日祝の日は「日祝」設定がある人を優先。平日は月2回の人であれば日祝設定の有無を問わない。
-      if (!opts.ignoreHolidayMatch) {
-        if (isSpecialDay && !holidayMembers.has(m.id)) return null;
-      }
-
-      return m;
-    }).filter(Boolean);
-  }
-
-  function sortFair(list) {
-    list.sort((a, b) => {
-      const cntA = monthCount[a.id] || 0;
-      const cntB = monthCount[b.id] || 0;
-      if (cntA !== cntB) return cntA - cntB;
-
-      const dateA = lastAssigned[a.id] ? new Date(lastAssigned[a.id]) : new Date(2000, 0, 1);
-      const dateB = lastAssigned[b.id] ? new Date(lastAssigned[b.id]) : new Date(2000, 0, 1);
-      return dateA - dateB;
-    });
-    return list;
-  }
-
-  // 月2回の人については「前回当番から8日間空ける」を絶対条件とし、どんな場合でも緩めない。
-  // 候補がどうしても見つからない場合は、日祝の可否→年間目標回数の順にのみ緩め、
-  // それでも見つからなければその日は割り当てず「未割当」のままにする
-  // （後で「当番表を作成」を押した際に、他のメンバーで埋められる）。
-  const RELAX_TIERS = [
-    { minGap: 8 },
-    { minGap: 8, ignoreHolidayMatch: true },
-    { minGap: 8, ignoreHolidayMatch: true, ignoreYearTarget: true }
-  ];
-
-  function pick(dateStr, isSpecialDay) {
-    for (const opts of RELAX_TIERS) {
-      const cands = sortFair(getCandidates(dateStr, isSpecialDay, opts));
-      if (cands.length > 0) return cands[0];
-    }
-    return null;
-  }
-
-  const result = [];
-  for (const sd of serviceDays) {
-    const dateStr = sd.dateStr;
-    const dow = new Date(dateStr + 'T00:00:00').getDay();
-    const isHol = !!holidays[dateStr];
-    const isSpecialDay = (dow === 0 || isHol);
-
-    // 既にロック済み（カレンダー保存済みロック or 前回プレビューのロック）の日はそのまま維持する
-    const existingSched = schedules[dateStr];
-    const dbLockedMemberId = (existingSched && existingSched.locked && existingSched.member_id) ? existingSched.member_id : null;
-    const previewLockedMemberId = prevPreviewLocked[dateStr] || null;
-    const lockedMemberId = dbLockedMemberId || previewLockedMemberId;
-    if (lockedMemberId) {
-      const lockedMember = members.find(m => m.id === lockedMemberId) || null;
-      result.push({ date: dateStr, dow, isHol, member: lockedMember, member_id: lockedMemberId, locked: true });
-      if (twiceMembers.has(lockedMemberId)) {
-        lastAssigned[lockedMemberId] = dateStr;
-        monthCount[lockedMemberId] = (monthCount[lockedMemberId] || 0) + 1;
-      }
-      continue;
-    }
-
-    // 月2回の人が全員2枠とも埋まっていれば、この日はまだ割り当てず「未割当」のままにしておく
-    // （続けて「当番表を作成」を押した時に、他のメンバーで自動的に埋められる）
-    const anyRemaining = twiceMemberList.some(m => (monthCount[m.id] || 0) < 2);
-    const chosen = anyRemaining ? pick(dateStr, isSpecialDay) : null;
-
-    result.push({
-      date: dateStr,
-      dow,
-      isHol,
-      member: chosen,
-      member_id: chosen ? chosen.id : null,
-      locked: !!chosen
-    });
-
-    if (chosen) {
-      lastAssigned[chosen.id] = dateStr;
-      monthCount[chosen.id] = (monthCount[chosen.id] || 0) + 1;
-    }
-  }
-
-  generatedSchedule = result;
-  renderGenPreview();
-
-  const filled = twiceMemberList.reduce((s, m) => s + (monthCount[m.id] || 0), 0);
-  const target = twiceMemberList.length * 2;
-  if (filled < target) {
-    showMsg('gen-msg', `月2回の人を ${filled}/${target} 枠 割り当てました（支障日等の都合で一部割り当てできませんでした）。続けて「当番表を作成」を押すと残りの日を自動で埋められます。`, 'error');
-  } else {
-    showMsg('gen-msg', `月2回の人（${twiceMemberList.length}名・計${target}枠）をすべて優先割り当てしました。続けて「当番表を作成」を押すと残りの日を自動で埋められます。`, 'success');
-  }
-}
-
-// 「日祝当番の人を割り当てる」：日曜・祝日（振替休日含む）だけを対象に、年間予定で「日祝」に
-// チェックがある人を優先的にプレビューへ割り当てる。平日の枠には一切触れず「未割当」のまま残す。
-// 支障日（hard）・前回当番から8日間空ける（絶対条件）は必ず守り、月の上限回数（1回／2回）・
-// 年間目標回数は、日祝の人の中でどうしても候補が見つからない場合にのみ段階的に緩める。
-// ここで割り当てた日はロック状態でプレビューに反映されるため、続けて「当番表を作成」を押すと
-// 残りの日（平日など）だけが他のメンバーで自動的に埋まる。
-async function assignHolidayMembersFirst() {
-  const monthStr = document.getElementById('gen-month').value;
-  if (!monthStr) { showMsg('gen-msg', '対象月を選択してください', 'error'); return; }
-  if (!members.length) { showMsg('gen-msg', 'メンバーが登録されていません', 'error'); return; }
-
-  showMsg('gen-msg', '<span class="spinner"></span> 日祝当番の人を優先割り当て中...', 'info');
-
-  const [year, month] = monthStr.split('-').map(Number);
-  const serviceDays = getServiceMonthDays(year, month);
-  const monthNum = month;
-  const rangeStart = serviceDays[0].dateStr;
-  const rangeEnd = serviceDays[serviceDays.length - 1].dateStr;
-
-  // 既にプレビュー上でロックされている日はそのまま維持する
-  const prevPreviewLocked = {};
-  generatedSchedule.forEach(r => { if (r.locked && r.member_id) prevPreviewLocked[r.date] = r.member_id; });
-
-  const { data: unavailData } = await sbClient.from('unavailable_dates').select('member_id, blocked_date').gte('blocked_date', rangeStart).lte('blocked_date', rangeEnd);
-  const unavailMap = {};
-  (unavailData || []).forEach(u => {
-    if (!unavailMap[u.blocked_date]) unavailMap[u.blocked_date] = new Set();
-    unavailMap[u.blocked_date].add(u.member_id);
-  });
-
-  const prevDate = new Date(year, month - 2, 1);
-  const { data: prevSched } = await sbClient.from('annual_roster').select('duty_date, member_id').gte('duty_date', prevDate.toISOString().slice(0,10)).lt('duty_date', `${year}-${String(month).padStart(2,'0')}-01`);
-  const lastAssigned = {};
-  (prevSched || []).forEach(s => {
-    if (!lastAssigned[s.member_id] || s.duty_date > lastAssigned[s.member_id]) { lastAssigned[s.member_id] = s.duty_date; }
-  });
-
-  const { data: plans } = await sbClient.from('annual_plans').select('*').eq('year', year);
-  const planMap = {};
-  (plans || []).forEach(p => { planMap[p.member_id] = p; });
-
-  const { data: yearSched } = await sbClient.from('annual_roster').select('duty_date, member_id, is_holiday').gte('duty_date', `${year}-01-01`).lt('duty_date', `${year}-${String(month).padStart(2,'0')}-01`);
-  const yearCount = {};
-  (yearSched || []).forEach(s => { yearCount[s.member_id] = (yearCount[s.member_id] || 0) + 1; });
-
-  const twiceMembers = new Set();
-  const zeroMembers = new Set();
-  const holidayMembers = new Set();
-  members.forEach(m => {
-    const p = planMap[m.id];
-    if (p && (p.monthly_twice_months || []).includes(monthNum)) twiceMembers.add(m.id);
-    if (p && (p.monthly_zero_months || []).includes(monthNum)) zeroMembers.add(m.id);
-    if (p && (p.holiday_months || []).map(Number).includes(monthNum)) holidayMembers.add(m.id);
-  });
-
-  // 月0回の人は日祝設定があっても対象外とする
-  const holidayMemberList = members.filter(m => holidayMembers.has(m.id) && !zeroMembers.has(m.id));
-  if (!holidayMemberList.length) {
-    showMsg('gen-msg', 'この月は「日祝」設定の人がいません', 'error');
-    return;
-  }
-
-  // 「月の予定回数（1回／2回）」を基準に、日祝の人それぞれの当月上限回数を求める
-  function maxMonthlyOf(m) { return twiceMembers.has(m.id) ? 2 : 1; }
-
-  const monthCount = {};
-
-  // hard 制約（支障日／前回当番から8日間）はどの段階でも絶対に緩めない
-  // （「2回の人だけ先に割り当てる」と同じ考え方）。月の上限回数・年間目標回数は、
-  // 日祝の人の中で候補がどうしても見つからない場合にのみ段階的に緩める。
-  function getCandidates(dateStr, opts) {
-    return holidayMemberList.map(m => {
-      if ((unavailMap[dateStr] || new Set()).has(m.id)) return null; // hard: 支障日
-
-      const lastDate = lastAssigned[m.id];
-      if (lastDate) {
-        const diff = (new Date(dateStr) - new Date(lastDate)) / 86400000;
-        if (diff < 8) return null; // hard: 8日間隔
-      }
-
-      if (!opts.ignoreMonthlyCap) {
-        if ((monthCount[m.id] || 0) >= maxMonthlyOf(m)) return null;
-      }
-
-      if (!opts.ignoreYearTarget) {
-        const p = planMap[m.id];
-        const yearTgt = p ? (p.target_count || 12) : 12;
-        if ((yearCount[m.id] || 0) >= yearTgt) return null;
-      }
-
-      return m;
-    }).filter(Boolean);
-  }
-
-  function sortFair(list) {
-    list.sort((a, b) => {
-      const cntA = monthCount[a.id] || 0;
-      const cntB = monthCount[b.id] || 0;
-      if (cntA !== cntB) return cntA - cntB;
-
-      const dateA = lastAssigned[a.id] ? new Date(lastAssigned[a.id]) : new Date(2000, 0, 1);
-      const dateB = lastAssigned[b.id] ? new Date(lastAssigned[b.id]) : new Date(2000, 0, 1);
-      return dateA - dateB;
-    });
-    return list;
-  }
-
-  // 候補がどうしても見つからない場合は、月の上限回数→年間目標回数の順にのみ緩め、
-  // それでも見つからなければその日は割り当てず「未割当」のままにする
-  // （後で「当番表を作成」を押した際に、他のメンバーで埋められる）。
-  const RELAX_TIERS = [
-    {},
-    { ignoreYearTarget: true },
-    { ignoreYearTarget: true, ignoreMonthlyCap: true }
-  ];
-
-  function pick(dateStr) {
-    for (const opts of RELAX_TIERS) {
-      const cands = sortFair(getCandidates(dateStr, opts));
-      if (cands.length > 0) return cands[0];
-    }
-    return null;
-  }
-
-  const result = [];
-  for (const sd of serviceDays) {
-    const dateStr = sd.dateStr;
-    const dow = new Date(dateStr + 'T00:00:00').getDay();
-    const isHol = !!holidays[dateStr];
-    const isSpecialDay = (dow === 0 || isHol);
-
-    // 既にロック済み（カレンダー保存済みロック or 前回プレビューのロック）の日はそのまま維持する
-    const existingSched = schedules[dateStr];
-    const dbLockedMemberId = (existingSched && existingSched.locked && existingSched.member_id) ? existingSched.member_id : null;
-    const previewLockedMemberId = prevPreviewLocked[dateStr] || null;
-    const lockedMemberId = dbLockedMemberId || previewLockedMemberId;
-    if (lockedMemberId) {
-      const lockedMember = members.find(m => m.id === lockedMemberId) || null;
-      result.push({ date: dateStr, dow, isHol, member: lockedMember, member_id: lockedMemberId, locked: true });
-      if (holidayMembers.has(lockedMemberId)) {
-        lastAssigned[lockedMemberId] = dateStr;
-        monthCount[lockedMemberId] = (monthCount[lockedMemberId] || 0) + 1;
-      }
-      continue;
-    }
-
-    // 日曜・祝日以外（平日）の枠には触れず、未割当のまま残す
-    let chosen = null;
-    if (isSpecialDay) {
-      const anyRemaining = holidayMemberList.some(m => (monthCount[m.id] || 0) < maxMonthlyOf(m));
-      chosen = anyRemaining ? pick(dateStr) : null;
-    }
-
-    result.push({
-      date: dateStr,
-      dow,
-      isHol,
-      member: chosen,
-      member_id: chosen ? chosen.id : null,
-      locked: !!chosen
-    });
-
-    if (chosen) {
-      lastAssigned[chosen.id] = dateStr;
-      monthCount[chosen.id] = (monthCount[chosen.id] || 0) + 1;
-    }
-  }
-
-  generatedSchedule = result;
-  renderGenPreview();
-
-  const specialDayCount = serviceDays.filter(sd => {
-    const dow = new Date(sd.dateStr + 'T00:00:00').getDay();
-    return dow === 0 || !!holidays[sd.dateStr];
-  }).length;
-  const filledSpecial = result.filter(r => (r.dow === 0 || r.isHol) && r.member_id).length;
-
-  if (specialDayCount === 0) {
-    showMsg('gen-msg', 'この月には日曜・祝日がありません', 'info');
-  } else if (filledSpecial < specialDayCount) {
-    showMsg('gen-msg', `日祝当番を ${filledSpecial}/${specialDayCount} 日 割り当てました（支障日等の都合で一部割り当てできませんでした）。続けて「当番表を作成」を押すと残りの日を自動で埋められます。`, 'error');
-  } else {
-    showMsg('gen-msg', `日祝（${specialDayCount}日分）の当番をすべて優先割り当てしました。続けて「当番表を作成」を押すと残りの日を自動で埋められます。`, 'success');
-  }
-}
+// 「当番表を作成」：支障日・前回当番からの間隔（8日間）・日祝適性・月の上限回数・年間目標回数・
+// 「2回当番かつ日祝対象」の1日祝+1平日ペアリングなどを考慮しながら、月全体の当番を自動で割り当てる。
 
 async function generateSchedule() {
   const monthStr = document.getElementById('gen-month').value;
@@ -2719,6 +2425,7 @@ async function generateSchedule() {
 
   const result = [];
   const monthCount = {};
+  const specialCount = {}; // 「2回当番かつ日祝対象」の人が、当月ですでに日祝当番に何回当たったかを記録する
 
   // 「月の予定回数（0回／1回／2回）」を基準に、各人の当月の上限回数を求める
   function maxMonthlyOf(m) { return twiceMembers.has(m.id) ? 2 : 1; }
@@ -2726,7 +2433,10 @@ async function generateSchedule() {
   // hard 制約（どの段階でも絶対に緩めない）：
   //   ・支障日には割り当てない
   //   ・月の予定回数が「0回」の人はその月は対象外
-  // それ以外（前回当番からの間隔／月の上限回数／年間目標回数／日祝の可否）は、
+  //   ・月の上限回数（1回／2回）は超えない（候補が見つからない日は「未割当」のまま残す）
+  //   ・日曜・祝日の当番は「日祝」設定のある人だけに限定する（未設定の人には割り当てない）
+  //   ・「2回当番」かつ「日祝対象」の人は、2回のうち必ず1回は日祝・もう1回は平日にする
+  // それ以外（前回当番からの間隔／年間目標回数／平日での日祝限定者の除外）は、
   // 候補者がどうしても見つからない場合にのみ、下の tiers の順で段階的に緩める。
   function getCandidatesForTier(dateStr, isSpecialDay, opts) {
     return members.map(m => {
@@ -2751,12 +2461,23 @@ async function generateSchedule() {
         if ((yearCount[m.id] || 0) >= yearTgt) return null;
       }
 
+      // 日祝の日は「日祝」設定がある人だけに限定する（絶対条件・緩めない）
+      if (isSpecialDay && !holidayMembers.has(m.id)) return null;
+
       if (!opts.ignoreHolidayMatch) {
-        if (isSpecialDay) {
-          if (!holidayMembers.has(m.id)) return null;
-        } else {
-          if (holidayMembers.has(m.id) && !twiceMembers.has(m.id)) return null;
-        }
+        // 平日は、月2回の人であれば日祝設定の有無を問わない
+        if (!isSpecialDay && holidayMembers.has(m.id) && !twiceMembers.has(m.id)) return null;
+      }
+
+      // 「2回当番」かつ「日祝対象」の人は、2回のうち必ず1回は日祝、もう1回は平日に固定する
+      // （絶対条件・緩めない）：
+      //   ・すでに日祝を1回確保している人には、これ以上日祝を割り当てない
+      //   ・まだ日祝を確保していないのに、平日で2回目（最後の枠）を使わせない
+      //     （平日に2回とも消費してしまうと、日祝担当が0回になってしまうため）
+      if (twiceMembers.has(m.id) && holidayMembers.has(m.id)) {
+        const sc = specialCount[m.id] || 0;
+        if (isSpecialDay && sc >= 1) return null;
+        if (!isSpecialDay && sc === 0 && (monthCount[m.id] || 0) >= 1) return null;
       }
 
       return m;
@@ -2785,17 +2506,17 @@ async function generateSchedule() {
   }
 
   // 候補者が見つからない場合に、制約を段階的に緩めながら選び直す。
-  // 「月の予定回数の上限（monthlyCap）」は最後の最終手段としてのみ緩め、
-  // その場合でも常に「当月回数が最少の人」を優先するため、
-  // 同じ人が3回選ばれたり、特定の人だけ0回になる事態を避けやすくしている。
+  // 「月の予定回数の上限（monthlyCap）」「日祝当番は日祝設定のある人限定」は、
+  // 当番表作成者の方針により絶対に緩めない条件とする。
+  // どうしても候補が見つからない日は、誰かに無理に割り当てず「未割当」のまま残す
+  // （未割当の日は、当番表作成者が手動で確認・調整することを想定している）。
   const RELAX_TIERS = [
     { minGap: 8 },
     { minGap: 5 },
     { minGap: 2 },
     { ignoreInterval: true },
     { ignoreInterval: true, ignoreHolidayMatch: true },
-    { ignoreInterval: true, ignoreHolidayMatch: true, ignoreYearTarget: true },
-    { ignoreInterval: true, ignoreHolidayMatch: true, ignoreYearTarget: true, ignoreMonthlyCap: true }
+    { ignoreInterval: true, ignoreHolidayMatch: true, ignoreYearTarget: true }
   ];
 
   function pickCandidate(dateStr, isSpecialDay) {
@@ -2834,6 +2555,7 @@ async function generateSchedule() {
       lastAssigned[lockedMemberId] = dateStr;
       monthCount[lockedMemberId] = (monthCount[lockedMemberId] || 0) + 1;
       yearCount[lockedMemberId] = (yearCount[lockedMemberId] || 0) + 1;
+      if (isSpecialDay) specialCount[lockedMemberId] = (specialCount[lockedMemberId] || 0) + 1;
       continue;
     }
 
@@ -2855,6 +2577,7 @@ async function generateSchedule() {
       lastAssigned[chosen.id] = dateStr;
       monthCount[chosen.id] = (monthCount[chosen.id] || 0) + 1;
       yearCount[chosen.id] = (yearCount[chosen.id] || 0) + 1;
+      if (isSpecialDay) specialCount[chosen.id] = (specialCount[chosen.id] || 0) + 1;
     }
   }
 
@@ -2870,7 +2593,6 @@ async function generateSchedule() {
 }
 
 // プレビュー表（当番表作成ページ）を generatedSchedule の内容で描画する。
-// generateSchedule() と assignTwiceMembersFirst() の両方から共通で呼び出す。
 function renderGenPreview() {
   const result = generatedSchedule;
   const body = document.getElementById('gen-preview-body');
@@ -2884,7 +2606,7 @@ function renderGenPreview() {
             <option value="">未割当</option>
             ${members.map(m => `<option value="${m.id}" ${r.member_id == m.id ? 'selected' : ''}>${m.name}</option>`).join('')}
           </select>
-          <button type="button" class="gen-lock-btn ${r.locked ? 'locked' : ''}" title="${r.locked ? 'ロック中（クリックで解除）' : 'クリックでこの日の当番をロック（作成ボタンを押しても変更されなくなります）'}" onclick="togglePreviewLock(${i})">${r.locked ? '🔒' : '🔓'}</button>
+          <button type="button" class="gen-lock-btn ${r.locked ? 'locked' : ''}" title="${r.locked ? 'ロック中（クリックで解除）' : 'クリックでこの日の当番をロック（作成ボタンを押しても変更されなくなります）'}" onclick="togglePreviewLock(${i})">${lockIconSvg(r.locked)}</button>
         </div>
       </td>
       <td>${r.dow===0||r.isHol ? '<span class="badge badge-gold">日祝当番</span>' : '<span class="badge badge-green">平日当番</span>'}</td>
@@ -2906,7 +2628,7 @@ function togglePreviewLock(idx) {
     const btn = row.querySelector('.gen-lock-btn');
     select.disabled = r.locked;
     btn.classList.toggle('locked', r.locked);
-    btn.textContent = r.locked ? '🔒' : '🔓';
+    btn.innerHTML = lockIconSvg(r.locked);
     btn.title = r.locked ? 'ロック中（クリックで解除）' : 'クリックでこの日の当番をロック（作成ボタンを押しても変更されなくなります）';
   }
 }
@@ -3036,7 +2758,7 @@ function renderCalendar() {
           <div class="${boxClass}">
             <div class="cal-member-name-row">
               <span class="cal-member-name">${mInfo.name}</span>
-              <button type="button" class="cal-lock-btn ${isLocked ? 'locked' : ''}" title="${lockTitle}" onclick="toggleDutyLock('${dateStr}', event)">${isLocked ? '🔒' : '🔓'}</button>
+              <button type="button" class="cal-lock-btn ${isLocked ? 'locked' : ''}" title="${lockTitle}" onclick="toggleDutyLock('${dateStr}', event)">${lockIconSvg(isLocked)}</button>
             </div>
           </div>
         `;
@@ -3114,7 +2836,7 @@ async function saveDaySchedule() {
 
 function exportCSV() {
   // ヘッダーの定義
-  const rows = [['日付', 'ID', '当番者', '部署', '連絡先', '備考']];
+  const rows = [['日付', 'ID', 'ログインナンバー', '当番者', '部署', '連絡先', '備考']];
   const month = calMonth + 1;
   const serviceDays = getServiceMonthDays(calYear, month);
   
@@ -3131,10 +2853,13 @@ function exportCSV() {
     
     // 日付を「4月1日」形式に変換（12月特例の翌年1/1〜1/4は「1月1日」のように表示）
     const displayDate = `${sd.m}月${sd.d}日`;
+    const loginNoVal = (mInfo && mInfo.member_no !== null && mInfo.member_no !== undefined && mInfo.member_no !== '')
+      ? String(mInfo.member_no).padStart(4, '0') : '';
     
     rows.push([
       displayDate,
-      mInfo ? (mInfo.member_no || '') : '', // ID列
+      mInfo ? (mInfo.staff_id ?? '') : '',  // ID列
+      loginNoVal ? `="${loginNoVal}"` : '',  // ログインナンバー列（Excelで先頭の0が消えないよう文字列指定）
       mInfo ? mInfo.name : '',              // 当番者列
       mInfo ? (mInfo.department || '') : '',
       mInfo ? (mInfo.phone || mInfo.phone_number || mInfo.tel || '') : '',
@@ -3696,13 +3421,61 @@ function buildBasicHolidaysForYear(year) {
   return list;
 }
 
+// 日付オブジェクト -> "YYYY-MM-DD" 文字列
+function fmtYmd(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+
+// 「基本の祝日」のリストから、振替休日・国民の休日を計算する。
+// ・振替休日：祝日が日曜に当たる場合、その翌日以降で「祝日でない」最初の日を休日とする
+//   （連休が続く場合は、祝日でなくなるまで日をずらしていく）
+// ・国民の休日：前日・翌日がともに祝日で、その日自体は祝日でも日曜でもない日を休日とする
+//   （例：敬老の日と秋分の日に挟まれた平日）
+// 年をまたぐケース（12/31や1/1が日曜の祝日の場合など）を考慮し、対象年の前後1ヶ月分も
+// 参照できるよう、basicList には前年12月・翌年1月分も渡すことを推奨する。
+function buildDerivedHolidays(year, basicList) {
+  const dateSet = new Set(basicList.map(h => h.date));
+  const derived = [];
+
+  // ① 振替休日（結果が対象年(year)の範囲内のものだけを残す。前後年の祝日を参照して
+  //   計算する都合上、範囲外の日付が算出されることがあるため）
+  basicList
+    .filter(h => new Date(h.date + 'T00:00:00').getDay() === 0)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .forEach(h => {
+      let d = new Date(h.date + 'T00:00:00');
+      d.setDate(d.getDate() + 1);
+      while (dateSet.has(fmtYmd(d))) { d.setDate(d.getDate() + 1); }
+      const ds = fmtYmd(d);
+      dateSet.add(ds);
+      if (d.getFullYear() === year) derived.push({ date: ds, name: '振替休日' });
+    });
+
+  // ② 国民の休日（対象年の1/1〜12/31の範囲のみ判定・登録する）
+  for (let d = new Date(year, 0, 1); d.getFullYear() === year; d.setDate(d.getDate() + 1)) {
+    const ds = fmtYmd(d);
+    if (dateSet.has(ds) || d.getDay() === 0) continue;
+    const prev = new Date(d); prev.setDate(prev.getDate() - 1);
+    const next = new Date(d); next.setDate(next.getDate() + 1);
+    if (dateSet.has(fmtYmd(prev)) && dateSet.has(fmtYmd(next))) {
+      dateSet.add(ds);
+      derived.push({ date: ds, name: '国民の休日' });
+    }
+  }
+
+  return derived;
+}
+
 async function seedBasicHolidays() {
-  if (!confirm('2026年〜2050年の基本の祝日を一括登録します。振替休日は含まれません。よろしいですか？')) return;
+  if (!confirm('2026年〜2050年の祝日（振替休日・国民の休日を含む）を一括登録します。よろしいですか？')) return;
   showMsg('seed-holiday-msg', '<span class="spinner"></span> 登録中...', 'info');
 
   let rows = [];
   for (let y = 2026; y <= 2050; y++) {
-    rows = rows.concat(buildBasicHolidaysForYear(y));
+    const basic = buildBasicHolidaysForYear(y);
+    // 年またぎの振替休日判定に備え、前年12月・翌年1月の基本祝日も一時的に混ぜてから計算する
+    const prevDec = buildBasicHolidaysForYear(y - 1).filter(h => h.date.startsWith(`${y - 1}-12`));
+    const nextJan = buildBasicHolidaysForYear(y + 1).filter(h => h.date.startsWith(`${y + 1}-01`));
+    const derived = buildDerivedHolidays(y, [...prevDec, ...basic, ...nextJan]);
+    rows = rows.concat(basic, derived);
   }
 
   try {
@@ -3713,7 +3486,7 @@ async function seedBasicHolidays() {
     return;
   }
 
-  showMsg('seed-holiday-msg', `${rows.length}件の祝日を登録しました（2026〜2050年）`, 'success');
+  showMsg('seed-holiday-msg', `${rows.length}件の祝日を登録しました（2026〜2050年、振替休日・国民の休日を含む）`, 'success');
   await loadHolidays();
   await renderHolidaysTable();
   renderCalendar();
@@ -3727,17 +3500,13 @@ async function seedBasicHolidays() {
 // 新しく詰員が加わった場合も、その方の詰員番号に「0」を付けた番号が自動的に管理者ログインナンバーになる
 // （メンバー一覧をその都度データベースから取得して照合しているため、このファイルの修正は不要）。
 // ※ このログインナンバーの仕組みは、詰員には周知せず管理者のみが知っておくこと。
-function ensureSbClient() {
-  if (!sbClient) {
-    const SUPABASE_URL = localStorage.getItem('sb_url') || 'https://thwlerletbndqqtrodub.supabase.co';
-    const SUPABASE_KEY = localStorage.getItem('sb_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRod2xlcmxldGJuZHFxdHJvZHViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MTkzNzQsImV4cCI6MjA5NzM5NTM3NH0.DZDm7ofonli2ncqjQF4fUP3c83V3qLwOf12lc5cltEo';
-    sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const connStatus = document.getElementById('conn-status');
-    if (connStatus) connStatus.textContent = '接続済み ✓';
-  }
-  return sbClient;
-}
-
+//
+// この判定は、詰員用アプリのログイン（login-member Edge Function経由でauthenticatedロールの
+// トークンを取得する方式）とはあえて別方式にしている。トークンには「管理者が使った」ことを示す
+// 印が付かず、詰員自身のログインと区別が付かないため、そちらの方式のままだと管理者権限を
+// authenticatedロールに広げた場合、詰員本人にも同じ権限が渡ってしまう。そのため管理者は
+// これまで通りanonロール（このシステム専用の全権アクセス）のまま、ログイン画面だけを
+// 「詰員番号+0」で確認する形にしている。
 let loginChecking = false;
 async function checkLoginPassword() {
   if (loginChecking) return;
@@ -3746,7 +3515,8 @@ async function checkLoginPassword() {
   const msgEl = document.getElementById('login-msg');
 
   if (!/^\d{4,6}$/.test(val)) {
-    msgEl.textContent = 'パスワードが違います';
+    msgEl.style.color = 'var(--danger)';
+    msgEl.textContent = 'ログインナンバーが違います';
     input.value = '';
     input.focus();
     return;
@@ -3765,7 +3535,7 @@ async function checkLoginPassword() {
       unlockApp();
     } else {
       msgEl.style.color = 'var(--danger)';
-      msgEl.textContent = 'パスワードが違います';
+      msgEl.textContent = 'ログインナンバーが違います';
       input.value = '';
       input.focus();
     }
@@ -3775,6 +3545,13 @@ async function checkLoginPassword() {
   } finally {
     loginChecking = false;
   }
+}
+
+function doLogout() {
+  if (!confirm('ログアウトしますか？')) return;
+  // ページを再読み込みすることで、認証トークンを含む状態を確実に破棄し、
+  // 必ずログインナンバー入力画面からやり直す仕様に合わせる。
+  location.reload();
 }
 
 function unlockApp() {
@@ -3797,7 +3574,7 @@ function startApp() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  // ページを開くたびに必ずパスワード入力を求める（認証状態は保持しない）
+  // ページを開くたびに必ずログインナンバー入力を求める（認証状態は保持しない）
   document.getElementById('login-password').focus();
 });
 </script>
