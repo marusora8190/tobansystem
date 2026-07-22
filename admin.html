@@ -982,11 +982,15 @@ async function initApp() {
 // Data Loaders
 // =============================================
 async function loadMembers() {
-  const { data, error } = await sbClient.from('members').select('*').eq('is_active', true);
+  // members テーブルは列レベルの制限があるため、部署・電話番号等を含む全列を
+  // 取得する際は is_admin 検証つきのRPC（admin_list_members）を経由する。
+  const { data: allData, error } = await sbClient.rpc('admin_list_members');
+  if (error) throw error;
+  const data = (allData || []).filter(m => m.is_active);
   // 現在アクティブなメンバーの最新情報を全メンバーキャッシュにも反映しておく
   // （退職者など非アクティブなメンバーの情報は上書きされず、そのまま残る）
-  if (data) data.forEach(m => { allMembersById[m.id] = m; });
-  if (error) throw error;
+  (allData || []).forEach(m => { allMembersById[m.id] = m; });
+  allMembersLoaded = true;
   members = data || [];
   members.sort((a, b) => (parseInt(a.staff_id) || 9999) - (parseInt(b.staff_id) || 9999));
   renderMembersTable();
@@ -1202,7 +1206,8 @@ async function updateMemberField(id, field, value) {
   const payload = {};
   payload[field] = val;
   try {
-    const { error } = await sbClient.from('members').update(payload).eq('id', id);
+    // members テーブルの列制限を回避するため、is_admin検証つきのRPCを経由する
+    const { error } = await sbClient.rpc('admin_update_member', { p_id: id, p_patch: payload });
     if (error) throw error;
     const m = members.find(x => x.id == id);
     if (m) m[field] = val;
@@ -1227,7 +1232,7 @@ async function addMember() {
     phone: document.getElementById('m-phone').value.trim() || null
   };
   
-  const { error } = await sbClient.from('members').insert(payload);
+  const { error } = await sbClient.rpc('admin_insert_member', { p_row: payload });
   if (error) { showMsg('member-msg', error.message, 'error'); return; }
   showMsg('member-msg', `${name} を追加しました`, 'success');
   document.getElementById('m-staffid').value = '';
@@ -1241,7 +1246,7 @@ async function addMember() {
 
 async function deactivateMember(id) {
   if (!confirm('このメンバーを削除しますか？')) return;
-  await sbClient.from('members').update({ is_active: false }).eq('id', id);
+  await sbClient.rpc('admin_update_member', { p_id: id, p_patch: { is_active: false } });
   await loadMembers();
   populateMemberSelects();
 }
@@ -3119,7 +3124,7 @@ function isLeapYear(y) { return (y%4===0&&y%100!==0)||y%400===0; }
 async function ensureAllMembersCache() {
   if (allMembersLoaded) return;
   try {
-    const { data, error } = await sbClient.from('members').select('*');
+    const { data, error } = await sbClient.rpc('admin_list_members');
     if (error) throw error;
     (data || []).forEach(m => { allMembersById[m.id] = m; });
     allMembersLoaded = true;
@@ -3500,12 +3505,14 @@ async function seedBasicHolidays() {
 // （メンバー一覧をその都度データベースから取得して照合しているため、このファイルの修正は不要）。
 // ※ このログインナンバーの仕組みは、詰員には周知せず管理者のみが知っておくこと。
 //
-// この判定は、詰員用アプリのログイン（login-member Edge Function経由でauthenticatedロールの
-// トークンを取得する方式）とはあえて別方式にしている。トークンには「管理者が使った」ことを示す
-// 印が付かず、詰員自身のログインと区別が付かないため、そちらの方式のままだと管理者権限を
-// authenticatedロールに広げた場合、詰員本人にも同じ権限が渡ってしまう。そのため管理者は
-// これまで通りanonロール（このシステム専用の全権アクセス）のまま、ログイン画面だけを
-// 「詰員番号+0」で確認する形にしている。
+// 判定は login-admin という専用のEdge Function（サーバー側）で行う。この関数は
+// 本人確認ができた場合にのみ is_admin: true という印を持つ専用のトークンを発行し、
+// 以後の全操作はこのトークンを使って authenticated ロールで実行する。
+// 詰員用アプリのログイン（login-member）が発行するトークンには is_admin の印が
+// 付かないため、詰員が自分の番号でログインしても管理者権限を得ることはできない。
+// これにより、admin.htmlのソースコード（anonキーを含む）を第三者が閲覧しただけでは
+// データベースを読み書きできない仕組みになっている（以前はanonロールの全権アクセスを
+// 使っており、ログイン画面はUI上の入り口チェックに過ぎなかった）。
 let loginChecking = false;
 async function checkLoginPassword() {
   if (loginChecking) return;
@@ -3513,7 +3520,7 @@ async function checkLoginPassword() {
   const val = input.value.trim();
   const msgEl = document.getElementById('login-msg');
 
-  if (!/^\d{4,6}$/.test(val)) {
+  if (!/^0\d{4,6}$/.test(val)) {
     msgEl.style.color = 'var(--danger)';
     msgEl.textContent = 'ログインナンバーが違います';
     input.value = '';
@@ -3525,19 +3532,29 @@ async function checkLoginPassword() {
   msgEl.style.color = 'var(--text-muted)';
   msgEl.textContent = '確認中...';
   try {
-    const client = ensureSbClient();
-    const { data, error } = await client.from('members').select('member_no').eq('is_active', true);
-    if (error) throw error;
-    const isValid = (data || []).some(m => m.member_no != null && val === ('0' + String(m.member_no)));
-    if (isValid) {
-      msgEl.textContent = '';
-      unlockApp();
-    } else {
+    const cfg = getSupabaseConfig();
+    const res = await fetch(`${cfg.url}/functions/v1/login-admin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': cfg.key },
+      body: JSON.stringify({ admin_code: val })
+    });
+    const result = await res.json().catch(() => null);
+    if (!res.ok || !result?.token) {
       msgEl.style.color = 'var(--danger)';
       msgEl.textContent = 'ログインナンバーが違います';
       input.value = '';
       input.focus();
+      return;
     }
+
+    // login-admin が発行した本物のトークンを使い、以後のリクエストが
+    // is_admin: true 付きの authenticated ロールとして扱われるようクライアントを作り直す
+    sbClient = window.supabase.createClient(cfg.url, cfg.key, {
+      global: { headers: { Authorization: `Bearer ${result.token}` } }
+    });
+
+    msgEl.textContent = '';
+    unlockApp();
   } catch (e) {
     msgEl.style.color = 'var(--danger)';
     msgEl.textContent = '接続エラーが発生しました。通信環境をご確認のうえ、もう一度お試しください。';
