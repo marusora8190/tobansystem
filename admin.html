@@ -788,9 +788,9 @@
     </div>
     <div id="page-nye-duty-record" class="page">
       <div class="section-title">年末年始当番記録</div>
-      <div class="alert alert-info">2023年度から来年度（未来）分までを、日付ごとにまとめて確認できる記録ページです。日付ごとの割り当ての変更は「年末年始当番予定」ページから行ってください。下の「メンバーごとの通算回数」欄では、導入前の記録の追加・削除ができます。</div>
+      <div class="alert alert-info">2013年度から来年度（未来）分までを、日付ごとにまとめて確認できる記録ページです。日付ごとの割り当ての変更は「年末年始当番予定」ページから行ってください。下の「メンバーごとの通算回数」欄では、導入前の記録の追加・削除ができます。</div>
       <div class="card">
-        <div class="card-title">年度別 当番一覧（2023年度＋来年度）</div>
+        <div class="card-title">年度別 当番一覧（2013年度＋来年度）</div>
         <p style="font-size:12px;color:var(--text-muted);margin-bottom:6px">日曜・祝日にあたるセルは赤字で表示しています。すでに詰員名簿から外れた方（辞退・引退済みの方）の当番など、システムに記録がない日は、セルに直接お名前を手入力できます（名簿にない名前でも構いません）。</p>
         <div class="table-wrap">
           <table>
@@ -1556,10 +1556,10 @@ async function onNyeAssignCheckboxChange(el) {
   await renderNyeDutyPage();
 }
 
-// 「年末年始当番記録」ページ：2023年度〜来年度の12/28〜1/4の日付ごとに、当番者名を表示する。
-const NYE_RECORD_START_YEAR = 2023;
+// 「年末年始当番記録」ページ：2013年度〜来年度の12/28〜1/4の日付ごとに、当番者名を表示する。
+const NYE_RECORD_START_YEAR = 2013;
 
-// 記録ページで表示する年度一覧（2023年度〜来年度＝直近シーズンまで。年が経つごとに列が増えていく）
+// 記録ページで表示する年度一覧（2013年度〜来年度＝直近シーズンまで。年が経つごとに列が増えていく）
 function getNyeRecordSeasonYears() {
   const base = getDefaultNyeSeasonYear();
   const years = [];
