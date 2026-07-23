@@ -788,10 +788,10 @@
     </div>
     <div id="page-nye-duty-record" class="page">
       <div class="section-title">年末年始当番記録</div>
-      <div class="alert alert-info">過去3年度分と、来年度（未来）分をあわせた4年度を、日付ごとにまとめて確認できる記録ページです。日付ごとの割り当ての変更は「年末年始当番予定」ページから行ってください。下の「メンバーごとの通算回数」欄では、導入前の記録の追加・削除ができます。</div>
+      <div class="alert alert-info">2023年度から来年度（未来）分までを、日付ごとにまとめて確認できる記録ページです。日付ごとの割り当ての変更は「年末年始当番予定」ページから行ってください。下の「メンバーごとの通算回数」欄では、導入前の記録の追加・削除ができます。</div>
       <div class="card">
-        <div class="card-title">年度別 当番一覧（過去3年度＋来年度）</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:6px">日曜・祝日にあたるセルは赤字で表示しています。</p>
+        <div class="card-title">年度別 当番一覧（2023年度＋来年度）</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:6px">日曜・祝日にあたるセルは赤字で表示しています。すでに詰員名簿から外れた方（辞退・引退済みの方）の当番など、システムに記録がない日は、セルに直接お名前を手入力できます（名簿にない名前でも構いません）。</p>
         <div class="table-wrap">
           <table>
             <thead><tr id="nye-record-head"></tr></thead>
@@ -1556,11 +1556,44 @@ async function onNyeAssignCheckboxChange(el) {
   await renderNyeDutyPage();
 }
 
-// 「年末年始当番記録」ページ：選択年度の12/28〜1/4の日付ごとに、当番者名を確認専用で表示する。
-// 記録ページで表示する4年度分（過去3年度＋来年度＝直近シーズンを基準に3年前〜1年分）
+// 「年末年始当番記録」ページ：2023年度〜来年度の12/28〜1/4の日付ごとに、当番者名を表示する。
+const NYE_RECORD_START_YEAR = 2023;
+
+// 記録ページで表示する年度一覧（2023年度〜来年度＝直近シーズンまで。年が経つごとに列が増えていく）
 function getNyeRecordSeasonYears() {
   const base = getDefaultNyeSeasonYear();
-  return [base - 3, base - 2, base - 1, base];
+  const years = [];
+  for (let y = NYE_RECORD_START_YEAR; y <= base; y++) years.push(y);
+  return years;
+}
+
+function escapeAttr(str) {
+  return String(str ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// システムに記録がない日（annual_rosterにmember_idが入っていない日）の当番者を、
+// 名簿にない・すでに辞退した方も含めて自由記入できるようにする（annual_roster.manual_assigneeに保存）。
+async function onNyeManualAssigneeChange(el) {
+  const dateStr = el.dataset.date;
+  const value = el.value.trim();
+  el.disabled = true;
+  try {
+    const existing = schedules[dateStr] || {};
+    const d = new Date(dateStr + 'T00:00:00');
+    const isHol = existing.hasOwnProperty('is_holiday') ? existing.is_holiday : (d.getDay() === 0 || !!holidays[dateStr]);
+    const { error } = await sbClient.from('annual_roster').upsert({
+      duty_date: dateStr,
+      member_id: existing.member_id ?? null,
+      manual_assignee: value || null,
+      notes: existing.notes ?? null,
+      is_holiday: isHol,
+      locked: existing.locked || false,
+    }, { onConflict: 'duty_date' });
+    if (error) throw error;
+  } catch (e) {
+    alert('手入力の保存に失敗しました: ' + e.message);
+  }
+  await renderNyeDutyRecordPage();
 }
 
 async function renderNyeDutyRecordPage() {
@@ -1595,8 +1628,13 @@ async function renderNyeDutyRecordPage() {
       const isHol = dow === 0 || !!holidays[dateStr];
       const style = isHol ? 'color:var(--danger);font-weight:600' : '';
       const rec = schedules[dateStr];
-      const name = rec && rec.member_id != null ? (allMembersById[rec.member_id]?.name || `ID:${rec.member_id}`) : '未定';
-      return `<td style="text-align:center;${style}">${name}</td>`;
+      if (rec && rec.member_id != null) {
+        const name = allMembersById[rec.member_id]?.name || `ID:${rec.member_id}`;
+        return `<td style="text-align:center;${style}">${name}</td>`;
+      }
+      // システムに member_id の記録がない日は、手入力欄（自由記入）を表示する
+      const manualVal = rec?.manual_assignee || '';
+      return `<td style="text-align:center;${style}"><input type="text" value="${escapeAttr(manualVal)}" data-date="${dateStr}" placeholder="未定（手入力可）" style="width:92px;font-size:12px;padding:2px 4px;text-align:center" onchange="onNyeManualAssigneeChange(this)"></td>`;
     }).join('');
     return `<tr><td style="white-space:nowrap">${mo}/${da}</td>${cells}</tr>`;
   }).join('');
