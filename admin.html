@@ -791,7 +791,7 @@
       <div class="alert alert-info">2013年度から来年度（未来）分までを、日付ごとにまとめて確認できる記録ページです。日付ごとの割り当ての変更は「年末年始当番予定」ページから行ってください。下の「メンバーごとの通算回数」欄では、導入前の記録の追加・削除ができます。</div>
       <div class="card">
         <div class="card-title">年度別 当番一覧（2013年度＋来年度）</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:6px">日曜・祝日にあたるセルは赤字で表示しています。すでに詰員名簿から外れた方（辞退・引退済みの方）の当番など、システムに記録がない日は、セルに直接お名前を手入力できます（名簿にない名前でも構いません）。</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:6px">日曜・祝日にあたるセルは赤字で表示しています。下の「メンバーごとの通算回数」欄で日付が分かる形で登録した導入前の記録は、該当する日付のセルに自動で反映されます。それ以外の、システムにも記録がない日は、セルに直接お名前を手入力できます（名簿にない名前でも構いません）。</p>
         <div class="table-wrap">
           <table>
             <thead><tr id="nye-record-head"></tr></thead>
@@ -1421,6 +1421,23 @@ async function loadNyePastRecords() {
   });
 }
 
+// 「メンバーごとの通算回数」欄に登録された導入前の記録（年＋日付が分かっているもの）を、
+// 「年度別 当番一覧」の該当する日付セルに反映できるよう、日付文字列 -> メンバーIDの一覧に変換する。
+// 月日が「日付不明」（month_dayがnull）の記録は、どのセルにも対応付けられないため反映できない。
+function getNyePastRecordsByDate() {
+  const map = {};
+  Object.keys(nyePastRecordsByMember).forEach(memberIdStr => {
+    const memberId = Number(memberIdStr);
+    (nyePastRecordsByMember[memberIdStr] || []).forEach(r => {
+      if (!r.month_day) return;
+      const y = r.month_day.startsWith('12') ? r.season_year : r.season_year + 1;
+      const dateStr = `${y}-${r.month_day}`;
+      (map[dateStr] = map[dateStr] || []).push(memberId);
+    });
+  });
+  return map;
+}
+
 function nyeMonthDayLabel(md) {
   if (!md) return '日付不明';
   const [mo, da] = md.split('-').map(Number);
@@ -1619,6 +1636,7 @@ async function renderNyeDutyRecordPage() {
 
   // 月日部分（12/28〜1/4）は全年度共通。曜日・祝日は年度ごとに異なるため、セル単位で赤字表示する。
   const monthDays = ['12-28', '12-29', '12-30', '12-31', '01-01', '01-02', '01-03', '01-04'];
+  const pastRecordsByDate = getNyePastRecordsByDate();
   body.innerHTML = monthDays.map(md => {
     const [mo, da] = md.split('-').map(Number);
     const cells = seasonYears.map(sy => {
@@ -1630,9 +1648,16 @@ async function renderNyeDutyRecordPage() {
       const rec = schedules[dateStr];
       if (rec && rec.member_id != null) {
         const name = allMembersById[rec.member_id]?.name || `ID:${rec.member_id}`;
-        return `<td style="text-align:center;${style}">${name}</td>`;
+        return `<td style="text-align:center;white-space:nowrap;${style}">${name}</td>`;
       }
-      // システムに member_id の記録がない日は、手入力欄（自由記入）を表示する
+      // システム記録（annual_roster）がない日でも、「メンバーごとの通算回数」欄で入力された
+      // 導入前の記録（年＋日付）がこの日に一致する場合は、その方の氏名を表示する
+      const pastMatch = pastRecordsByDate[dateStr];
+      if (pastMatch && pastMatch.length) {
+        const pastNames = pastMatch.map(mid => allMembersById[mid]?.name || `ID:${mid}`).join('・');
+        return `<td style="text-align:center;white-space:nowrap;${style}">${pastNames}</td>`;
+      }
+      // システムにも導入前の記録にも一致するデータがない日は、手入力欄（自由記入）を表示する
       const manualVal = rec?.manual_assignee || '';
       return `<td style="text-align:center;${style}"><input type="text" value="${escapeAttr(manualVal)}" data-date="${dateStr}" placeholder="未定（手入力可）" style="width:92px;font-size:12px;padding:2px 4px;text-align:center" onchange="onNyeManualAssigneeChange(this)"></td>`;
     }).join('');
