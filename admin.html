@@ -3485,7 +3485,7 @@ async function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.sidebar-item').forEach(s => { if (s.getAttribute('onclick')?.includes(name)) s.classList.add('active'); });
+  document.querySelectorAll('.sidebar-item').forEach(s => { if (s.getAttribute('onclick') === `showPage('${name}')`) s.classList.add('active'); });
   if (name === 'unavailable') { await loadUnavailSummary(); await renderUnavailCalendar(); }
   if (name === 'unavail-list') { await loadUnavailable(); }
   if (name === 'mc2') await loadAndRenderMultiCount2();
