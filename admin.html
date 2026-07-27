@@ -478,6 +478,7 @@
         </select>
         <div class="card-title" style="margin-bottom:0;white-space:nowrap;font-size:11px;">表示年数</div>
         <select id="mc2-year-span" onchange="loadAndRenderMultiCount2()" style="width:80px;padding:2px 6px;font-size:12px;">
+          <option value="1">1年分</option>
           <option value="2">2年分</option>
           <option value="3" selected>3年分</option>
         </select>
@@ -514,6 +515,7 @@
         </select>
         <div class="card-title" style="margin-bottom:0;white-space:nowrap;font-size:12px">表示年数</div>
         <select id="mh2-year-span" onchange="loadAndRenderMultiHol2()" style="width:80px;padding:3px 6px;font-size:12px">
+          <option value="1">1年分</option>
           <option value="2">2年分</option>
           <option value="3" selected>3年分</option>
         </select>
@@ -554,6 +556,7 @@
         </select>
         <div class="card-title" style="margin-bottom:0;white-space:nowrap;">表示年数</div>
         <select id="annual2-year-span" onchange="loadAndRenderAnnualTable2()" style="width:90px">
+          <option value="1">1年分</option>
           <option value="2">2年分</option>
           <option value="3" selected>3年分</option>
         </select>
@@ -2503,7 +2506,8 @@ async function saveMultiYearPlansForYears(years, msgElId) {
   }
 
   if (errMsg) { showMsg(msgElId, '保存エラー: ' + errMsg, 'error'); return; }
-  showMsg(msgElId, `${rows.length}件（${years[0]}年〜${years[years.length - 1]}年）の年間予定をまとめて保存しました ✓`, 'success');
+  const yearRangeLabel = years.length > 1 ? `${years[0]}年〜${years[years.length - 1]}年` : `${years[0]}年`;
+  showMsg(msgElId, `${rows.length}件（${yearRangeLabel}）の年間予定をまとめて保存しました ✓`, 'success');
 
   renderAnnualTable2();
   await ensureMultiYearsLoaded(years, true);
