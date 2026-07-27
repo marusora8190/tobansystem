@@ -2260,6 +2260,10 @@ function fitYearBlockHeight(bodyId) {
   if (!thead || rows.length < 13) { wrap.style.maxHeight = ''; body.style.height = ''; return; }
   const headHeight = thead.getBoundingClientRect().height;
 
+  // 前回このページを表示した際に行ごとの高さを個別指定している場合があるため、
+  // 一旦クリアしてから「本来の（詰まった状態の）高さ」を測り直す
+  rows.forEach(r => { r.style.height = ''; });
+
   // 選択中の年数すべての実際の高さを測る
   let allRowsHeight = 0;
   rows.forEach(r => { allRowsHeight += r.getBoundingClientRect().height; });
@@ -2276,12 +2280,25 @@ function fitYearBlockHeight(bodyId) {
   const availableMax = parseFloat(getComputedStyle(wrap).maxHeight) || naturalMax;
   const totalYears = Math.floor(rows.length / 13);
 
-  // 1年分だけの表示なら、表示エリアいっぱいに広げ、各行の高さも引き伸ばして見やすくする
+  // 1年分だけの表示なら、表示エリアいっぱいに広げ、各行の高さも引き伸ばして見やすくする。
+  // ただし「年間合計」行（最終行）は、内容が短く引き伸ばす意味がないため最小の高さのままにし、
+  // 余った分は全て月の行（1〜12月）に配分する。
   if (totalYears === 1) {
     if (availableMax > totalForAllYears) {
       wrap.style.maxHeight = availableMax + 'px';
       const targetBodyHeight = availableMax - headHeight - 3;
-      if (targetBodyHeight > allRowsHeight) body.style.height = targetBodyHeight + 'px';
+      if (targetBodyHeight > allRowsHeight) {
+        const monthRows = Array.prototype.slice.call(rows, 0, rows.length - 1);
+        const totalRow = rows[rows.length - 1];
+        const totalRowHeight = totalRow.getBoundingClientRect().height;
+        const extra = targetBodyHeight - allRowsHeight;
+        const extraPerMonth = monthRows.length > 0 ? extra / monthRows.length : 0;
+        monthRows.forEach(r => {
+          r.style.height = (r.getBoundingClientRect().height + extraPerMonth) + 'px';
+        });
+        totalRow.style.height = totalRowHeight + 'px';
+        body.style.height = targetBodyHeight + 'px';
+      }
     } else {
       wrap.style.maxHeight = '';
       body.style.height = '';
