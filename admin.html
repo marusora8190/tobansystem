@@ -488,7 +488,7 @@
           <option value="3" selected>3年分</option>
         </select>
         <button class="btn btn-sm" onclick="loadAndRenderMultiCount2()">再読み込み</button>
-        <button class="btn btn-primary btn-sm" onclick="saveMultiCountPlans2()">この表示期間をまとめて保存</button>
+        <button id="mc2-save-btn" class="btn btn-primary btn-sm" onclick="saveMultiCountPlans2()">この表示期間をまとめて保存</button>
         <span style="font-size:10px;color:var(--text-muted);">この表示期間の変更は、他のページ（日祝当番月・各メンバーの年間設定）にもその場で反映されます</span>
       </div>
       <div id="multi-count2-msg" style="margin-bottom:2px"></div>
@@ -525,7 +525,7 @@
           <option value="3" selected>3年分</option>
         </select>
         <button class="btn btn-sm" onclick="loadAndRenderMultiHol2()">再読み込み</button>
-        <button class="btn btn-primary btn-sm" onclick="saveMultiHolPlans2()">この表示期間をまとめて保存</button>
+        <button id="mh2-save-btn" class="btn btn-primary btn-sm" onclick="saveMultiHolPlans2()">この表示期間をまとめて保存</button>
       </div>
       <div id="mh2-msg" style="margin-bottom:2px"></div>
       <div class="annual-wrap annual-wrap-tight">
@@ -575,7 +575,7 @@
         <div class="btn-row" style="align-items:center">
           <div class="card-title" style="margin-bottom:0;white-space:nowrap;">保存・自動配分の対象年度</div>
           <select id="annual2-target-year" style="width:110px"></select>
-          <button class="btn btn-primary" onclick="saveAnnualPlanForYear2()">年間予定を保存</button>
+          <button id="annual2-save-btn" class="btn btn-primary" onclick="saveAnnualPlanForYear2()">年間予定を保存</button>
           <button class="btn" onclick="autoDistributeForYear2()">自動均等配分 ↗</button>
         </div>
         <div id="annual2-msg" style="margin-top:8px"></div>
@@ -2260,8 +2260,13 @@ function fitYearBlockHeight(bodyId) {
   if (!thead || rows.length < 13) { wrap.style.maxHeight = ''; body.style.height = ''; return; }
   const headHeight = thead.getBoundingClientRect().height;
 
-  // 前回このページを表示した際に行ごとの高さを個別指定している場合があるため、
-  // 一旦クリアしてから「本来の（詰まった状態の）高さ」を測り直す
+  // 前回このページを表示した際に行ごと・tbody自体の高さを個別指定している場合があるため、
+  // 一旦クリアしてから「本来の（詰まった状態の）高さ」を測り直す。
+  // ※tbody(body)側の高さを消し忘れると、再描画で行要素自体は新しく作り直されていても、
+  // 親のtbodyに古い（引き伸ばされた）高さが残ったままになり、その余白がまた新しい行に
+  // 自動配分されてしまい、「詰まった状態の高さ」を正しく測れなくなる
+  // （1年分表示のまま保存すると高さがリセットされたように見えるバグの原因だった）。
+  body.style.height = '';
   rows.forEach(r => { r.style.height = ''; });
 
   // 選択中の年数すべての実際の高さを測る
@@ -2543,49 +2548,74 @@ async function saveMultiHolPlans2() {
 
 // 選択中の年度と一致していれば「各メンバーの年間設定」テーブルにその場で反映する
 // 指定した年度の一覧を、annual_plans テーブルへまとめて保存する共通処理
+// 月ごと当番回数・日祝当番月（複数年）・各メンバー年間設定の3つの保存ボタンは、すべて
+// このsaveMultiYearPlansForYears()を経由してannual_plansに書き込む。annual_plansには
+// (member_id, year)の一意制約が無いため、保存中に連打などで同時に2回実行されてしまうと
+// 削除と登録のタイミングが重なり、同じメンバー・同じ年度のデータが重複登録される恐れがある。
+// これを防ぐため、保存中は isSavingMultiYearPlans フラグを立てて多重実行を防止し、
+// 3つの保存ボタンすべてを一時的に押せないようにする。
+let isSavingMultiYearPlans = false;
+function setMultiYearSaveButtonsDisabled(disabled) {
+  ['mc2-save-btn', 'mh2-save-btn', 'annual2-save-btn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.disabled = disabled;
+  });
+}
+
 async function saveMultiYearPlansForYears(years, msgElId) {
+  if (isSavingMultiYearPlans) {
+    showMsg(msgElId, '保存処理中です。しばらくお待ちください。', 'info');
+    return;
+  }
+  isSavingMultiYearPlans = true;
+  setMultiYearSaveButtonsDisabled(true);
   showMsg(msgElId, '保存中...', 'info');
 
-  const rows = [];
-  years.forEach(y => {
-    members.forEach(m => {
-      const cell = getMultiCell(y, m.id);
-      rows.push({
-        member_id: m.id,
-        year: y,
-        target_count: monthlyValsFromCell(cell),
-        monthly_twice_months: cell.twice,
-        monthly_zero_months: cell.zero,
-        holiday_months: cell.hol
+  try {
+    const rows = [];
+    years.forEach(y => {
+      members.forEach(m => {
+        const cell = getMultiCell(y, m.id);
+        rows.push({
+          member_id: m.id,
+          year: y,
+          target_count: monthlyValsFromCell(cell),
+          monthly_twice_months: cell.twice,
+          monthly_zero_months: cell.zero,
+          holiday_months: cell.hol
+        });
       });
     });
-  });
 
-  // ※以前はここで localStorage の anonキーを使った生fetchで保存しており、ログイン済みの
-  // 管理者権限（is_admin付きトークン）を一切使っていなかったため、annual_plansのRLSポリシーに
-  // 弾かれて必ず保存エラーになるバグがあった。他のテーブルと同様、ログイン時に発行された
-  // 管理者トークンを持つ sbClient を使うよう修正。
-  // ※さらに以前は「メンバー×年」1件ごとにDELETE→INSERTを直列に待って実行していたため、
-  // 例えばメンバー10人×3年分＝30件で60回の通信を1つずつ待つことになり、保存に数秒〜
-  // かなりの時間がかかっていた。ここで保存する対象は常に「表示中の全メンバー×全選択年度」
-  // なので、1件ずつ消して入れ直す代わりに、対象年度分をまとめて一括削除→一括登録の
-  // 2回の通信だけで済むようにして大幅に高速化した。
-  let errMsg = null;
+    // ※以前はここで localStorage の anonキーを使った生fetchで保存しており、ログイン済みの
+    // 管理者権限（is_admin付きトークン）を一切使っていなかったため、annual_plansのRLSポリシーに
+    // 弾かれて必ず保存エラーになるバグがあった。他のテーブルと同様、ログイン時に発行された
+    // 管理者トークンを持つ sbClient を使うよう修正。
+    // ※さらに以前は「メンバー×年」1件ごとにDELETE→INSERTを直列に待って実行していたため、
+    // 例えばメンバー10人×3年分＝30件で60回の通信を1つずつ待つことになり、保存に数秒〜
+    // かなりの時間がかかっていた。ここで保存する対象は常に「表示中の全メンバー×全選択年度」
+    // なので、1件ずつ消して入れ直す代わりに、対象年度分をまとめて一括削除→一括登録の
+    // 2回の通信だけで済むようにして大幅に高速化した。
+    let errMsg = null;
 
-  const { error: delError } = await sbClient.from('annual_plans').delete().in('year', years);
-  if (delError) {
-    errMsg = delError.message;
-  } else if (rows.length) {
-    const { error: insError } = await sbClient.from('annual_plans').insert(rows);
-    if (insError) errMsg = insError.message;
+    const { error: delError } = await sbClient.from('annual_plans').delete().in('year', years);
+    if (delError) {
+      errMsg = delError.message;
+    } else if (rows.length) {
+      const { error: insError } = await sbClient.from('annual_plans').insert(rows);
+      if (insError) errMsg = insError.message;
+    }
+
+    if (errMsg) { showMsg(msgElId, '保存エラー: ' + errMsg, 'error'); return; }
+    const yearRangeLabel = years.length > 1 ? `${years[0]}年〜${years[years.length - 1]}年` : `${years[0]}年`;
+    showMsg(msgElId, `${rows.length}件（${yearRangeLabel}）の年間予定をまとめて保存しました ✓`, 'success');
+
+    renderAnnualTable2();
+    await ensureMultiYearsLoaded(years, true);
+  } finally {
+    isSavingMultiYearPlans = false;
+    setMultiYearSaveButtonsDisabled(false);
   }
-
-  if (errMsg) { showMsg(msgElId, '保存エラー: ' + errMsg, 'error'); return; }
-  const yearRangeLabel = years.length > 1 ? `${years[0]}年〜${years[years.length - 1]}年` : `${years[0]}年`;
-  showMsg(msgElId, `${rows.length}件（${yearRangeLabel}）の年間予定をまとめて保存しました ✓`, 'success');
-
-  renderAnnualTable2();
-  await ensureMultiYearsLoaded(years, true);
 }
 
 // =============================================
