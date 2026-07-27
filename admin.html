@@ -2565,16 +2565,19 @@ async function saveMultiYearPlansForYears(years, msgElId) {
   // 管理者権限（is_admin付きトークン）を一切使っていなかったため、annual_plansのRLSポリシーに
   // 弾かれて必ず保存エラーになるバグがあった。他のテーブルと同様、ログイン時に発行された
   // 管理者トークンを持つ sbClient を使うよう修正。
+  // ※さらに以前は「メンバー×年」1件ごとにDELETE→INSERTを直列に待って実行していたため、
+  // 例えばメンバー10人×3年分＝30件で60回の通信を1つずつ待つことになり、保存に数秒〜
+  // かなりの時間がかかっていた。ここで保存する対象は常に「表示中の全メンバー×全選択年度」
+  // なので、1件ずつ消して入れ直す代わりに、対象年度分をまとめて一括削除→一括登録の
+  // 2回の通信だけで済むようにして大幅に高速化した。
   let errMsg = null;
 
-  for (const row of rows) {
-    await sbClient.from('annual_plans').delete().eq('member_id', row.member_id).eq('year', row.year);
-
-    const { error } = await sbClient.from('annual_plans').insert(row);
-    if (error) {
-      errMsg = error.message;
-      break;
-    }
+  const { error: delError } = await sbClient.from('annual_plans').delete().in('year', years);
+  if (delError) {
+    errMsg = delError.message;
+  } else if (rows.length) {
+    const { error: insError } = await sbClient.from('annual_plans').insert(rows);
+    if (insError) errMsg = insError.message;
   }
 
   if (errMsg) { showMsg(msgElId, '保存エラー: ' + errMsg, 'error'); return; }
