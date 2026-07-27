@@ -197,6 +197,11 @@
   .annual-wrap.annual-wrap-compact {
     max-height: calc(100vh - 165px);
   }
+  /* 月ごと当番回数・日祝当番月（複数年）用: ヘッダー行に保存ボタンをまとめて、
+     表の下に別途ボタン行を置かない分、表の表示エリアをより広く取れるレイアウト */
+  .annual-wrap.annual-wrap-tight {
+    max-height: calc(100vh - 128px);
+  }
   .annual-table {
     border-collapse: separate;
     border-spacing: 0;
@@ -487,7 +492,7 @@
         <span style="font-size:10px;color:var(--text-muted);">この表示期間の変更は、他のページ（日祝当番月・各メンバーの年間設定）にもその場で反映されます</span>
       </div>
       <div id="multi-count2-msg" style="margin-bottom:2px"></div>
-      <div class="annual-wrap annual-wrap-compact" style="max-height:calc(100vh - 128px)">
+      <div class="annual-wrap annual-wrap-tight">
         <table class="mc2-table">
           <thead id="multi-count2-head"></thead>
           <tbody id="multi-count2-body"><tr><td style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
@@ -496,11 +501,11 @@
     </div>
 
     <div id="page-mh2" class="page">
-      <div class="section-title" style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+      <div class="section-title" style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px">
         <span>日祝当番月（複数年）（メンバー横並び表示）</span>
         <span style="font-size:11px;font-weight:400;color:var(--text-muted)">メンバーを横に、年度/月を縦に並べたレイアウトで日祝当番の月を編集できます。</span>
       </div>
-      <div class="card" style="padding:4px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <div class="card" style="padding:4px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <div class="card-title" style="margin-bottom:0;white-space:nowrap;font-size:12px">開始年度</div>
         <select id="mh2-start-year" onchange="loadAndRenderMultiHol2()" style="width:100px;padding:3px 6px;font-size:12px">
           <option value="2026" selected>2026年</option>
@@ -520,18 +525,14 @@
           <option value="3" selected>3年分</option>
         </select>
         <button class="btn btn-sm" onclick="loadAndRenderMultiHol2()">再読み込み</button>
+        <button class="btn btn-primary btn-sm" onclick="saveMultiHolPlans2()">この表示期間をまとめて保存</button>
       </div>
-      <div class="card" style="padding-bottom:14px;">
-        <div class="annual-wrap annual-wrap-compact">
-          <table class="mc2-table">
-            <thead id="mh2-head"></thead>
-            <tbody id="mh2-body"><tr><td style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
-          </table>
-        </div>
-        <div class="btn-row" style="margin-top:12px">
-          <button class="btn btn-primary" onclick="saveMultiHolPlans2()">この表示期間をまとめて保存</button>
-        </div>
-        <div id="mh2-msg" style="margin-top:8px"></div>
+      <div id="mh2-msg" style="margin-bottom:2px"></div>
+      <div class="annual-wrap annual-wrap-tight">
+        <table class="mc2-table">
+          <thead id="mh2-head"></thead>
+          <tbody id="mh2-body"><tr><td style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
+        </table>
       </div>
     </div>
 
@@ -980,6 +981,7 @@ function toggleSidebar() {
   setTimeout(() => {
     if (typeof updateMc2HeaderStickyOffset === 'function') updateMc2HeaderStickyOffset();
     if (typeof fitYearBlockHeight === 'function') {
+      fitYearBlockHeight('multi-count2-body');
       fitYearBlockHeight('mh2-body');
       fitYearBlockHeight('annual2-body');
     }
@@ -2198,6 +2200,7 @@ function renderMultiCount2Table(years) {
   body.innerHTML = rowsHtml;
 
   updateMc2HeaderStickyOffset();
+  fitYearBlockHeight('multi-count2-body');
   years.forEach(y => updateMc2RowValidationForYear(y));
 }
 
@@ -2232,9 +2235,18 @@ function updateMc2StickyColOffsets() {
   });
 }
 
-// 表示エリアの高さを「見出し行＋1年分（1月〜12月の12行＋年間合計行の1行＝計13行）」が
-// ちょうど収まる高さに自動調整する（日祝当番月・各メンバーの年間設定 用）
-// これにより、その年の1月〜12月と年間合計行が、続きをスクロールしなくても常に一緒に見える。
+// 表示エリアの高さを、選択中の年数分（各年＝1月〜12月の12行＋年間合計行の1行＝13行）が
+// 収まる高さに自動調整する（日祝当番月・各メンバーの年間設定 用）。
+// 画面の高さに収まる範囲では選択中の年数すべてをスクロールなしで一度に表示し、
+// 収まりきらない場合のみ、年度の途中で表示が切れないよう「年度のかたまり」単位で
+// 入るところまでに留める（残りは表内スクロールで見る）。
+// ※以前は常に先頭の13行（＝1年分）だけを基準にしていたため、2年分・3年分を選んでも
+// 表示エリアが1年分の高さのまま変わらず、「年数を増やしても切り替わらない」ように
+// 見えてしまうバグがあった。
+// また、1年分だけを表示している場合は、画面の余白を無駄にせず各行を大きく・見やすく
+// 表示したいという要望があったため、表示エリアいっぱいに高さを広げ、tbodyの高さを
+// 明示的に指定することで各行の高さも比例して大きくなるようにしている（CSSの表レイアウトが
+// 行の高さに余白がある分だけ自動的に均等配分してくれる）。
 function fitYearBlockHeight(bodyId) {
   const body = document.getElementById(bodyId);
   if (!body) return;
@@ -2243,19 +2255,62 @@ function fitYearBlockHeight(bodyId) {
   if (!wrap || !table) return;
   const thead = table.querySelector('thead');
   const rows = body.querySelectorAll('tr');
-  // 1年分 = 月の行12 + 年間合計行1 = 13行に満たない場合（未読み込み・メンバー未登録時など）は調整しない
-  if (!thead || rows.length < 13) return;
+  // 1年分 = 月の行12 + 年間合計行1 = 13行に満たない場合（未読み込み・メンバー未登録時など）は
+  // 高さ調整せず、CSSの既定値（max-height）に任せる
+  if (!thead || rows.length < 13) { wrap.style.maxHeight = ''; body.style.height = ''; return; }
   const headHeight = thead.getBoundingClientRect().height;
-  let bodyHeight = 0;
-  for (let i = 0; i < 13; i++) {
-    bodyHeight += rows[i].getBoundingClientRect().height;
+
+  // 選択中の年数すべての実際の高さを測る
+  let allRowsHeight = 0;
+  rows.forEach(r => { allRowsHeight += r.getBoundingClientRect().height; });
+  const totalForAllYears = Math.ceil(headHeight + allRowsHeight) + 3;
+
+  // 一旦インライン指定を外し、CSSの既定値（画面の高さに応じたmax-height）を測る
+  // ※wrapにはCSSでmax-heightしか指定していないため、中身がそれより低ければ
+  // getBoundingClientRect().heightは「中身の高さ」しか返さず、実際に使える
+  // 表示エリアの高さ（画面の余白）は分からない。そのためgetComputedStyleで
+  // CSSのmax-height自体（画面の高さに応じて計算された値）を読み取る。
+  wrap.style.maxHeight = '';
+  body.style.height = '';
+  const naturalMax = wrap.getBoundingClientRect().height;
+  const availableMax = parseFloat(getComputedStyle(wrap).maxHeight) || naturalMax;
+  const totalYears = Math.floor(rows.length / 13);
+
+  // 1年分だけの表示なら、表示エリアいっぱいに広げ、各行の高さも引き伸ばして見やすくする
+  if (totalYears === 1) {
+    if (availableMax > totalForAllYears) {
+      wrap.style.maxHeight = availableMax + 'px';
+      const targetBodyHeight = availableMax - headHeight - 3;
+      if (targetBodyHeight > allRowsHeight) body.style.height = targetBodyHeight + 'px';
+    } else {
+      wrap.style.maxHeight = '';
+      body.style.height = '';
+    }
+    return;
   }
-  // 罫線・端数のずれで最終行がわずかに欠けるのを防ぐための余白
-  const total = Math.ceil(headHeight + bodyHeight) + 3;
-  wrap.style.maxHeight = total + 'px';
+
+  // 選択中の年数すべてがCSSの既定の高さに収まるなら、その分だけの高さにして
+  // スクロールなしで全年度を一度に表示する
+  if (totalForAllYears <= availableMax) {
+    wrap.style.maxHeight = totalForAllYears + 'px';
+    return;
+  }
+
+  // 収まらない場合は、年度の途中で切れないよう「年度のかたまり」単位で入るところまでに留める
+  let bodyHeight = 0, wholeYearsShown = 0;
+  for (let y = 0; y < totalYears; y++) {
+    let chunkHeight = 0;
+    for (let i = y * 13; i < y * 13 + 13; i++) chunkHeight += rows[i].getBoundingClientRect().height;
+    if (wholeYearsShown > 0 && headHeight + bodyHeight + chunkHeight > availableMax) break;
+    bodyHeight += chunkHeight;
+    wholeYearsShown++;
+  }
+  if (wholeYearsShown === 0) return; // 極端に低い画面では既定値のまま
+  wrap.style.maxHeight = (Math.ceil(headHeight + bodyHeight) + 3) + 'px';
 }
 window.addEventListener('resize', () => {
   updateMc2HeaderStickyOffset();
+  fitYearBlockHeight('multi-count2-body');
   fitYearBlockHeight('mh2-body');
   fitYearBlockHeight('annual2-body');
 });
