@@ -414,7 +414,7 @@
     <div class="sidebar-item" onclick="showPage('generate')">当番表作成</div>
     <div class="sidebar-item" onclick="showPage('gen-rules')">作成ルール</div>
     <div class="sidebar-item" onclick="showPage('records')">割当確認</div>
-    <div class="sidebar-item" onclick="showPage('duty-count-records')">当番回数記録</div>
+    <div class="sidebar-item" onclick="showPage('duty-count-records')">月割当て確認用</div>
     <div class="sidebar-item" onclick="showPage('holidays')">日曜祝日等管理</div>
     <div class="sidebar-item" onclick="showPage('nye-duty')">年末年始当番予定</div>
     <div class="sidebar-item" onclick="showPage('nye-duty-record')">年末年始当番記録</div>
@@ -738,7 +738,7 @@
     </div>
 
     <div id="page-duty-count-records" class="page">
-      <div class="section-title">当番回数記録</div>
+      <div class="section-title">月割当て確認用</div>
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">対象月の「割当予定回数（月ごと当番回数で設定した値）」に対して、実際に何回当番に当たったかを表示します。カレンダー表示の「当番表(当初)決定」を押した時点の数字が確定記録として残ります（決定前は現在の当番表データをもとにした下書き表示です）。</div>
       <div class="card" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <button class="btn btn-sm" onclick="shiftMonth('dcr-month',-1);renderDutyCountRecordPage()">◀</button>
@@ -749,13 +749,14 @@
       <div id="dcr-status" style="margin:10px 0"></div>
       <div class="card">
         <div style="display:flex;gap:12px;margin-bottom:10px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:var(--accent-light);color:var(--accent-dark)">1/1</span> 予定通り</span>
-          <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:var(--danger-light);color:var(--danger)">1/2</span> 予定と不一致（不足・超過）</span>
+          <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:var(--accent-light);color:var(--accent-dark)">✓ 1/1</span> 予定通り</span>
+          <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:var(--danger-light);color:var(--danger)">⚠ 1/2</span> 予定と不一致（不足・超過）</span>
         </div>
-        <table>
-          <thead><tr><th style="text-align:left">氏名</th><th style="width:120px;text-align:center">実績/割当予定</th></tr></thead>
-          <tbody id="dcr-body"><tr><td colspan="2" style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
-        </table>
+        <div id="dcr-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px">読み込み中...</div>
+      </div>
+      <div class="card">
+        <div class="card-title">累計当番回数（これまでに「決定」済みの全期間の合計）</div>
+        <div id="dcr-cumulative-body" style="display:flex;flex-direction:column;gap:4px"></div>
       </div>
     </div>
 
@@ -1387,14 +1388,15 @@ async function renderDutyCountRecordPage() {
   const statusEl = document.getElementById('dcr-status');
   if (!body || !statusEl) return;
   const monthStr = document.getElementById('dcr-month').value;
-  if (!monthStr) { body.innerHTML = `<tr><td colspan="2" style="text-align:center;color:var(--text-hint)">対象月を選択してください</td></tr>`; statusEl.innerHTML = ''; return; }
+  if (!monthStr) { body.innerHTML = `<div style="color:var(--text-hint);grid-column:1/-1">対象月を選択してください</div>`; statusEl.innerHTML = ''; renderCumulativeDutyCounts(); return; }
   const [year, month] = monthStr.split('-').map(Number);
   const periodKey = monthPeriodKey(year, month - 1);
   const label = `${year}年${month}月`;
 
   if (!members.length) {
-    body.innerHTML = `<tr><td colspan="2" style="text-align:center;color:var(--text-hint)">先にメンバーを登録してください</td></tr>`;
+    body.innerHTML = `<div style="color:var(--text-hint);grid-column:1/-1">先にメンバーを登録してください</div>`;
     statusEl.innerHTML = '';
+    renderCumulativeDutyCounts();
     return;
   }
 
@@ -1410,14 +1412,43 @@ async function renderDutyCountRecordPage() {
     rowsData = members.map(m => ({ member: m, planned: plannedCountForMonth(year, m.id, month), actual: actual[m.id] || 0 }));
   }
 
+  // 支障日確認状況（unavail-summary）ページと同じ「名前＋バッジ」のカードを、
+  // 同じグリッドレイアウトで並べる形式に統一している
   body.innerHTML = rowsData.map(({ member: m, planned, actual }) => {
     const ok = actual === planned;
     const bg = ok ? 'var(--accent-light)' : 'var(--danger-light)';
+    const border = ok ? '#c8d8b4' : '#f0b8b8';
     const fg = ok ? 'var(--accent-dark)' : 'var(--danger)';
-    return `<tr>
-      <td>${m.name}</td>
-      <td style="text-align:center"><span class="badge" style="background:${bg};color:${fg};font-size:13px;padding:3px 10px">${actual}/${planned}</span></td>
-    </tr>`;
+    const mark = ok ? '✓' : '⚠';
+    return `<div style="background:${bg};border:1px solid ${border};border-radius:var(--radius);padding:4px 8px;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:6px;white-space:nowrap">
+      <span style="font-weight:600">${m.name}</span>
+      <span style="color:${fg};font-size:11px;font-weight:600">${mark} ${actual}/${planned}</span>
+    </div>`;
+  }).join('');
+
+  renderCumulativeDutyCounts();
+}
+
+// 余ったスペースに、これまでに「決定」済みの全期間を合計した実績当番回数を
+// 詰員名簿順（membersと同じ並び）の一覧で表示する
+function renderCumulativeDutyCounts() {
+  const el = document.getElementById('dcr-cumulative-body');
+  if (!el) return;
+  if (!members.length) { el.innerHTML = ''; return; }
+  const totals = {};
+  Object.values(monthlyDutyCountRecords).forEach(rec => {
+    Object.keys(rec.byMember).forEach(mid => {
+      totals[mid] = (totals[mid] || 0) + (rec.byMember[mid].actual || 0);
+    });
+  });
+  const anyRecords = Object.keys(monthlyDutyCountRecords).length > 0;
+  if (!anyRecords) { el.innerHTML = '<div style="color:var(--text-hint);font-size:13px">まだ「決定」済みの月がありません</div>'; return; }
+  el.innerHTML = members.map(m => {
+    const total = totals[m.id] || 0;
+    return `<div style="display:flex;align-items:center;gap:8px;font-size:13px">
+      <span style="min-width:110px;font-weight:600">${m.name}</span>
+      <span style="color:var(--text-muted)">${total}回</span>
+    </div>`;
   }).join('');
 }
 
