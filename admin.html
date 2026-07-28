@@ -414,6 +414,7 @@
     <div class="sidebar-item" onclick="showPage('generate')">当番表作成</div>
     <div class="sidebar-item" onclick="showPage('gen-rules')">作成ルール</div>
     <div class="sidebar-item" onclick="showPage('records')">割当確認</div>
+    <div class="sidebar-item" onclick="showPage('duty-count-records')">当番回数記録</div>
     <div class="sidebar-item" onclick="showPage('holidays')">日曜祝日等管理</div>
     <div class="sidebar-item" onclick="showPage('nye-duty')">年末年始当番予定</div>
     <div class="sidebar-item" onclick="showPage('nye-duty-record')">年末年始当番記録</div>
@@ -736,6 +737,28 @@
       </div>
     </div>
 
+    <div id="page-duty-count-records" class="page">
+      <div class="section-title">当番回数記録</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">対象月の「割当予定回数（月ごと当番回数で設定した値）」に対して、実際に何回当番に当たったかを表示します。カレンダー表示の「当番表(当初)決定」を押した時点の数字が確定記録として残ります（決定前は現在の当番表データをもとにした下書き表示です）。</div>
+      <div class="card" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="shiftMonth('dcr-month',-1);renderDutyCountRecordPage()">◀</button>
+        <input id="dcr-month" type="month" style="width:130px" onchange="renderDutyCountRecordPage()">
+        <button class="btn btn-sm" onclick="shiftMonth('dcr-month',1);renderDutyCountRecordPage()">▶</button>
+        <button class="btn" onclick="renderDutyCountRecordPage()">再読み込み</button>
+      </div>
+      <div id="dcr-status" style="margin:10px 0"></div>
+      <div class="card">
+        <div style="display:flex;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+          <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:var(--accent-light);color:var(--accent-dark)">1/1</span> 予定通り</span>
+          <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:var(--danger-light);color:var(--danger)">1/2</span> 予定と不一致（不足・超過）</span>
+        </div>
+        <table>
+          <thead><tr><th style="text-align:left">氏名</th><th style="width:120px;text-align:center">実績/割当予定</th></tr></thead>
+          <tbody id="dcr-body"><tr><td colspan="2" style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
     <div id="page-holidays" class="page">
       <div class="section-title">日曜祝日等管理</div>
       <div class="alert alert-info">登録した日は「日祝当番」として扱われます。振替休日・国民の休日は下の「基本の祝日を一括登録」で自動計算されるので、通常は個別に追加する必要はありません。</div>
@@ -1035,6 +1058,7 @@ async function initApp() {
   await loadSchedules().catch(e => console.warn('[schedules]', e.message));
   await loadChotomeTimes().catch(e => console.warn('[chotome_times]', e.message));
   await loadRosterDecisions().catch(e => console.warn('[rosterDecisions]', e.message));
+  await loadMonthlyDutyCountRecords().catch(e => console.warn('[monthlyDutyCountRecords]', e.message));
   renderCalendar();
   populateMemberSelects();
   await ensureMultiYearsLoaded(getMultiYears('mc2-start-year', 'mc2-year-span')).catch(e => console.warn('[annualPlansMulti]', e.message));
@@ -1049,6 +1073,7 @@ async function initApp() {
   document.getElementById('gen-month').value = nextStr;
   document.getElementById('u-matrix-month').value = nextStr;
   document.getElementById('u-summary-month').value = nextStr;
+  document.getElementById('dcr-month').value = nextStr;
 }
 
 // =============================================
@@ -1272,6 +1297,12 @@ async function decideRosterPeriod(periodKey, confirmLabel) {
   const { error } = await sbClient.from('roster_decisions').upsert({ period_key: periodKey, decided_at: new Date().toISOString() }, { onConflict: 'period_key' });
   if (error) { alert('決定に失敗しました: ' + error.message + '\n（「roster_decisions」テーブルが未作成の可能性があります）'); return; }
   await loadRosterDecisions();
+  // 月（カレンダー表示）の決定なら、「当番回数記録」用にこの月の当番回数を確定記録として保存する
+  const monthMatch = /^(\d{4})-(\d{2})$/.exec(periodKey);
+  if (monthMatch) {
+    await recordMonthlyDutyCounts(parseInt(monthMatch[1]), parseInt(monthMatch[2])).catch(e => console.warn('[monthlyDutyCountRecords]', e.message));
+    if (typeof renderDutyCountRecordPage === 'function') renderDutyCountRecordPage();
+  }
   renderCalendar();
   if (typeof renderNyeDutyPage === 'function') renderNyeDutyPage();
 }
@@ -1281,8 +1312,113 @@ async function undecideRosterPeriod(periodKey, confirmLabel) {
   const { error } = await sbClient.from('roster_decisions').delete().eq('period_key', periodKey);
   if (error) { alert('取り消しに失敗しました: ' + error.message); return; }
   await loadRosterDecisions();
+  // 決定を取り消す場合は、「当番回数記録」の確定記録も一緒に取り消す（下書き扱いに戻す）
+  const monthMatch = /^(\d{4})-(\d{2})$/.exec(periodKey);
+  if (monthMatch) {
+    const { error: dcrDelError } = await sbClient.from('monthly_duty_count_records').delete().eq('period_key', periodKey);
+    if (dcrDelError) console.warn('[monthlyDutyCountRecords]', dcrDelError.message);
+    await loadMonthlyDutyCountRecords().catch(e => console.warn('[monthlyDutyCountRecords]', e.message));
+    if (typeof renderDutyCountRecordPage === 'function') renderDutyCountRecordPage();
+  }
   renderCalendar();
   if (typeof renderNyeDutyPage === 'function') renderNyeDutyPage();
+}
+
+// =============================================
+// 当番回数記録（対象月の「割当予定回数」に対する実績回数の記録）
+// 「当番表(当初)決定」ボタンを押した瞬間の回数を確定記録としてDBに保存し、以後カレンダー側の
+// データを修正してもこの記録は変わらない（決定を取り消すと確定記録も削除され、下書き扱いに戻る）。
+// 決定前の月は、現在保存されている当番表データをもとにその場で計算した下書きとして表示する。
+// =============================================
+let monthlyDutyCountRecords = {}; // { periodKey: { recordedAt, byMember: { memberId: {planned, actual} } } }
+
+async function loadMonthlyDutyCountRecords() {
+  const { data, error } = await sbClient.from('monthly_duty_count_records').select('*');
+  if (error) { monthlyDutyCountRecords = {}; return; }
+  monthlyDutyCountRecords = {};
+  (data || []).forEach(r => {
+    const pk = r.period_key;
+    if (!monthlyDutyCountRecords[pk]) monthlyDutyCountRecords[pk] = { recordedAt: r.recorded_at, byMember: {} };
+    monthlyDutyCountRecords[pk].byMember[r.member_id] = { planned: r.planned_count, actual: r.actual_count };
+    // 複数メンバー分の行の中で最新のrecorded_atを代表値として使う
+    if (r.recorded_at > monthlyDutyCountRecords[pk].recordedAt) monthlyDutyCountRecords[pk].recordedAt = r.recorded_at;
+  });
+}
+
+// 対象年・月（1〜12）・メンバーの「割当予定回数」（月ごと当番回数で設定した値。デフォルト1回、
+// 「2回」指定月は2、「0回」指定月は0）を返す
+function plannedCountForMonth(year, mid, month) {
+  const cell = getMultiCell(year, mid);
+  if (cell.twice.includes(month)) return 2;
+  if (cell.zero.includes(month)) return 0;
+  return 1;
+}
+
+// 対象年・月の実績回数（annual_roster／scheduleキャッシュから集計）をメンバーIDごとに返す
+function actualCountsForMonth(year, month) {
+  const counts = {};
+  getServiceMonthDays(year, month).forEach(({ dateStr }) => {
+    const s = schedules[dateStr];
+    if (s && s.member_id != null) counts[s.member_id] = (counts[s.member_id] || 0) + 1;
+  });
+  return counts;
+}
+
+// 「当番表(当初)決定」を押した瞬間の当番回数を確定記録として保存する
+async function recordMonthlyDutyCounts(year, month) {
+  await ensureMultiYearsLoaded([year], true);
+  const actual = actualCountsForMonth(year, month);
+  const periodKey = monthPeriodKey(year, month - 1);
+  const rows = members.map(m => ({
+    period_key: periodKey,
+    member_id: m.id,
+    planned_count: plannedCountForMonth(year, m.id, month),
+    actual_count: actual[m.id] || 0,
+    recorded_at: new Date().toISOString()
+  }));
+  if (!rows.length) return;
+  const { error } = await sbClient.from('monthly_duty_count_records').upsert(rows, { onConflict: 'period_key,member_id' });
+  if (error) throw error;
+  await loadMonthlyDutyCountRecords();
+}
+
+async function renderDutyCountRecordPage() {
+  const body = document.getElementById('dcr-body');
+  const statusEl = document.getElementById('dcr-status');
+  if (!body || !statusEl) return;
+  const monthStr = document.getElementById('dcr-month').value;
+  if (!monthStr) { body.innerHTML = `<tr><td colspan="2" style="text-align:center;color:var(--text-hint)">対象月を選択してください</td></tr>`; statusEl.innerHTML = ''; return; }
+  const [year, month] = monthStr.split('-').map(Number);
+  const periodKey = monthPeriodKey(year, month - 1);
+  const label = `${year}年${month}月`;
+
+  if (!members.length) {
+    body.innerHTML = `<tr><td colspan="2" style="text-align:center;color:var(--text-hint)">先にメンバーを登録してください</td></tr>`;
+    statusEl.innerHTML = '';
+    return;
+  }
+
+  const record = monthlyDutyCountRecords[periodKey];
+  let rowsData;
+  if (record) {
+    statusEl.innerHTML = `<div class="alert alert-success">✓ ${label}は決定済みです（${formatDecidedAt(record.recordedAt)}決定時点の確定記録）</div>`;
+    rowsData = members.map(m => ({ member: m, planned: (record.byMember[m.id] || {}).planned ?? 0, actual: (record.byMember[m.id] || {}).actual ?? 0 }));
+  } else {
+    await ensureMultiYearsLoaded([year]);
+    const actual = actualCountsForMonth(year, month);
+    statusEl.innerHTML = `<div class="alert alert-info">${label}はまだ「当番表(当初)決定」が行われていません。現在の当番表データをもとにした下書き表示です。決定するとこの内容が確定記録として残ります。</div>`;
+    rowsData = members.map(m => ({ member: m, planned: plannedCountForMonth(year, m.id, month), actual: actual[m.id] || 0 }));
+  }
+
+  body.innerHTML = rowsData.map(({ member: m, planned, actual }) => {
+    const ok = actual === planned;
+    const bg = ok ? 'var(--accent-light)' : 'var(--danger-light)';
+    const fg = ok ? 'var(--accent-dark)' : 'var(--danger)';
+    return `<tr>
+      <td>${m.name}</td>
+      <td style="text-align:center"><span class="badge" style="background:${bg};color:${fg};font-size:13px;padding:3px 10px">${actual}/${planned}</span></td>
+    </tr>`;
+  }).join('');
 }
 
 function formatDecidedAt(iso) {
@@ -3740,6 +3876,7 @@ async function showPage(name) {
   if (name === 'annual-single2') loadAndRenderAnnualTable2();
   if (name === 'calendar') { await loadSchedules().catch(() => {}); renderCalendar(); }
   if (name === 'records') { await renderRecordTable(); }
+  if (name === 'duty-count-records') { await renderDutyCountRecordPage(); }
   if (name === 'holidays') { populateHolidayYearSelect(); await renderHolidaysTable(); }
   if (name === 'nye-duty') { await renderNyeDutyPage(); }
   if (name === 'nye-duty-record') { await renderNyeDutyRecordPage(); }
