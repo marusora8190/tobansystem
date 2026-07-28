@@ -1400,9 +1400,20 @@ async function renderDutyCountRecordPage() {
     return;
   }
 
-  const record = monthlyDutyCountRecords[periodKey];
+  // 「決定済みかどうか」は roster_decisions（カレンダー表示の決定状態そのもの）を正とする。
+  // この「月割当て確認用」機能を追加する前にすでに決定されていた月は、確定記録
+  // （monthly_duty_count_records）がまだ無いので、初めて表示された時点で現在のデータを
+  // もとに確定記録を作成する（後追いの初回記録）。これが無いと、実際は決定済みなのに
+  // 「まだ決定されていません」と誤表示されてしまう。
+  const isDecided = !!rosterDecisions[periodKey];
+  let record = monthlyDutyCountRecords[periodKey];
+  if (isDecided && !record) {
+    await recordMonthlyDutyCounts(year, month).catch(e => console.warn('[monthlyDutyCountRecords]', e.message));
+    record = monthlyDutyCountRecords[periodKey];
+  }
+
   let rowsData;
-  if (record) {
+  if (isDecided && record) {
     statusEl.innerHTML = `<div class="alert alert-success">✓ ${label}は決定済みです（${formatDecidedAt(record.recordedAt)}決定時点の確定記録）</div>`;
     rowsData = members.map(m => ({ member: m, planned: (record.byMember[m.id] || {}).planned ?? 0, actual: (record.byMember[m.id] || {}).actual ?? 0 }));
   } else {
