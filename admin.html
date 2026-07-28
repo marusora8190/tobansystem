@@ -755,8 +755,13 @@
         <div id="dcr-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px">読み込み中...</div>
       </div>
       <div class="card">
-        <div class="card-title">累計当番回数（これまでに「決定」済みの全期間の合計）</div>
+        <div class="card-title">累計当番回数（システム運用前の記録 ＋ これまでに「決定」済みの全期間の合計）</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">「運用前」欄には、このシステムを使い始める前の当番回数（紙の記録など）を入力できます。入力後は「運用前の記録を保存」を押してください。</p>
         <div id="dcr-cumulative-body" style="display:flex;flex-direction:column;gap:4px"></div>
+        <div class="btn-row" style="margin-top:10px">
+          <button class="btn btn-primary btn-sm" onclick="saveDutyCountBaseline()">運用前の記録を保存</button>
+        </div>
+        <div id="dcr-baseline-msg" style="margin-top:6px"></div>
       </div>
     </div>
 
@@ -1060,6 +1065,7 @@ async function initApp() {
   await loadChotomeTimes().catch(e => console.warn('[chotome_times]', e.message));
   await loadRosterDecisions().catch(e => console.warn('[rosterDecisions]', e.message));
   await loadMonthlyDutyCountRecords().catch(e => console.warn('[monthlyDutyCountRecords]', e.message));
+  await loadDutyCountBaseline().catch(e => console.warn('[dutyCountBaseline]', e.message));
   renderCalendar();
   populateMemberSelects();
   await ensureMultiYearsLoaded(getMultiYears('mc2-start-year', 'mc2-year-span')).catch(e => console.warn('[annualPlansMulti]', e.message));
@@ -1346,6 +1352,35 @@ async function loadMonthlyDutyCountRecords() {
   });
 }
 
+// このシステムの運用開始前（月ごとの決定記録が存在しない期間）の当番回数を、
+// メンバーごとに1つの数字としてあとから追加できるようにするための土台。
+// 「累計当番回数」はこの値 ＋ システム記録（決定済みの全期間合計）で表示する。
+let dutyCountBaseline = {}; // { memberId: baseline_count }
+
+async function loadDutyCountBaseline() {
+  const { data, error } = await sbClient.from('duty_count_baseline').select('*');
+  if (error) { dutyCountBaseline = {}; return; }
+  dutyCountBaseline = {};
+  (data || []).forEach(r => { dutyCountBaseline[r.member_id] = r.baseline_count; });
+}
+
+async function saveDutyCountBaseline() {
+  const inputs = document.querySelectorAll('#dcr-cumulative-body input[data-mid]');
+  const rows = Array.from(inputs).map(inp => ({
+    member_id: parseInt(inp.getAttribute('data-mid')),
+    baseline_count: parseInt(inp.value) || 0,
+    updated_at: new Date().toISOString()
+  }));
+  if (!rows.length) return;
+  const msgEl = document.getElementById('dcr-baseline-msg');
+  if (msgEl) msgEl.innerHTML = '<span class="spinner"></span> 保存中...';
+  const { error } = await sbClient.from('duty_count_baseline').upsert(rows, { onConflict: 'member_id' });
+  if (error) { if (msgEl) msgEl.innerHTML = `<span style="color:var(--danger)">保存エラー: ${error.message}</span>`; return; }
+  await loadDutyCountBaseline();
+  renderCumulativeDutyCounts();
+  if (msgEl) { msgEl.innerHTML = '<span style="color:var(--accent-dark)">保存しました ✓</span>'; setTimeout(() => { msgEl.innerHTML = ''; }, 3000); }
+}
+
 // 対象年・月（1〜12）・メンバーの「割当予定回数」（月ごと当番回数で設定した値。デフォルト1回、
 // 「2回」指定月は2、「0回」指定月は0）を返す
 function plannedCountForMonth(year, mid, month) {
@@ -1446,21 +1481,29 @@ function renderCumulativeDutyCounts() {
   const el = document.getElementById('dcr-cumulative-body');
   if (!el) return;
   if (!members.length) { el.innerHTML = ''; return; }
-  const totals = {};
+  const sysTotals = {};
   Object.values(monthlyDutyCountRecords).forEach(rec => {
     Object.keys(rec.byMember).forEach(mid => {
-      totals[mid] = (totals[mid] || 0) + (rec.byMember[mid].actual || 0);
+      sysTotals[mid] = (sysTotals[mid] || 0) + (rec.byMember[mid].actual || 0);
     });
   });
   const anyRecords = Object.keys(monthlyDutyCountRecords).length > 0;
-  if (!anyRecords) { el.innerHTML = '<div style="color:var(--text-hint);font-size:13px">まだ「決定」済みの月がありません</div>'; return; }
-  el.innerHTML = members.map(m => {
-    const total = totals[m.id] || 0;
-    return `<div style="display:flex;align-items:center;gap:8px;font-size:13px">
-      <span style="min-width:110px;font-weight:600">${m.name}</span>
-      <span style="color:var(--text-muted)">${total}回</span>
-    </div>`;
-  }).join('');
+  el.innerHTML = (anyRecords ? '' : '<div style="color:var(--text-hint);font-size:13px;margin-bottom:6px">まだ「決定」済みの月がありませんが、運用前の記録は下から入力できます</div>') +
+    members.map(m => {
+      const sys = sysTotals[m.id] || 0;
+      const baseline = dutyCountBaseline[m.id] || 0;
+      const total = sys + baseline;
+      return `<div style="display:flex;align-items:center;gap:8px;font-size:13px">
+        <span style="min-width:110px;font-weight:600">${m.name}</span>
+        <span style="color:var(--text-muted);white-space:nowrap">システム記録 ${sys}回</span>
+        <span style="color:var(--text-hint)">＋</span>
+        <span style="display:flex;align-items:center;gap:4px;white-space:nowrap">運用前
+          <input type="number" min="0" step="1" data-mid="${m.id}" value="${baseline}" style="width:60px;padding:2px 4px;font-size:12px">回
+        </span>
+        <span style="color:var(--text-hint)">＝</span>
+        <span style="font-weight:700">合計 ${total}回</span>
+      </div>`;
+    }).join('');
 }
 
 function formatDecidedAt(iso) {
