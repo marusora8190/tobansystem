@@ -327,6 +327,10 @@
   
   .cal-member-box { display: flex; flex-direction: column; border-radius: 4px; padding: 4px 5px; font-size: 11px; background: transparent; border: 1px solid var(--border-strong); color: var(--text); line-height: 1.3; width: 100%; }
   .cal-member-box.holiday-duty { background: var(--danger); border-color: var(--danger); color: #fff; }
+  .cal-member-box.manual-assignee { border-style: dashed; font-style: italic; }
+  .cal-member-box.manual-assignee .cal-member-name { font-size: 12px; }
+  .cal-manual-tag { font-size: 9px; font-style: normal; font-weight: 400; text-align: center; color: var(--text-muted); }
+  .cal-member-box.manual-assignee.holiday-duty .cal-manual-tag { color: #fff; }
   .cal-day-body { flex: 1; display: flex; align-items: center; justify-content: center; }
   
   .cal-member-name-row { display: flex; align-items: center; justify-content: center; gap: 3px; }
@@ -915,6 +919,11 @@
       <select id="day-modal-member" onchange="updateDayModalMemberInfo()"><option value="">未設定</option></select>
     </div>
     <div id="day-modal-member-info" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;min-height:16px"></div>
+    <div class="form-group" style="margin-bottom:4px">
+      <label>手入力（退職者など、名簿にない方）</label>
+      <input id="day-modal-manual" placeholder="例：山田太郎（退職）">
+    </div>
+    <p style="font-size:11px;color:var(--text-muted);margin:0 0 12px">※ 上の「当番者」で選択した場合は、そちらが優先して表示されます。当番回数の集計には含まれません。</p>
     <div class="form-group">
       <label>備考</label>
       <input id="day-modal-note" placeholder="">
@@ -3644,6 +3653,17 @@ function renderCalendar() {
           </div>
         `;
       }
+    } else if (sched?.manual_assignee) {
+      // 名簿にない方（退職者など）を手入力で記録した日。当番回数の集計対象にはならない。
+      const boxClass = (dow === 0 || isHol) ? 'cal-member-box holiday-duty manual-assignee' : 'cal-member-box manual-assignee';
+      memberHtml = `
+        <div class="${boxClass}" title="名簿にない方の手入力記録">
+          <div class="cal-member-name-row">
+            <span class="cal-member-name">${escapeAttr(sched.manual_assignee)}</span>
+          </div>
+          <div class="cal-manual-tag">（手入力）</div>
+        </div>
+      `;
     }
 
     html += `<div class="${cls}" onclick="openDayModal('${dateStr}')">
@@ -3665,6 +3685,7 @@ function openDayModal(dateStr) {
   document.getElementById('day-modal-date').value = dateStr;
   const sched = schedules[dateStr];
   document.getElementById('day-modal-member').value = sched?.member_id || '';
+  document.getElementById('day-modal-manual').value = sched?.manual_assignee || '';
   document.getElementById('day-modal-note').value = sched?.notes || '';
   document.getElementById('day-modal-locked').checked = !!sched?.locked;
   document.getElementById('day-modal-msg').innerHTML = '';
@@ -3705,11 +3726,12 @@ async function toggleDutyLock(dateStr, event) {
 async function saveDaySchedule() {
   const date = document.getElementById('day-modal-date').value;
   const member_id = document.getElementById('day-modal-member').value || null;
+  const manual_assignee = document.getElementById('day-modal-manual').value.trim() || null;
   const note = document.getElementById('day-modal-note').value.trim() || null;
   const locked = document.getElementById('day-modal-locked').checked;
   const d = new Date(date + 'T00:00:00');
   const isHol = (d.getDay() === 0 || !!holidays[date]);
-  const { error } = await sbClient.from('annual_roster').upsert({ duty_date: date, member_id, notes: note, is_holiday: isHol, locked: member_id ? locked : false }, { onConflict: 'duty_date' });
+  const { error } = await sbClient.from('annual_roster').upsert({ duty_date: date, member_id, manual_assignee, notes: note, is_holiday: isHol, locked: member_id ? locked : false }, { onConflict: 'duty_date' });
   if (error) { showMsg('day-modal-msg', error.message, 'error'); return; }
   await loadSchedules();
   renderCalendar();
@@ -3742,7 +3764,7 @@ function exportCSV() {
       displayDate,
       mInfo ? (mInfo.staff_id ?? '') : '',  // ID列
       loginNoVal ? `="${loginNoVal}"` : '',  // ログインナンバー列（Excelで先頭の0が消えないよう文字列指定）
-      mInfo ? mInfo.name : '',              // 当番者列
+      mInfo ? mInfo.name : (sched?.manual_assignee || ''),  // 当番者列（名簿にない方は手入力記録を表示）
       mInfo ? (mInfo.department || '') : '',
       mInfo ? (mInfo.phone || mInfo.phone_number || mInfo.tel || '') : '',
       note
@@ -3850,7 +3872,7 @@ function printCalendar() {
     const dayNum = sd.m === month ? `${d}` : `${sd.m}/${d}`;
     const dowLabel = `${dayNum}日<br><span style="font-size:10px;font-weight:400;">(${DOW_JP[dow]})</span>`;
 
-    const name = mInfo ? mInfo.name : '';
+    const name = mInfo ? mInfo.name : (sched?.manual_assignee || '');
     const dept = mInfo ? (mInfo.department || '') : '';
     const phone = mInfo ? (mInfo.phone || mInfo.phone_number || mInfo.tel || '') : '';
     const subLine = [dept, phone].filter(Boolean).join('　');
@@ -4085,7 +4107,7 @@ function buildMonthTableHtml(year, month, map) {
     const isHol = !!holidays[dateStr];
     const rec = map[dateStr];
     const mInfo = rec?.member_id ? allMembersById[rec.member_id] : null;
-    const name = mInfo ? mInfo.name : '';
+    const name = mInfo ? mInfo.name : (rec?.manual_assignee || '');
     const isRed = (dow === 0 || isHol);
     const rowStyle = isRed ? 'style="background:var(--danger-light)"' : '';
     const dowBadgeStyle = isRed
@@ -4181,7 +4203,7 @@ async function exportRecordCSV() {
       const dow = new Date(dateStr + 'T00:00:00').getDay();
       const rec = map[dateStr];
       const mInfo = rec?.member_id ? allMembersById[rec.member_id] : null;
-      rows.push([dateStr, DOW_JP[dow], mInfo ? mInfo.name : '']);
+      rows.push([dateStr, DOW_JP[dow], mInfo ? mInfo.name : (rec?.manual_assignee || '')]);
     }
   });
   const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
