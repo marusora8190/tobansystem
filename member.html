@@ -98,6 +98,7 @@
   .month-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
   .month-nav .month-label { font-size: 17px; font-weight: 700; color: var(--accent-dark); }
   .month-nav button { width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--border-strong); background: #fff; font-size: 16px; cursor: pointer; }
+  .month-nav .today-btn { display: block; width: auto; height: auto; border-radius: 12px; margin: 4px auto 0; padding: 2px 12px; font-size: 11px; font-weight: 500; color: var(--accent-dark); border-color: var(--border-strong); }
 
   table.cal { border-collapse: collapse; width: 100%; table-layout: fixed; }
   table.cal th { font-size: 11px; color: var(--text-muted); padding: 4px 0; text-align: center; font-weight: 500; }
@@ -230,6 +231,7 @@
         <div>
           <div class="month-label" id="month-label"></div>
           <div id="month-sub-note" style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:2px"></div>
+          <button class="today-btn" onclick="goToCurrentCalMonth()">今月</button>
         </div>
         <button onclick="shiftCalMonth(1)" aria-label="次の月">▶</button>
       </div>
@@ -266,6 +268,7 @@
           <div>
             <div class="month-label" id="roster-month-label"></div>
             <div id="roster-month-sub-note" style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:2px"></div>
+            <button class="today-btn" onclick="goToCurrentRosterMonth()">今月</button>
           </div>
           <button onclick="shiftRosterMonth(1)" aria-label="次の月">▶</button>
         </div>
@@ -679,6 +682,22 @@ async function shiftCalMonth(delta) {
   await renderCalendar();
 }
 
+// 「今月」ボタン：何ヶ月移動していても、今日の月にワンタップで戻れるようにする
+async function goToCurrentCalMonth() {
+  const today = new Date();
+  const y = today.getFullYear(), m = today.getMonth() + 1;
+  if (calYear === y && calMonth === m) return;
+  if (pendingAdd.size + pendingRemove.size > 0) {
+    if (!confirm('保存されていない変更があります。移動すると変更内容は破棄されます。よろしいですか？')) return;
+  }
+  pendingAdd.clear();
+  pendingRemove.clear();
+  calYear = y;
+  calMonth = m;
+  showMsg('save-msg', '', '');
+  await renderCalendar();
+}
+
 function clearPending() {
   pendingAdd.clear();
   pendingRemove.clear();
@@ -849,6 +868,16 @@ function shiftRosterMonth(delta) {
   rosterMonth += delta;
   if (rosterMonth < 1) { rosterMonth = 12; rosterYear--; }
   if (rosterMonth > 12) { rosterMonth = 1; rosterYear++; }
+  renderRosterCalendar();
+}
+
+// 「今月」ボタン：何ヶ月移動していても、今日の月にワンタップで戻れるようにする
+function goToCurrentRosterMonth() {
+  const today = new Date();
+  const y = today.getFullYear(), m = today.getMonth() + 1;
+  if (rosterYear === y && rosterMonth === m) return;
+  rosterYear = y;
+  rosterMonth = m;
   renderRosterCalendar();
 }
 
