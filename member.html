@@ -231,7 +231,6 @@
         <div>
           <div class="month-label" id="month-label"></div>
           <div id="month-sub-note" style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:2px"></div>
-          <button class="today-btn" onclick="goToCurrentCalMonth()">今月</button>
         </div>
         <button onclick="shiftCalMonth(1)" aria-label="次の月">▶</button>
       </div>
@@ -682,21 +681,6 @@ async function shiftCalMonth(delta) {
   await renderCalendar();
 }
 
-// 「今月」ボタン：何ヶ月移動していても、今日の月にワンタップで戻れるようにする
-async function goToCurrentCalMonth() {
-  const today = new Date();
-  const y = today.getFullYear(), m = today.getMonth() + 1;
-  if (calYear === y && calMonth === m) return;
-  if (pendingAdd.size + pendingRemove.size > 0) {
-    if (!confirm('保存されていない変更があります。移動すると変更内容は破棄されます。よろしいですか？')) return;
-  }
-  pendingAdd.clear();
-  pendingRemove.clear();
-  calYear = y;
-  calMonth = m;
-  showMsg('save-msg', '', '');
-  await renderCalendar();
-}
 
 function clearPending() {
   pendingAdd.clear();
