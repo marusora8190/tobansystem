@@ -306,7 +306,13 @@
   #page-calendar #cal-info-row,
   #page-calendar #cal-dow,
   #page-calendar .cal-legend { flex: none; }
-  #page-calendar #cal-body { flex: 1 1 auto; min-height: 0; grid-auto-rows: minmax(0, 1fr); overflow-y: auto; }
+  /* 週の行は画面に収まるよう可変（1fr）で縮むが、当番者名の1マス分の自然な高さ
+     （日付行19px＋隙間2px＋当番者名ボックス28px＋上下余白12px≒62px）より下には
+     縮めない。ブラウザの表示倍率が100%など、行の可変幅がこの高さを下回る場合は、
+     名前が半分だけ表示される（overflow:hiddenで下側が切れる）問題があったため、
+     最低限このサイズは確保し、それでも画面に収まりきらない場合だけ
+     #cal-body自体がスクロールするようにする。 */
+  #page-calendar #cal-body { flex: 1 1 auto; min-height: 0; grid-auto-rows: minmax(64px, 1fr); overflow-y: auto; }
   .cal-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
   .cal-title { font-size: 16px; font-weight: 500; flex: 1; text-align: center; }
   /* 「決定」ボタン・その説明文・印刷設定の倍率案内を、それぞれ別行に積み上げず
