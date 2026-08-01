@@ -761,7 +761,7 @@ async function fetchRosterForRange(dayList) {
   try {
     const { data, error } = await sbClient
       .from('annual_roster')
-      .select('duty_date, notes, member_id, members(name)')
+      .select('duty_date, notes, member_id, manual_assignee, members(name)')
       .gte('duty_date', startStr)
       .lte('duty_date', endStr);
     if (!error) (data || []).forEach(r => { map[r.duty_date] = r; });
@@ -799,7 +799,10 @@ async function renderRosterCalendar() {
     // ただし、すでに終わった過去の日については「決定」記録がなくても表示する
     // （過去の当番表を確認できるようにするため）。
     const decided = isRosterDateViewable(dateStr, todayStr);
-    const dutyName = (decided && entry && entry.members) ? entry.members.name : '';
+    // 名簿にいない方（辞退者・退職者など）を手入力で記録した日はmembersが無いため、
+    // その場合はmanual_assigneeの氏名を表示する（当番回数の集計対象にはならないが、
+    // 当番表としては表示する）。
+    const dutyName = decided && entry ? (entry.members ? entry.members.name : (entry.manual_assignee || '')) : '';
     const isMyDuty = !!(decided && entry && currentMember && entry.member_id === currentMember.id);
 
     let cls = 'day-cell roster-cell';
