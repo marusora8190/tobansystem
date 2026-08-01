@@ -251,6 +251,13 @@
     position: sticky; top: 0; z-index: 5; background: var(--surface);
     box-shadow: 0 2px 0 var(--border);
   }
+  /* 年末年始当番記録：「年度別 当番一覧」の日付列（1列目）を、右に横スクロールしても
+     消えずに常に見えるよう固定する */
+  .nye-record-table td:first-child,
+  .nye-record-table th:first-child {
+    position: sticky; left: 0; z-index: 4; background: var(--surface);
+    border-right: 1px solid var(--border-strong);
+  }
   /* 年末年始当番記録：「年度別 当番一覧」の手入力欄は、未入力時も入力済み時も
      システム記録・導入前の記録の氏名（枠なしのプレーンテキスト）と見た目をそろえるため、
      枠線・背景を通常時は透明にし、クリック（フォーカス）・ホバー時のみ枠を表示する */
@@ -859,7 +866,7 @@
         <div class="card-title">年度別 当番一覧（2013年度＋来年度）</div>
         <p style="font-size:12px;color:var(--text-muted);margin-bottom:6px">日曜・祝日にあたるセルは赤字で表示しています。以前登録された導入前の記録（年・日付が分かるもの）は、該当する日付のセルに自動で反映されます。それ以外の、システムにも記録がない日は、セルに直接お名前を手入力できます（名簿にない名前でも構いません）。</p>
         <div class="table-wrap">
-          <table>
+          <table class="nye-record-table">
             <thead><tr id="nye-record-head"></tr></thead>
             <tbody id="nye-record-body"><tr><td style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
           </table>
@@ -1426,7 +1433,6 @@ function renderFestivalDutyPage() {
         : '<span style="color:var(--text-hint)">まだ記録がありません</span>';
       return `<tr>
         <td style="padding:6px 8px;font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)">${f.name}</td>
-        <td style="padding:6px 8px;color:var(--text-muted);white-space:nowrap;border-bottom:1px solid var(--border)">${f.date}</td>
         <td style="padding:6px 8px;border-bottom:1px solid var(--border)">${entriesHtml}</td>
       </tr>`;
     }).join('');
@@ -1434,7 +1440,6 @@ function renderFestivalDutyPage() {
       `<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:13px;width:100%">
         <thead><tr>
           <th style="padding:4px 8px;text-align:left;font-size:11px;font-weight:500;color:var(--text-muted);border-bottom:1px solid var(--border-strong)">祭典名</th>
-          <th style="padding:4px 8px;text-align:left;font-size:11px;font-weight:500;color:var(--text-muted);border-bottom:1px solid var(--border-strong)">日付</th>
           <th style="padding:4px 8px;text-align:left;font-size:11px;font-weight:500;color:var(--text-muted);border-bottom:1px solid var(--border-strong)">当番者記録（カレンダーの記録から自動集計）</th>
         </tr></thead>
         <tbody>${bodyRows}</tbody>
