@@ -303,14 +303,22 @@
   #page-calendar.page.active { display: flex; flex-direction: column; height: 100%; min-height: 0; }
   #page-calendar .cal-nav,
   #page-calendar .section-title,
-  #page-calendar #print-scale-hint,
+  #page-calendar #cal-info-row,
   #page-calendar #cal-dow,
   #page-calendar .cal-legend { flex: none; }
   #page-calendar #cal-body { flex: 1 1 auto; min-height: 0; grid-auto-rows: minmax(0, 1fr); overflow-y: auto; }
   .cal-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
   .cal-title { font-size: 16px; font-weight: 500; flex: 1; text-align: center; }
+  /* 「決定」ボタン・その説明文・印刷設定の倍率案内を、それぞれ別行に積み上げず
+     横に並べることで、カレンダー本体（当番者名のマス目）に使える縦の余白を増やす。
+     入りきらない場合のみ折り返す。 */
+  #cal-info-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 16px; margin-bottom: 8px; }
+  #cal-decide-bar { display: contents; }
+  #print-scale-hint { font-size: 12px; color: #1a1814; }
+  /* 曜日ヘッダーの高さは必要最小限にし、当番者名のマス目（#cal-body）に
+     縦の余白を最大限まわす */
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-  .cal-dow { text-align: center; font-size: 11px; font-weight: 500; color: var(--text-hint); padding: 4px; }
+  .cal-dow { text-align: center; font-size: 11px; font-weight: 500; color: var(--text-hint); padding: 1px 4px; line-height: 1.3; }
   .cal-dow:first-child { color: #e89090; }
   .cal-dow:last-child { color: var(--info); }
   .cal-day { min-height: 0; border: 1px solid var(--border); border-radius: var(--radius); padding: 6px; cursor: pointer; transition: all 0.15s; position: relative; display: flex; flex-direction: column; justify-content: flex-start; gap: 2px; overflow: hidden; }
@@ -322,7 +330,11 @@
   .cal-day.saturday .cal-date { color: var(--info); }
   /* 日付と祝日名を1行にまとめて表示する（別行にすると、当番者名の行が
      つぶれて見えなくなってしまう週があったため、行数を増やさないようにする） */
-  .cal-date-row { display: flex; align-items: baseline; gap: 4px; overflow: hidden; min-width: 0; }
+  /* flex-shrink:0が無いと、overflow:hiddenを指定した要素は自動的に最小の高さが0扱いになる
+     （flexboxの仕様）ため、月の行数や当番者名の量によって#cal-bodyの各行の高さが
+     圧縮されたときに、この日付の行そのものが0pxまで潰れて日にちの数字が消えてしまうことがあった。
+     日付の行だけは絶対に潰れないようにし、代わりに.cal-day-body側で高さを吸収させる。 */
+  .cal-date-row { display: flex; align-items: baseline; gap: 4px; overflow: hidden; min-width: 0; flex-shrink: 0; }
   .cal-date { font-size: 12px; font-weight: 500; flex-shrink: 0; }
   .cal-holiday-name { font-size: 9px; color: #e89090; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   
@@ -436,8 +448,10 @@
         <button class="btn btn-sm" onclick="printCalendar()">🖨 印刷①</button>
         <button class="btn btn-sm" onclick="openImportModal()">📥 運用前データを読み込む</button>
       </div>
-      <div id="cal-decide-bar"></div>
-      <div id="print-scale-hint" style="font-size:12px;color:#1a1814;margin-top:-8px;margin-bottom:12px"></div>
+      <div id="cal-info-row">
+        <div id="cal-decide-bar"></div>
+        <div id="print-scale-hint"></div>
+      </div>
 
       <div class="cal-grid" id="cal-dow"></div>
       <div class="cal-grid" id="cal-body" style="margin-top:4px"></div>
@@ -1577,15 +1591,15 @@ function renderCalDecideBar() {
   const label = `${calYear}年${calMonth + 1}月`;
   const rec = rosterDecisions[periodKey];
   if (rec) {
-    el.innerHTML = `<div class="alert alert-success" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+    // 決定済みバナーは行全体を使い切って表示（印刷設定の案内はその下に折り返す）
+    el.innerHTML = `<div class="alert alert-success" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;flex:1 1 100%">
       <span>✓ ${label}の当番表は決定済みです（${formatDecidedAt(rec.decided_at)}決定）。詰員には当番者名が表示されています。</span>
       <button class="btn btn-sm" onclick="undecideRosterPeriod('${periodKey}', '${label}')">決定を取り消す</button>
     </div>`;
   } else {
-    el.innerHTML = `<div style="margin-bottom:12px">
-      <button class="btn btn-primary" style="font-size:15px;padding:10px 20px;font-weight:700" onclick="decideRosterPeriod('${periodKey}', '${label}')">📢 ${label}の当番表(当初)決定</button>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:4px">決定するまで、詰員側の当番表には${label}の当番者名は表示されません。</div>
-    </div>`;
+    // 「決定」ボタン・その説明文・（隣の#print-scale-hintの）印刷設定案内を1行に並べて表示する
+    el.innerHTML = `<button class="btn btn-primary" style="font-size:15px;padding:10px 20px;font-weight:700" onclick="decideRosterPeriod('${periodKey}', '${label}')">📢 ${label}の当番表(当初)決定</button>
+      <span style="font-size:12px;color:var(--text-muted)">決定するまで、詰員側の当番表には${label}の当番者名は表示されません。</span>`;
   }
 }
 
