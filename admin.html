@@ -28,6 +28,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>神殿奉仕当番表作成システム（勤務者）</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root {
     --bg: #f9f7f4;
@@ -328,13 +329,10 @@
   .cal-member-box { display: flex; flex-direction: column; border-radius: 4px; padding: 4px 5px; font-size: 11px; background: transparent; border: 1px solid var(--border-strong); color: var(--text); line-height: 1.3; width: 100%; }
   .cal-member-box.holiday-duty { background: var(--danger); border-color: var(--danger); color: #fff; }
   .cal-member-box.manual-assignee { border-style: dashed; font-style: italic; }
-  .cal-member-box.manual-assignee .cal-member-name { font-size: 12px; }
-  .cal-manual-tag { font-size: 9px; font-style: normal; font-weight: 400; text-align: center; color: var(--text-muted); }
-  .cal-member-box.manual-assignee.holiday-duty .cal-manual-tag { color: #fff; }
   .cal-day-body { flex: 1; display: flex; align-items: center; justify-content: center; }
   
-  .cal-member-name-row { display: flex; align-items: center; justify-content: center; gap: 3px; }
-  .cal-member-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+  .cal-member-name-row { display: flex; align-items: center; justify-content: flex-start; gap: 3px; }
+  .cal-member-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
   .cal-lock-btn, .gen-lock-btn { border: none; cursor: pointer; line-height: 1; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--text-hint); background: var(--bg); transition: background 0.15s, color 0.15s; }
   .cal-lock-btn svg, .gen-lock-btn svg { display: block; }
   .cal-lock-btn:hover, .gen-lock-btn:hover { color: var(--text); background: var(--border); }
@@ -433,8 +431,10 @@
         <div class="cal-title" id="cal-title">2026年 1月</div>
         <button class="btn btn-sm" onclick="nextMonth()">▶</button>
         <button class="btn btn-sm" onclick="goToCurrentMonth()">今月</button>
+        <input type="month" id="cal-jump-month" style="width:140px" onchange="jumpToCalMonth(this.value)" title="年月を指定して移動（運用前の古いデータの確認などに）">
         <button class="btn btn-sm" onclick="exportCSV()">CSV出力</button>
         <button class="btn btn-sm" onclick="printCalendar()">🖨 印刷①</button>
+        <button class="btn btn-sm" onclick="openImportModal()">📥 運用前データを読み込む</button>
       </div>
       <div id="cal-decide-bar"></div>
       <div id="print-scale-hint" style="font-size:12px;color:#1a1814;margin-top:-8px;margin-bottom:12px"></div>
@@ -942,6 +942,32 @@
   </div>
 </div>
 
+<div class="modal-bg" id="import-modal">
+  <div class="modal" style="width:720px;max-width:95vw">
+    <h3>運用前データを読み込む</h3>
+    <p style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:0">
+      エクセル（.xlsx/.xls）またはCSVファイルを選んでください。<b>A列＝日付、B列＝氏名</b>としてお読みします（1行目が見出しの場合は自動でスキップします）。同じ日に複数人いる場合は、同じ日付の行を複数入れてください。<br>
+      氏名が<b>現在在籍中の詰員名簿と一致する場合</b>は通常の当番記録として登録され（当番回数にも反映されます）、一致しない場合（退職者など）は「手入力」の記録として登録されます（カレンダーに名前のみ表示。当番回数には含まれません）。
+    </p>
+    <div class="form-group" style="margin-bottom:4px">
+      <input type="file" id="import-file" accept=".xlsx,.xls,.csv" onchange="handleImportFileChange(this)">
+    </div>
+    <div id="import-msg" style="margin:8px 0"></div>
+    <div id="import-summary" style="font-size:13px;margin-bottom:6px"></div>
+    <div id="import-preview-wrap" style="max-height:340px;overflow:auto;border:1px solid var(--border);border-radius:var(--radius)"></div>
+    <div class="form-group" style="margin-top:12px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="import-overwrite" style="width:14px;height:14px;cursor:pointer" onchange="renderImportPreview()">
+        すでに当番データがある日も上書きする（オフの場合はスキップされます）
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeImportModal()">キャンセル</button>
+      <button class="btn btn-primary" id="import-confirm-btn" onclick="confirmImportPlan()" disabled>この内容で登録する</button>
+    </div>
+  </div>
+</div>
+
 </div>
 
 <script>
@@ -1281,11 +1307,32 @@ async function saveFestivals() {
 
 
 
+// Supabase（PostgREST）は1回のリクエストにつき既定で最大1000件までしか返さないため、
+// select('*')だけで全件取得しようとすると、テーブルの行数が1000件を超えた時点で
+// 残りのデータが黙って欠落してしまう（当番表データや月次記録が「反映されない」ように見える不具合の原因になる）。
+// range()でページ送りしながら繰り返し取得することで、件数によらず必ず全件を読み込む。
+async function fetchAllRows(table, buildQuery) {
+  const rows = [];
+  const PAGE = 1000;
+  let from = 0;
+  while (true) {
+    let q = sbClient.from(table).select('*');
+    if (buildQuery) q = buildQuery(q);
+    const { data, error } = await q.range(from, from + PAGE - 1);
+    if (error) throw error;
+    rows.push(...(data || []));
+    if (!data || data.length < PAGE) break;
+    from += PAGE;
+  }
+  return rows;
+}
+
 async function loadSchedules() {
-  const { data, error } = await sbClient.from('annual_roster').select('*');
-  if (error) { schedules = {}; return; }
-  schedules = {};
-  (data || []).forEach(s => { schedules[s.duty_date] = s; });
+  try {
+    const data = await fetchAllRows('annual_roster');
+    schedules = {};
+    data.forEach(s => { schedules[s.duty_date] = s; });
+  } catch (e) { schedules = {}; }
 }
 
 // =============================================
@@ -1349,16 +1396,17 @@ async function undecideRosterPeriod(periodKey, confirmLabel) {
 let monthlyDutyCountRecords = {}; // { periodKey: { recordedAt, byMember: { memberId: {planned, actual} } } }
 
 async function loadMonthlyDutyCountRecords() {
-  const { data, error } = await sbClient.from('monthly_duty_count_records').select('*');
-  if (error) { monthlyDutyCountRecords = {}; return; }
-  monthlyDutyCountRecords = {};
-  (data || []).forEach(r => {
-    const pk = r.period_key;
-    if (!monthlyDutyCountRecords[pk]) monthlyDutyCountRecords[pk] = { recordedAt: r.recorded_at, byMember: {} };
-    monthlyDutyCountRecords[pk].byMember[r.member_id] = { planned: r.planned_count, actual: r.actual_count };
-    // 複数メンバー分の行の中で最新のrecorded_atを代表値として使う
-    if (r.recorded_at > monthlyDutyCountRecords[pk].recordedAt) monthlyDutyCountRecords[pk].recordedAt = r.recorded_at;
-  });
+  try {
+    const data = await fetchAllRows('monthly_duty_count_records');
+    monthlyDutyCountRecords = {};
+    data.forEach(r => {
+      const pk = r.period_key;
+      if (!monthlyDutyCountRecords[pk]) monthlyDutyCountRecords[pk] = { recordedAt: r.recorded_at, byMember: {} };
+      monthlyDutyCountRecords[pk].byMember[r.member_id] = { planned: r.planned_count, actual: r.actual_count };
+      // 複数メンバー分の行の中で最新のrecorded_atを代表値として使う
+      if (r.recorded_at > monthlyDutyCountRecords[pk].recordedAt) monthlyDutyCountRecords[pk].recordedAt = r.recorded_at;
+    });
+  } catch (e) { monthlyDutyCountRecords = {}; }
 }
 
 // このシステムの運用開始前（月ごとの決定記録が存在しない期間）の当番回数を、
@@ -3599,6 +3647,8 @@ function renderCalendar() {
   document.getElementById('cal-title').textContent = month === 12
     ? `${calYear}年 12月（〜翌年1/4）`
     : `${calYear}年 ${month}月`;
+  const jumpEl = document.getElementById('cal-jump-month');
+  if (jumpEl) jumpEl.value = `${calYear}-${String(month).padStart(2, '0')}`;
   const scaleHintEl = document.getElementById('print-scale-hint');
   if (scaleHintEl) {
     const smallMonths = [2, 4, 6, 9, 11];
@@ -3661,7 +3711,6 @@ function renderCalendar() {
           <div class="cal-member-name-row">
             <span class="cal-member-name">${escapeAttr(sched.manual_assignee)}</span>
           </div>
-          <div class="cal-manual-tag">（手入力）</div>
         </div>
       `;
     }
@@ -3678,6 +3727,17 @@ function renderCalendar() {
 async function prevMonth() { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } await loadSchedules().catch(() => {}); renderCalendar(); }
 async function nextMonth() { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } await loadSchedules().catch(() => {}); renderCalendar(); }
 async function goToCurrentMonth() { const now = new Date(); calYear = now.getFullYear(); calMonth = now.getMonth(); await loadSchedules().catch(() => {}); renderCalendar(); }
+
+// 年月を直接指定してカレンダーを移動する（運用前の古いデータを確認する時など、◀▶を何百回も押さずに済むように）
+async function jumpToCalMonth(value) {
+  if (!value) return;
+  const m = value.match(/^(\d{4})-(\d{2})$/);
+  if (!m) return;
+  calYear = Number(m[1]);
+  calMonth = Number(m[2]) - 1;
+  await loadSchedules().catch(() => {});
+  renderCalendar();
+}
 
 function openDayModal(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
@@ -3736,6 +3796,225 @@ async function saveDaySchedule() {
   await loadSchedules();
   renderCalendar();
   closeDayModal();
+}
+
+// =============================================
+// 運用前データの読み込み（エクセル/CSV → annual_roster）
+// =============================================
+let importParsedPlan = [];       // [{ dateStr, names, displayName, status, matchedMemberId, hasConflict, conflictLabel }]
+const IMPORT_PREVIEW_LIMIT = 200; // プレビュー表示は先頭N件のみ（登録自体は全件が対象）
+
+function openImportModal() {
+  importParsedPlan = [];
+  document.getElementById('import-file').value = '';
+  document.getElementById('import-preview-wrap').innerHTML = '';
+  document.getElementById('import-summary').innerHTML = '';
+  document.getElementById('import-msg').innerHTML = '';
+  document.getElementById('import-overwrite').checked = false;
+  document.getElementById('import-confirm-btn').disabled = true;
+  document.getElementById('import-modal').classList.add('open');
+}
+function closeImportModal() { document.getElementById('import-modal').classList.remove('open'); }
+
+// 詰員名簿の氏名とエクセルの氏名を照合する際、全角/半角スペースや前後の空白の違いだけで
+// 別人だと誤判定しないよう、空白をすべて取り除いてから比較するための正規化。
+// （字体の違い「治／冶」などはここでは吸収しない。人物の取り違えを防ぐため、その場合は
+// 意図的に不一致のまま「手入力」記録として登録し、後から個別に確認できるようにしている）
+function normalizeNameForMatch(s) {
+  return String(s ?? '').replace(/[\s　]+/g, '');
+}
+
+// Excelのシリアル値・全角/半角混じりの日付文字列など、ある程度のゆらぎを許容して日付をYYYY-MM-DD形式に変換する。
+// 変換できない場合はnullを返す（プレビュー画面でエラー行として表示され、そのまま登録対象からは除外される）。
+function parseFlexibleImportDate(raw) {
+  if (raw instanceof Date && !isNaN(raw)) {
+    return `${raw.getFullYear()}-${String(raw.getMonth() + 1).padStart(2, '0')}-${String(raw.getDate()).padStart(2, '0')}`;
+  }
+  let s = String(raw ?? '').trim();
+  if (!s) return null;
+  s = s.replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+  let m = s.match(/^(\d{4})[\/\-年](\d{1,2})[\/\-月](\d{1,2})日?$/);
+  if (m) {
+    const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+    const dt = new Date(y, mo - 1, d);
+    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31 && dt.getMonth() === mo - 1) {
+      return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    }
+    return null;
+  }
+  if (/^\d+(\.\d+)?$/.test(s)) {
+    const serial = Number(s);
+    if (serial > 15000 && serial < 80000) { // だいたい1941年〜2119年の範囲のExcelシリアル値のみ許容
+      const epoch = new Date(Date.UTC(1899, 11, 30));
+      const dt = new Date(epoch.getTime() + Math.round(serial) * 86400000);
+      return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
+    }
+  }
+  return null;
+}
+
+async function handleImportFileChange(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('import-confirm-btn').disabled = true;
+  document.getElementById('import-summary').innerHTML = '';
+  document.getElementById('import-preview-wrap').innerHTML = '';
+  showMsg('import-msg', '<span class="spinner"></span> ファイルを読み込んでいます...', 'info');
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' });
+
+    // A列=日付, B列=氏名として読み取る。1行目が日付として解釈できない場合は見出し行とみなしスキップする。
+    const entries = []; // { rowNo, dateStr, name, error }
+    rows.forEach((row, i) => {
+      if (!row || row.every(c => String(c ?? '').trim() === '')) return;
+      const dateRaw = row[0];
+      const nameRaw = row[1];
+      const dateStr = parseFlexibleImportDate(dateRaw);
+      if (i === 0 && !dateStr) return; // 見出し行とみなす
+      const name = String(nameRaw ?? '').trim();
+      if (!dateStr) { entries.push({ rowNo: i + 1, dateStr: null, name, error: `日付を認識できません（${String(dateRaw)}）` }); return; }
+      if (!name) { entries.push({ rowNo: i + 1, dateStr, name: '', error: '氏名が空欄です' }); return; }
+      entries.push({ rowNo: i + 1, dateStr, name, error: null });
+    });
+
+    if (!entries.length) {
+      showMsg('import-msg', 'ファイルからデータを読み取れませんでした。1列目=日付、2列目=氏名の形式になっているかご確認ください。', 'error');
+      return;
+    }
+
+    // 同じ日付をまとめる（1日に複数人いる場合は「・」区切りで手入力記録としてまとめる）
+    const byDate = {};
+    const errorRows = entries.filter(e => e.error);
+    entries.filter(e => !e.error).forEach(e => {
+      if (!byDate[e.dateStr]) byDate[e.dateStr] = [];
+      if (!byDate[e.dateStr].includes(e.name)) byDate[e.dateStr].push(e.name);
+    });
+
+    showMsg('import-msg', '<span class="spinner"></span> 既存データと照合しています...', 'info');
+    const existingMap = await fetchExistingRosterForDates(Object.keys(byDate));
+
+    importParsedPlan = Object.keys(byDate).sort().map(dateStr => {
+      const names = byDate[dateStr];
+      const existingRow = existingMap[dateStr];
+      const hasConflict = !!(existingRow && (existingRow.member_id || existingRow.manual_assignee));
+      let status, matchedMemberId = null, displayName;
+      if (names.length === 1) {
+        // 全角/半角スペースの有無・前後の空白の違いだけで別人扱いにならないよう、
+        // 空白を無視して比較する（例：「村田 淳」「村田淳」「村田　淳」はすべて同一人物として一致させる）
+        const matched = members.find(m => normalizeNameForMatch(m.name) === normalizeNameForMatch(names[0]));
+        if (matched) { status = 'member'; matchedMemberId = matched.id; displayName = names[0]; }
+        else { status = 'manual'; displayName = names[0]; }
+      } else {
+        status = 'manual';
+        displayName = names.join('・');
+      }
+      return { dateStr, names, displayName, status, matchedMemberId, hasConflict, existingLabel: hasConflict ? describeExistingRosterRow(existingRow) : '' };
+    });
+
+    if (errorRows.length) {
+      document.getElementById('import-summary').innerHTML =
+        `<div class="alert alert-error">読み取れなかった行が${errorRows.length}件あります（登録対象には含まれません）: ` +
+        errorRows.slice(0, 10).map(e => `${e.rowNo}行目 - ${e.error}`).join(' / ') +
+        (errorRows.length > 10 ? ` ほか${errorRows.length - 10}件` : '') + `</div>`;
+    }
+    document.getElementById('import-msg').innerHTML = '';
+    renderImportPreview();
+    document.getElementById('import-confirm-btn').disabled = importParsedPlan.length === 0;
+  } catch (e) {
+    showMsg('import-msg', 'ファイルの読み込みに失敗しました: ' + e.message, 'error');
+  }
+}
+
+// 指定した日付一覧について、annual_rosterに既存データがあるかをチェックする（大量件数でもURL長を超えないよう分割して問い合わせる）
+async function fetchExistingRosterForDates(dateList) {
+  const map = {};
+  const CHUNK = 300;
+  for (let i = 0; i < dateList.length; i += CHUNK) {
+    const chunk = dateList.slice(i, i + CHUNK);
+    const { data, error } = await sbClient.from('annual_roster').select('duty_date, member_id, manual_assignee').in('duty_date', chunk);
+    if (error) throw error;
+    (data || []).forEach(r => { map[r.duty_date] = r; });
+  }
+  return map;
+}
+
+function describeExistingRosterRow(row) {
+  if (row.member_id) { const m = allMembersById[row.member_id]; return m ? `既存: ${m.name}` : '既存: 当番あり'; }
+  if (row.manual_assignee) return `既存: ${row.manual_assignee}（手入力）`;
+  return '';
+}
+
+function renderImportPreview() {
+  const overwrite = document.getElementById('import-overwrite').checked;
+  const wrap = document.getElementById('import-preview-wrap');
+  const memberCount = importParsedPlan.filter(p => p.status === 'member').length;
+  const manualCount = importParsedPlan.filter(p => p.status === 'manual').length;
+  const conflictCount = importParsedPlan.filter(p => p.hasConflict).length;
+  const willSkip = overwrite ? 0 : conflictCount;
+
+  document.getElementById('import-summary').innerHTML =
+    `<b>${importParsedPlan.length}日分</b>を読み取りました（在籍メンバーとして登録: ${memberCount}件 / 手入力記録として登録: ${manualCount}件）。` +
+    (conflictCount ? `　既存データと重複: ${conflictCount}件${willSkip ? '（現在はスキップされます）' : '（上書きされます）'}` : '');
+
+  const rows = importParsedPlan.slice(0, IMPORT_PREVIEW_LIMIT).map(p => {
+    const skip = p.hasConflict && !overwrite;
+    let tag;
+    if (skip) tag = `<span style="color:var(--danger)">スキップ（${p.existingLabel}）</span>`;
+    else if (p.status === 'member') tag = `<span style="color:var(--accent-dark)">✓ 在籍メンバーとして登録${p.hasConflict ? '（上書き）' : ''}</span>`;
+    else tag = `<span style="color:var(--gold)">手入力記録として登録${p.hasConflict ? '（上書き）' : ''}</span>`;
+    return `<tr${skip ? ' style="opacity:0.55"' : ''}><td style="white-space:nowrap;padding:3px 8px;font-size:12px">${p.dateStr}</td><td style="padding:3px 8px;font-size:12px">${escapeAttr(p.displayName)}</td><td style="padding:3px 8px;font-size:12px">${tag}</td></tr>`;
+  }).join('');
+  const moreNote = importParsedPlan.length > IMPORT_PREVIEW_LIMIT
+    ? `<div style="padding:6px 8px;font-size:12px;color:var(--text-hint)">ほか${importParsedPlan.length - IMPORT_PREVIEW_LIMIT}件（表示は先頭${IMPORT_PREVIEW_LIMIT}件のみですが、登録は全件が対象です）</div>` : '';
+
+  wrap.innerHTML = `<table style="width:100%;border-collapse:collapse"><thead><tr style="position:sticky;top:0;background:var(--surface)">
+    <th style="text-align:left;padding:3px 8px;font-size:11px;border-bottom:1px solid var(--border)">日付</th>
+    <th style="text-align:left;padding:3px 8px;font-size:11px;border-bottom:1px solid var(--border)">氏名</th>
+    <th style="text-align:left;padding:3px 8px;font-size:11px;border-bottom:1px solid var(--border)">登録内容</th>
+    </tr></thead><tbody>${rows}</tbody></table>${moreNote}`;
+}
+
+async function confirmImportPlan() {
+  if (!importParsedPlan.length) return;
+  const overwrite = document.getElementById('import-overwrite').checked;
+  const targets = importParsedPlan.filter(p => overwrite || !p.hasConflict);
+  const skipped = importParsedPlan.length - targets.length;
+  if (!targets.length) { showMsg('import-msg', '登録対象がありません（すべて既存データと重複しています）。', 'error'); return; }
+
+  document.getElementById('import-confirm-btn').disabled = true;
+  const payload = targets.map(p => {
+    const d = new Date(p.dateStr + 'T00:00:00');
+    const isHol = (d.getDay() === 0 || !!holidays[p.dateStr]);
+    return p.status === 'member'
+      ? { duty_date: p.dateStr, member_id: p.matchedMemberId, manual_assignee: null, is_holiday: isHol }
+      : { duty_date: p.dateStr, member_id: null, manual_assignee: p.displayName, is_holiday: isHol };
+  });
+
+  const CHUNK = 500;
+  let done = 0;
+  try {
+    for (let i = 0; i < payload.length; i += CHUNK) {
+      const chunk = payload.slice(i, i + CHUNK);
+      const { error } = await sbClient.from('annual_roster').upsert(chunk, { onConflict: 'duty_date' });
+      if (error) throw error;
+      done += chunk.length;
+      showMsg('import-msg', `<span class="spinner"></span> 登録中... ${done}/${payload.length}件`, 'info');
+    }
+  } catch (e) {
+    showMsg('import-msg', '登録エラー: ' + e.message, 'error');
+    document.getElementById('import-confirm-btn').disabled = false;
+    return;
+  }
+
+  const memberCount = targets.filter(p => p.status === 'member').length;
+  const manualCount = targets.filter(p => p.status === 'manual').length;
+  showMsg('import-msg', `登録が完了しました（在籍メンバーとして${memberCount}件、手入力記録として${manualCount}件を登録${skipped ? '、既存データのため' + skipped + '件スキップ' : ''}）✓`, 'success');
+  document.getElementById('import-confirm-btn').disabled = false;
+  await loadSchedules();
+  renderCalendar();
 }
 
 function exportCSV() {
