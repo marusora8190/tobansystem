@@ -153,11 +153,18 @@
   #page-unavail-list .btn { padding: 4px 10px; font-size: 12px; }
 
   /* 割当確認（表形式）：「表示設定」エリアと当番記録テーブルの行の高さを最小限にする */
+  #page-records .section-title { margin-bottom: 6px; }
   #page-records .card { padding: 8px 12px; margin-bottom: 8px; }
   #page-records .card-title { margin-bottom: 6px; }
   #page-records .form-group label { margin-bottom: 0; font-size: 11px; }
   #page-records select, #page-records input { padding: 3px 6px; font-size: 12px; }
   #page-records .btn { padding: 4px 10px; font-size: 12px; }
+  /* 表示設定の各項目は折り返さず必ず横一列に並べる。画面が非常に狭い場合のみ
+     このエリア内だけで横スクロールさせ、テーブル側のレイアウトには影響させない。 */
+  #page-records .rec-controls-row { flex-wrap: nowrap; overflow-x: auto; }
+  #page-records .rec-controls-row .form-group,
+  #page-records .rec-controls-row .btn { flex-shrink: 0; }
+  #page-records .rec-help-text { margin: 4px 0 0; line-height: 1.4; }
 
 
   /* Matrix Table Custom Styles：登録済み支障日一覧（一覧表形式）が全員にとって見やすいよう、
@@ -739,30 +746,51 @@
       <div class="section-title">割当確認（表形式）</div>
       <div class="card">
         <div class="card-title">表示設定</div>
-        <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="rec-controls-row" style="display:flex;gap:8px;align-items:flex-end">
+          <div class="form-group" style="width:170px">
+            <label>表示形式</label>
+            <select id="rec-mode" onchange="updateRecordModeUI()">
+              <option value="range" selected>連続した月</option>
+              <option value="sameMonth">同じ月を複数年表示</option>
+            </select>
+          </div>
           <div class="form-group" style="width:110px">
             <label>開始年</label>
             <select id="rec-year"></select>
           </div>
-          <div class="form-group" style="width:90px">
+          <div class="form-group" id="rec-start-month-group" style="width:90px">
             <label>開始月</label>
             <select id="rec-start-month"></select>
           </div>
-          <div class="form-group" style="width:130px">
+          <div class="form-group" id="rec-target-month-group" style="width:90px;display:none">
+            <label>対象月</label>
+            <select id="rec-target-month"></select>
+          </div>
+          <div class="form-group" id="rec-count-group" style="width:130px">
             <label>表示件数</label>
             <select id="rec-count">
               <option value="6" selected>6ヶ月分</option>
               <option value="12">12ヶ月分</option>
             </select>
           </div>
+          <div class="form-group" id="rec-year-count-group" style="width:130px;display:none">
+            <label>表示年数</label>
+            <select id="rec-year-count">
+              <option value="5" selected>5年分</option>
+              <option value="10">10年分</option>
+              <option value="15">15年分</option>
+              <option value="20">20年分</option>
+            </select>
+          </div>
           <button class="btn btn-primary" onclick="renderRecordTable()">表示</button>
           <button class="btn" onclick="exportRecordCSV()">CSV出力</button>
           <button class="btn" onclick="printRecordTable()">🖨 印刷</button>
         </div>
+        <p class="rec-help-text" style="font-size:11px;color:var(--text-muted)">「同じ月を複数年表示」を選ぶと、例えば「開始年2013年・対象月5月・5年分」で2013年5月・2014年5月・2015年5月・2016年5月・2017年5月のように、年をまたいで同じ月同士を並べて比較できます。</p>
       </div>
-      <div class="card">
-        <div class="card-title" id="rec-title">年月・表示件数を選択して「表示」を押してください</div>
-        <div id="rec-table-wrap" style="overflow-x:auto;display:flex;gap:12px;padding-bottom:8px"></div>
+      <div class="card" style="padding-top:6px">
+        <div class="card-title" id="rec-title" style="margin-bottom:4px">年月・表示件数を選択して「表示」を押してください</div>
+        <div id="rec-table-wrap" style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 345px);display:flex;gap:12px;padding-bottom:8px;align-items:flex-start"></div>
         <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap">
           <span style="font-size:12px;color:var(--text-muted)"><span style="background:var(--danger);color:#fff;padding:1px 6px;border-radius:3px;font-size:11px">1日(日)</span> 日曜・祝日</span>
         </div>
@@ -4528,6 +4556,7 @@ async function ensureAllMembersCache() {
 function populateRecordSelects() {
   const yearSel = document.getElementById('rec-year');
   const monthSel = document.getElementById('rec-start-month');
+  const targetMonthSel = document.getElementById('rec-target-month');
   if (!yearSel || !monthSel) return;
   const curYear = new Date().getFullYear();
   const curMonth = new Date().getMonth() + 1;
@@ -4537,9 +4566,12 @@ function populateRecordSelects() {
   let defaultYear = curYear;
   if (defaultMonth <= 0) { defaultMonth += 12; defaultYear -= 1; }
 
+  // 開始年は、このシステムで記録が残っている最も古い年（2013年）まで選べるようにする
+  // （運用前データの読み込み・祭典日当番者記録などと同じ開始年に合わせている）。
+  const RECORD_TABLE_START_YEAR = 2013;
   if (!yearSel.options.length) {
     let yOpts = '';
-    for (let y = curYear - 5; y <= curYear + 5; y++) {
+    for (let y = RECORD_TABLE_START_YEAR; y <= curYear + 5; y++) {
       yOpts += `<option value="${y}" ${y === defaultYear ? 'selected' : ''}>${y}年</option>`;
     }
     yearSel.innerHTML = yOpts;
@@ -4551,9 +4583,28 @@ function populateRecordSelects() {
     }
     monthSel.innerHTML = mOpts;
   }
+  // 「同じ月を複数年表示」用の対象月（開始月とは独立して選べる。デフォルトは今月）
+  if (targetMonthSel && !targetMonthSel.options.length) {
+    let tOpts = '';
+    for (let m = 1; m <= 12; m++) {
+      tOpts += `<option value="${m}" ${m === curMonth ? 'selected' : ''}>${m}月</option>`;
+    }
+    targetMonthSel.innerHTML = tOpts;
+  }
 }
 
-// 開始年月から count ヶ月分の {year, month} 配列を返す
+// 表示形式（「連続した月」／「同じ月を複数年表示」）に応じて、入力欄の表示・非表示を切り替える
+function updateRecordModeUI() {
+  const mode = document.getElementById('rec-mode')?.value || 'range';
+  const isSameMonth = mode === 'sameMonth';
+  const set = (id, show) => { const el = document.getElementById(id); if (el) el.style.display = show ? '' : 'none'; };
+  set('rec-start-month-group', !isSameMonth);
+  set('rec-count-group', !isSameMonth);
+  set('rec-target-month-group', isSameMonth);
+  set('rec-year-count-group', isSameMonth);
+}
+
+// 開始年月から count ヶ月分の {year, month} 配列を返す（「連続した月」用）
 function buildMonthList(startYear, startMonth, count) {
   const list = [];
   let y = startYear, m = startMonth;
@@ -4565,25 +4616,67 @@ function buildMonthList(startYear, startMonth, count) {
   return list;
 }
 
+// 開始年から yearCount 年分、同じ月（targetMonth）だけを並べた {year, month} 配列を返す
+// （例：2013年・5月・5年分 → 2013年5月, 2014年5月, 2015年5月, 2016年5月, 2017年5月）
+function buildSameMonthYearList(startYear, targetMonth, yearCount) {
+  const list = [];
+  for (let i = 0; i < yearCount; i++) {
+    list.push({ year: startYear + i, month: targetMonth });
+  }
+  return list;
+}
+
 function getRecordSelection() {
+  const mode = document.getElementById('rec-mode')?.value || 'range';
   const yearSel = document.getElementById('rec-year');
+  if (!yearSel?.value) return null;
+  const year = parseInt(yearSel.value);
+
+  if (mode === 'sameMonth') {
+    const targetMonthSel = document.getElementById('rec-target-month');
+    const yearCountSel = document.getElementById('rec-year-count');
+    if (!targetMonthSel?.value || !yearCountSel?.value) return null;
+    return {
+      mode,
+      year,
+      targetMonth: parseInt(targetMonthSel.value),
+      yearCount: parseInt(yearCountSel.value),
+    };
+  }
+
   const monthSel = document.getElementById('rec-start-month');
   const countSel = document.getElementById('rec-count');
-  if (!yearSel?.value || !monthSel?.value || !countSel?.value) return null;
+  if (!monthSel?.value || !countSel?.value) return null;
   return {
-    year: parseInt(yearSel.value),
+    mode: 'range',
+    year,
     month: parseInt(monthSel.value),
     count: parseInt(countSel.value)
   };
 }
 
-async function fetchRosterRange(startYear, startMonth, count) {
-  const monthList = buildMonthList(startYear, startMonth, count);
-  const first = monthList[0];
-  const lastM = monthList[monthList.length - 1];
-  const startDate = `${first.year}-${String(first.month).padStart(2,'0')}-01`;
-  const endDate = lastDayOfMonth(`${lastM.year}-${String(lastM.month).padStart(2,'0')}`);
-  const { data, error } = await sbClient.from('annual_roster').select('*').gte('duty_date', startDate).lte('duty_date', endDate);
+// selから対象の{year, month}配列を組み立てる（表示形式に応じてbuildMonthList／buildSameMonthYearListを使い分ける）
+function buildMonthListFromSelection(sel) {
+  if (sel.mode === 'sameMonth') return buildSameMonthYearList(sel.year, sel.targetMonth, sel.yearCount);
+  return buildMonthList(sel.year, sel.month, sel.count);
+}
+
+async function fetchRosterRange(monthList) {
+  // 「同じ月を複数年表示」のように対象の年月が飛び飛びになる場合、以前は
+  // 最初の年〜最後の年をまとめて1回のクエリ（gte/lte）で取得していたが、
+  // 表示年数を増やすと（例：2013年〜2025年など）対象外の月も含めて非常に多くの
+  // 日数分を問い合わせることになり、Supabase側の1回のクエリで返せる行数の上限
+  // （既定1000件）を超えてしまうことがあった。その場合、上限を超えた分の
+  // 日付データが取得できず、対象の月なのに当番者名が空欄で表示されてしまう
+  // 不具合が起きていた。これを避けるため、min〜maxの範囲をまとめて取るのではなく、
+  // monthListに含まれる月それぞれの範囲だけをOR条件で問い合わせ、
+  // 無関係な月のデータを取得しないようにする。
+  const orFilter = monthList.map(mo => {
+    const start = `${mo.year}-${String(mo.month).padStart(2,'0')}-01`;
+    const end = lastDayOfMonth(`${mo.year}-${String(mo.month).padStart(2,'0')}`);
+    return `and(duty_date.gte.${start},duty_date.lte.${end})`;
+  }).join(',');
+  const { data, error } = await sbClient.from('annual_roster').select('*').or(orFilter);
   if (error) throw error;
   const map = {};
   (data || []).forEach(r => { map[r.duty_date] = r; });
@@ -4612,14 +4705,22 @@ function buildMonthTableHtml(year, month, map) {
     </tr>`;
   }
 
+  // 下にスクロールしても「◯年◯月」の見出しと「日／名前」の列見出しが
+  // 消えないよう、両方とも画面上部に固定表示する（月の見出しの下に列見出しが
+  // 続くよう、列見出しはtopの位置を月見出しの高さぶんだけ下にずらす）。
+  // ※親のdivに overflow:hidden を指定すると、そのdiv自身がposition:stickyの
+  //   基準（スクロールコンテナ）になってしまい、実際にスクロールする.main側に
+  //   追従しなくなる（固定されずにそのまま流れて消えてしまう）ため、
+  //   角丸を保ちたいカード枠にはoverflow:hiddenを使わず、代わりに見出し・表側の
+  //   要素それぞれに角丸を付けている。
   return `
-    <div style="flex:0 0 auto;min-width:150px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
-      <div style="background:var(--accent-light);color:var(--accent-dark);text-align:center;font-size:13px;font-weight:600;padding:3px 4px;border-bottom:1px solid var(--border)">${year}年 ${month}月</div>
+    <div style="flex:0 0 auto;min-width:150px;border:1px solid var(--border);border-radius:var(--radius)">
+      <div style="position:sticky;top:0;z-index:6;background:var(--accent-light);color:var(--accent-dark);text-align:center;font-size:13px;font-weight:600;padding:3px 4px;border-bottom:1px solid var(--border);border-radius:var(--radius) var(--radius) 0 0">${year}年 ${month}月</div>
       <table style="width:100%;border-collapse:collapse">
         <thead>
           <tr>
-            <th style="text-align:center;font-size:10px;padding:1px 2px;border-bottom:1px solid var(--border);background:var(--bg)">日</th>
-            <th style="text-align:left;font-size:10px;padding:1px 2px;border-bottom:1px solid var(--border);background:var(--bg)">名前</th>
+            <th style="position:sticky;top:28px;z-index:5;text-align:center;font-size:10px;padding:1px 2px;border-bottom:1px solid var(--border);background:var(--bg)">日</th>
+            <th style="position:sticky;top:28px;z-index:5;text-align:left;font-size:10px;padding:1px 2px;border-bottom:1px solid var(--border);background:var(--bg)">名前</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -4627,18 +4728,25 @@ function buildMonthTableHtml(year, month, map) {
     </div>`;
 }
 
+function buildRecordTitle(sel) {
+  if (sel.mode === 'sameMonth') {
+    const endYear = sel.year + sel.yearCount - 1;
+    return `${sel.targetMonth}月：${sel.year}年〜${endYear}年（${sel.yearCount}年分）の当番記録`;
+  }
+  return `${sel.year}年${sel.month}月 から ${sel.count}ヶ月分の当番記録`;
+}
+
 async function renderRecordTable() {
   const sel = getRecordSelection();
   if (!sel) return;
-  const { year, month, count } = sel;
 
-  document.getElementById('rec-title').textContent = `${year}年${month}月 から ${count}ヶ月分の当番記録`;
+  document.getElementById('rec-title').textContent = buildRecordTitle(sel);
   const wrap = document.getElementById('rec-table-wrap');
   wrap.innerHTML = '<div style="padding:16px;color:var(--text-hint)">読み込み中...</div>';
 
   let monthList, map;
   try {
-    const res = await fetchRosterRange(year, month, count);
+    const res = await fetchRosterRange(buildMonthListFromSelection(sel));
     monthList = res.monthList;
     map = res.map;
   } catch(e) {
@@ -4674,11 +4782,10 @@ function printRecordTable() {
 async function exportRecordCSV() {
   const sel = getRecordSelection();
   if (!sel) return;
-  const { year, month, count } = sel;
 
   let monthList, map;
   try {
-    const res = await fetchRosterRange(year, month, count);
+    const res = await fetchRosterRange(buildMonthListFromSelection(sel));
     monthList = res.monthList;
     map = res.map;
   } catch(e) {
