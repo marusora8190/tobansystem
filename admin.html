@@ -433,6 +433,7 @@
     <div class="sidebar-item" onclick="showPage('nye-duty')">年末年始当番予定</div>
     <div class="sidebar-item" onclick="showPage('nye-duty-record')">年末年始当番記録</div>
     <div class="sidebar-item" onclick="showPage('chotome')">本部祭典日・本部お勤め時間</div>
+    <div class="sidebar-item" onclick="showPage('festival-duty')">祭典日当番者記録</div>
   </nav>
 
   <main class="main">
@@ -774,11 +775,7 @@
       </div>
       <div class="card">
         <div class="card-title">累計当番回数（システム運用前の記録 ＋ これまでに「決定」済みの全期間の合計）</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">「運用前」欄には、このシステムを使い始める前の当番回数（紙の記録など）を入力できます。入力後は「運用前の記録を保存」を押してください。</p>
-        <div id="dcr-cumulative-body" style="display:flex;flex-direction:column;gap:4px"></div>
-        <div class="btn-row" style="margin-top:10px">
-          <button class="btn btn-primary btn-sm" onclick="saveDutyCountBaseline()">運用前の記録を保存</button>
-        </div>
+        <div id="dcr-cumulative-body"></div>
         <div id="dcr-baseline-msg" style="margin-top:6px"></div>
       </div>
     </div>
@@ -901,6 +898,15 @@
           </div>
           <div id="chotome-msg" style="margin-top:8px"></div>
         </div>
+      </div>
+    </div>
+
+    <div id="page-festival-duty" class="page">
+      <div class="section-title">祭典日当番者記録</div>
+      <div class="alert alert-info">元旦祭・月次祭など、本部祭典日ごとの当番回数です。カレンダー表示に記録されている当番（その日の当番者＝その祭典の当番者）から自動的に数え上げています。カレンダーの記録だけでは足りない分がある場合は、手入力で追加分を補正できます。退職された方の記録は、ここには表示されなくなります。</div>
+      <div class="card">
+        <div id="fdc-body">読み込み中...</div>
+        <div id="fdc-msg" style="margin-top:8px"></div>
       </div>
     </div>
   </main>
@@ -1319,6 +1325,160 @@ async function saveFestivals() {
   }
 }
 
+// =============================================
+// 祭典日当番者記録（festival_duty_counts）
+// カレンダー表示（annual_roster）には、通常の日々の当番割り当てが1日ごとに記録されており、
+// 祭典の日（元旦祭=1/1、月次祭=毎月26日など）も同じ当番のローテーションの中に含まれている
+// （＝その日の当番者が、その祭典の当番を務めた人と一致する）。そのため、日付ごとに新たに
+// 手入力する必要はなく、祭典の日付（月日）に一致するannual_rosterの記録をカレンダーから
+// 自動的に数え上げて回数を集計する（退職者に割り当てられていた日はカウントしない。
+// スケジュールは日付をキーにしたグローバルキャッシュ`schedules`に保持されているため、
+// それを直接集計に使う）。
+// 手入力欄は、カレンダーの記録だけでは拾いきれない分（記録漏れの補正など）を
+// 追加で加算するためのもので、「カレンダー記録＋手入力＝合計」という考え方は
+// 「累計当番回数」の運用前記録の仕組みと同じにしている。
+// 月次祭は、大祭と同じ26日に重なる1月・10月を除いた各月ごとに分けて記録する
+// （月次祭が春季大祭・秋季大祭に振り替わる月のため）。
+// 表示順は年間のカレンダー順（1月→12月の日付順）で、月次祭は「◯月月次祭」と表記する。
+const FESTIVAL_DUTY_TYPES = [
+  { key: 'gantansai', name: '元旦祭', date: '1月1日', mmdd: '01-01' },
+  { key: 'shunkitaisai', name: '春季大祭', date: '1月26日', mmdd: '01-26' },
+  { key: 'tsukinami02', name: '2月月次祭', date: '2月26日', mmdd: '02-26' },
+  { key: 'tsukinami03', name: '3月月次祭', date: '3月26日', mmdd: '03-26' },
+  { key: 'shunkireisai', name: '春季霊祭', date: '3月27日', mmdd: '03-27' },
+  { key: 'kyosotanjosai', name: '教祖誕生祭', date: '4月18日', mmdd: '04-18' },
+  { key: 'tsukinami04', name: '4月月次祭', date: '4月26日', mmdd: '04-26' },
+  { key: 'tsukinami05', name: '5月月次祭', date: '5月26日', mmdd: '05-26' },
+  { key: 'tsukinami06', name: '6月月次祭', date: '6月26日', mmdd: '06-26' },
+  { key: 'tsukinami07', name: '7月月次祭', date: '7月26日', mmdd: '07-26' },
+  { key: 'tsukinami08', name: '8月月次祭', date: '8月26日', mmdd: '08-26' },
+  { key: 'tsukinami09', name: '9月月次祭', date: '9月26日', mmdd: '09-26' },
+  { key: 'shukireisai', name: '秋季霊祭', date: '9月27日', mmdd: '09-27' },
+  { key: 'shukitaisai', name: '秋季大祭', date: '10月26日', mmdd: '10-26' },
+  { key: 'tsukinami11', name: '11月月次祭', date: '11月26日', mmdd: '11-26' },
+  { key: 'tsukinami12', name: '12月月次祭', date: '12月26日', mmdd: '12-26' },
+];
+
+// { "memberId:festivalKey": count } — 手入力（カレンダー記録への追加分）
+let festivalDutyCounts = {};
+
+async function loadFestivalDutyCounts() {
+  try {
+    const data = await fetchAllRows('festival_duty_counts');
+    festivalDutyCounts = {};
+    (data || []).forEach(r => { festivalDutyCounts[`${r.member_id}:${r.festival_key}`] = r.count; });
+  } catch (e) {
+    festivalDutyCounts = {};
+    console.warn('[festival_duty_counts]', e.message, '（テーブル未作成の可能性があります）');
+  }
+}
+
+// カレンダー（annual_roster／schedulesキャッシュ）から、祭典の日付（月日）に一致する
+// 当番記録を数え上げて { "memberId:festivalKey": count } を返す。
+// 退職者に割り当てられていた日（manual_assignee）はカウントしない。
+function computeCalendarFestivalCounts() {
+  const mmddToKey = {};
+  FESTIVAL_DUTY_TYPES.forEach(f => { mmddToKey[f.mmdd] = f.key; });
+  const counts = {};
+  Object.values(schedules).forEach(s => {
+    if (!s || s.member_id == null) return;
+    const mmdd = String(s.duty_date).slice(5, 10); // "YYYY-MM-DD" -> "MM-DD"
+    const fkey = mmddToKey[mmdd];
+    if (!fkey) return;
+    const k = `${s.member_id}:${fkey}`;
+    counts[k] = (counts[k] || 0) + 1;
+  });
+  return counts;
+}
+
+let festivalDutyEditMode = false;
+function toggleFestivalDutyEdit() {
+  festivalDutyEditMode = !festivalDutyEditMode;
+  renderFestivalDutyPage();
+}
+
+// 普段は祭典ごとに「氏名 N回」を並べたコンパクトな記録一覧を表示する（回数＝カレンダーから
+// 自動集計した分＋手入力分の合計）。回数の手入力（補正）が必要なときだけボタンで
+// 編集用の一覧表（メンバー×祭典の表）に切り替える。
+// 退職した（is_activeがfalseになった）メンバーは、記録が残っていてもここには表示されない
+// （membersはアクティブなメンバーのみを保持しているグローバル配列のため、自動的に非表示になる）。
+function renderFestivalDutyPage() {
+  const el = document.getElementById('fdc-body');
+  if (!el) return;
+  if (!members.length) { el.innerHTML = '<div style="color:var(--text-hint)">先にメンバーを登録してください</div>'; return; }
+
+  const calCounts = computeCalendarFestivalCounts();
+  const toggleBtn = `<div style="margin-bottom:10px"><button class="btn btn-sm" onclick="toggleFestivalDutyEdit()">${festivalDutyEditMode ? '記録一覧に戻る' : '回数を手入力で補正'}</button></div>`;
+
+  if (!festivalDutyEditMode) {
+    const bodyRows = FESTIVAL_DUTY_TYPES.map(f => {
+      const entries = members
+        .map(m => ({ m, count: (calCounts[`${m.id}:${f.key}`] || 0) + (festivalDutyCounts[`${m.id}:${f.key}`] || 0) }))
+        .filter(e => e.count > 0);
+      const entriesHtml = entries.length
+        ? entries.map(e => `<span class="badge" style="background:var(--accent-light);color:var(--accent-dark);margin:2px 4px 2px 0">${e.m.name} ${e.count}回</span>`).join('')
+        : '<span style="color:var(--text-hint)">まだ記録がありません</span>';
+      return `<tr>
+        <td style="padding:6px 8px;font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)">${f.name}</td>
+        <td style="padding:6px 8px;color:var(--text-muted);white-space:nowrap;border-bottom:1px solid var(--border)">${f.date}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid var(--border)">${entriesHtml}</td>
+      </tr>`;
+    }).join('');
+    el.innerHTML = toggleBtn +
+      `<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:13px;width:100%">
+        <thead><tr>
+          <th style="padding:4px 8px;text-align:left;font-size:11px;font-weight:500;color:var(--text-muted);border-bottom:1px solid var(--border-strong)">祭典名</th>
+          <th style="padding:4px 8px;text-align:left;font-size:11px;font-weight:500;color:var(--text-muted);border-bottom:1px solid var(--border-strong)">日付</th>
+          <th style="padding:4px 8px;text-align:left;font-size:11px;font-weight:500;color:var(--text-muted);border-bottom:1px solid var(--border-strong)">当番者記録（カレンダーの記録から自動集計）</th>
+        </tr></thead>
+        <tbody>${bodyRows}</tbody>
+      </table></div>`;
+    return;
+  }
+
+  const headerCells = FESTIVAL_DUTY_TYPES.map(f => `<th style="padding:4px 6px;text-align:center;font-size:11px;font-weight:500;white-space:nowrap;border-left:1px solid var(--border)">${f.name}<br><span style="color:var(--text-muted);font-weight:400">${f.date}</span></th>`).join('');
+  const bodyRows = members.map(m => {
+    const cells = FESTIVAL_DUTY_TYPES.map(f => {
+      const auto = calCounts[`${m.id}:${f.key}`] || 0;
+      const manual = festivalDutyCounts[`${m.id}:${f.key}`] || 0;
+      return `<td style="padding:2px 4px;text-align:center;border-left:1px solid var(--border)">
+        <div style="font-size:9px;color:var(--text-muted);white-space:nowrap">自動${auto}回+</div>
+        <input type="number" min="0" step="1" data-mid="${m.id}" data-fkey="${f.key}" value="${manual}" style="width:44px;padding:2px 3px;font-size:12px;text-align:center">
+      </td>`;
+    }).join('');
+    return `<tr><td style="padding:4px 8px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--surface)">${m.name}</td>${cells}</tr>`;
+  }).join('');
+
+  el.innerHTML = toggleBtn +
+    '<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">回数は、カレンダーに記録された当番（「自動◯回」の部分）を毎回自動的に数え上げています。カレンダーの記録だけでは足りない分がある場合だけ、その下の欄に追加分を入力してください（自動集計分と合算されます）。入力後は「保存する」を押してください。</p>' +
+    `<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:13px">
+      <thead><tr><th style="padding:4px 8px;text-align:left;position:sticky;left:0;background:var(--surface);z-index:1">氏名</th>${headerCells}</tr></thead>
+      <tbody>${bodyRows}</tbody>
+    </table></div>` +
+    `<div class="btn-row" style="margin-top:10px"><button class="btn btn-primary btn-sm" onclick="saveFestivalDutyCounts()">保存する</button></div>`;
+}
+
+async function saveFestivalDutyCounts() {
+  const msgEl = document.getElementById('fdc-msg');
+  const inputs = document.querySelectorAll('#fdc-body input[data-mid]');
+  const rows = Array.from(inputs).map(inp => ({
+    member_id: parseInt(inp.getAttribute('data-mid')),
+    festival_key: inp.getAttribute('data-fkey'),
+    count: parseInt(inp.value) || 0,
+    updated_at: new Date().toISOString(),
+  }));
+  if (!rows.length) return;
+  if (msgEl) msgEl.innerHTML = '<span class="spinner"></span> 保存中...';
+  const { error } = await sbClient.from('festival_duty_counts').upsert(rows, { onConflict: 'member_id,festival_key' });
+  if (error) {
+    if (msgEl) msgEl.innerHTML = `<span style="color:var(--danger)">保存に失敗しました: ${error.message}（「festival_duty_counts」テーブルが未作成の可能性があります）</span>`;
+    return;
+  }
+  await loadFestivalDutyCounts();
+  renderFestivalDutyPage();
+  if (msgEl) { msgEl.innerHTML = '<span style="color:var(--accent-dark)">保存しました ✓</span>'; setTimeout(() => { msgEl.innerHTML = ''; }, 3000); }
+}
+
 
 
 // Supabase（PostgREST）は1回のリクエストにつき既定で最大1000件までしか返さないため、
@@ -1547,7 +1707,15 @@ async function renderDutyCountRecordPage() {
 }
 
 // 余ったスペースに、これまでに「決定」済みの全期間を合計した実績当番回数を
-// 詰員名簿順（membersと同じ並び）の一覧で表示する
+// 詰員名簿順（membersと同じ並び）の一覧で表示する。
+// 普段は「氏名：合計回数」だけのコンパクトな一覧にして、内訳（システム記録／運用前）の
+// 確認や運用前の回数の入力・修正が必要なときだけ、ボタンで詳細表示に切り替える
+// （メンバー数が多いと、常に内訳付きの1行ずつの表示では縦に長くなりすぎるため）。
+let cumulativeEditMode = false;
+function toggleCumulativeEdit() {
+  cumulativeEditMode = !cumulativeEditMode;
+  renderCumulativeDutyCounts();
+}
 function renderCumulativeDutyCounts() {
   const el = document.getElementById('dcr-cumulative-body');
   if (!el) return;
@@ -1559,7 +1727,25 @@ function renderCumulativeDutyCounts() {
     });
   });
   const anyRecords = Object.keys(monthlyDutyCountRecords).length > 0;
-  el.innerHTML = (anyRecords ? '' : '<div style="color:var(--text-hint);font-size:13px;margin-bottom:6px">まだ「決定」済みの月がありませんが、運用前の記録は下から入力できます</div>') +
+  const toggleBtn = `<div style="margin-bottom:8px"><button class="btn btn-sm" onclick="toggleCumulativeEdit()">${cumulativeEditMode ? '一覧表示に戻る' : '内訳・運用前の記録を編集'}</button></div>`;
+
+  if (!cumulativeEditMode) {
+    el.innerHTML = toggleBtn +
+      (anyRecords ? '' : '<div style="color:var(--text-hint);font-size:13px;margin-bottom:6px">まだ「決定」済みの月がありませんが、運用前の記録は上のボタンから入力できます</div>') +
+      `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px">` +
+      members.map(m => {
+        const total = (sysTotals[m.id] || 0) + (dutyCountBaseline[m.id] || 0);
+        return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:6px 10px;display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:13px">
+          <span style="font-weight:600">${m.name}</span>
+          <span style="font-weight:700">${total}回</span>
+        </div>`;
+      }).join('') + `</div>`;
+    return;
+  }
+
+  el.innerHTML = toggleBtn +
+    '<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">「運用前」欄には、このシステムを使い始める前の当番回数（紙の記録など）を入力できます。入力後は「運用前の記録を保存」を押してください。</p>' +
+    `<div style="display:flex;flex-direction:column;gap:4px">` +
     members.map(m => {
       const sys = sysTotals[m.id] || 0;
       const baseline = dutyCountBaseline[m.id] || 0;
@@ -1574,7 +1760,8 @@ function renderCumulativeDutyCounts() {
         <span style="color:var(--text-hint)">＝</span>
         <span style="font-weight:700">合計 ${total}回</span>
       </div>`;
-    }).join('');
+    }).join('') + `</div>` +
+    `<div class="btn-row" style="margin-top:10px"><button class="btn btn-primary btn-sm" onclick="saveDutyCountBaseline()">運用前の記録を保存</button></div>`;
 }
 
 function formatDecidedAt(iso) {
@@ -4281,6 +4468,7 @@ async function showPage(name) {
   if (name === 'nye-duty') { await renderNyeDutyPage(); }
   if (name === 'nye-duty-record') { await renderNyeDutyRecordPage(); }
   if (name === 'chotome') { renderChotomeTable(); await loadFestivals(); renderFestivalList(); }
+  if (name === 'festival-duty') { await loadSchedules().catch(() => {}); await loadFestivalDutyCounts(); renderFestivalDutyPage(); }
 }
 
 
