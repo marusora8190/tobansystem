@@ -387,6 +387,14 @@ function periodKeyForDutyDate(dateStr) {
 function isDutyDateDecided(dateStr) {
   return !!rosterDecisions[periodKeyForDutyDate(dateStr)];
 }
+// 当番表作成者が「決定」ボタンを押した月・年末年始シーズンだけを rosterDecisions に
+// 記録する仕組みは、この機能を導入した2026年4月分以降にしか記録がない。そのため
+// 「決定」記録の有無だけで表示可否を決めると、2026年3月以前など過去の当番表が
+// 一切表示されなくなってしまう。すでに終わった日（今日より前の日付）は変更の
+// 心配がないため、「決定」記録が無くても表示してよいと判断する。
+function isRosterDateViewable(dateStr, todayStr) {
+  return isDutyDateDecided(dateStr) || dateStr < todayStr;
+}
 
 async function loadRosterDecisions() {
   try {
@@ -788,7 +796,9 @@ async function renderRosterCalendar() {
     const entry = rosterMap[dateStr];
     // 当番表作成者がこの日を含む月・年末年始シーズンを「決定」するまでは、
     // 割り当てが決まっていても当番者名を一切表示しない（変更の可能性があるため）。
-    const decided = isDutyDateDecided(dateStr);
+    // ただし、すでに終わった過去の日については「決定」記録がなくても表示する
+    // （過去の当番表を確認できるようにするため）。
+    const decided = isRosterDateViewable(dateStr, todayStr);
     const dutyName = (decided && entry && entry.members) ? entry.members.name : '';
     const isMyDuty = !!(decided && entry && currentMember && entry.member_id === currentMember.id);
 
