@@ -133,7 +133,7 @@
   .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; font-size: 11px; color: var(--text-muted); }
   .legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 3px; vertical-align: -2px; }
 
-  /* 「この日の当番が通算◯◯回目です」トースト（当番表タブ、自分の当番日を長押しした時に表示） */
+  /* 「この日の当番が通算◯◯回目です」トースト（当番表タブ、自分の当番日をタップした時に表示） */
   .duty-rank-toast {
     position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
     background: var(--accent-dark); color: #fff; padding: 10px 18px; border-radius: 20px;
@@ -163,7 +163,7 @@
   .tab-btn.active { background: var(--accent-dark); color: #fff; border-color: var(--accent-dark); }
 
   .day-cell.roster-cell { cursor: default; gap: 1px; padding-top: 5px; }
-  .day-cell.roster-cell.my-duty { background: #fff3b0; border-color: #d4af00; font-weight: 700; }
+  .day-cell.roster-cell.my-duty { background: #fff3b0; border-color: #d4af00; font-weight: 700; cursor: pointer; }
   .day-cell.roster-cell.my-duty .duty-name { color: #7a5c00; }
   .day-cell .duty-name {
     font-size: 9px; font-weight: 700; color: var(--accent-dark); line-height: 1.15;
@@ -292,7 +292,7 @@
         <div class="legend">
           <span><span class="sw" style="background:#fff3b0;border:1.5px solid #d4af00"></span><span id="roster-legend-label">ご自身の当番日</span></span>
         </div>
-        <div style="text-align:center;font-size:11px;color:var(--text-hint);margin-top:4px">黄色の自分の当番日を長押しすると、通算の当番回数が確認できます</div>
+        <div style="text-align:center;font-size:11px;color:var(--text-hint);margin-top:4px">黄色の自分の当番日をタップすると、通算の当番回数が確認できます</div>
       </div>
     </div>
 
@@ -871,7 +871,7 @@ function fitDutyNameSizes() {
 
 // =============================================
 // 「この日の当番が通算◯◯回目です」表示
-// （当番表タブで、黄色に塗られたご自身の当番日を長押しすると表示する）
+// （当番表タブで、黄色に塗られたご自身の当番日をタップすると表示する）
 //
 // 通算回数は、①duty_count_baselineの「運用前」の回数と、②これまでに「決定」
 // された全期間の実績回数、を合わせたもの（admin.html「累計当番回数」と同じ考え方）。
@@ -921,26 +921,13 @@ function showMyDutyRankToast(dateStr) {
   _dutyRankToastTimer = setTimeout(() => { el.classList.remove('show'); }, 3500);
 }
 
-// ご自身の当番日（黄色のマス）だけに長押し（500ms）検出を付ける。
-// タッチ端末・マウス操作の両方に対応する。
-const DUTY_RANK_LONG_PRESS_MS = 500;
+// ご自身の当番日（黄色のマス）だけに、タップ（クリック）で通算回数を表示する
+// 操作を付ける。タッチ端末・マウス操作のどちらでも'click'イベントで反応する。
 function attachDutyRankLongPress() {
   document.querySelectorAll('#roster-cal-body .day-cell.roster-cell.my-duty').forEach(cell => {
-    let timer = null;
-    const start = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        showMyDutyRankToast(cell.getAttribute('data-date'));
-      }, DUTY_RANK_LONG_PRESS_MS);
-    };
-    const cancel = () => clearTimeout(timer);
-    cell.addEventListener('touchstart', start, { passive: true });
-    cell.addEventListener('touchend', cancel);
-    cell.addEventListener('touchcancel', cancel);
-    cell.addEventListener('touchmove', cancel);
-    cell.addEventListener('mousedown', start);
-    cell.addEventListener('mouseup', cancel);
-    cell.addEventListener('mouseleave', cancel);
+    cell.addEventListener('click', () => {
+      showMyDutyRankToast(cell.getAttribute('data-date'));
+    });
   });
 }
 
