@@ -133,6 +133,16 @@
   .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; font-size: 11px; color: var(--text-muted); }
   .legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 3px; vertical-align: -2px; }
 
+  /* 「この日の当番が通算◯◯回目です」トースト（当番表タブ、自分の当番日を長押しした時に表示） */
+  .duty-rank-toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+    background: var(--accent-dark); color: #fff; padding: 10px 18px; border-radius: 20px;
+    font-size: 13px; font-weight: 600; box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    opacity: 0; pointer-events: none; transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 50; max-width: 88vw; text-align: center; white-space: nowrap;
+  }
+  .duty-rank-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
   .footer-note { text-align: center; font-size: 11px; color: var(--text-hint); margin-top: 18px; line-height: 1.7; }
   .hidden { display: none !important; }
   .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
@@ -282,10 +292,13 @@
         <div class="legend">
           <span><span class="sw" style="background:#fff3b0;border:1.5px solid #d4af00"></span><span id="roster-legend-label">ご自身の当番日</span></span>
         </div>
+        <div style="text-align:center;font-size:11px;color:var(--text-hint);margin-top:4px">黄色の自分の当番日を長押しすると、通算の当番回数が確認できます</div>
       </div>
     </div>
 
   </div>
+
+  <div id="duty-rank-toast" class="duty-rank-toast"></div>
 
 </div>
 
@@ -782,7 +795,7 @@ async function renderRosterCalendar() {
   const loadingEl = document.getElementById('roster-loading');
   loadingEl.textContent = '読み込み中...';
   await loadRosterDecisions();
-  const rosterMap = await fetchRosterForRange(dayList);
+  const [rosterMap] = await Promise.all([fetchRosterForRange(dayList), loadMyDutyRankMap()]);
   loadingEl.textContent = '';
 
   const first = dayList[0];
@@ -822,12 +835,13 @@ async function renderRosterCalendar() {
     const dayRowHtml = `<div style="display:flex;align-items:center;justify-content:center;gap:2px;line-height:1">
       <span class="day-num">${dayLabel}</span>${holBadge}
     </div>`;
-    html += `<td><div class="${cls}">${dayRowHtml}${nameHtml}</div></td>`;
+    html += `<td><div class="${cls}" data-date="${dateStr}">${dayRowHtml}${nameHtml}</div></td>`;
     if ((firstDay + idx + 1) % 7 === 0 && idx < dayList.length - 1) html += '</tr><tr>';
   });
   html += '</tr>';
   document.getElementById('roster-cal-body').innerHTML = html;
   fitDutyNameSizes();
+  attachDutyRankLongPress();
 }
 
 // 実際に描画された1マスの幅を測り、名前の文字サイズをその幅に合わせて自動計算する。
@@ -852,6 +866,81 @@ function fitDutyNameSizes() {
   const dayNumSize = Math.max(10, Math.min(13, cellWidth * 0.24));
   document.querySelectorAll('#roster-cal-body .day-num').forEach(el => {
     el.style.fontSize = dayNumSize.toFixed(1) + 'px';
+  });
+}
+
+// =============================================
+// 「この日の当番が通算◯◯回目です」表示
+// （当番表タブで、黄色に塗られたご自身の当番日を長押しすると表示する）
+//
+// 通算回数は、①duty_count_baselineの「運用前」の回数と、②これまでに「決定」
+// された全期間の実績回数、を合わせたもの（admin.html「累計当番回数」と同じ考え方）。
+// まだ「決定」されていない将来の予定（今後の年度計画などで先までannual_rosterに
+// 入っている可能性がある行）は変更されうるため、通算回数には一切含めない。
+// これは「当番表に当番者名が表示される日＝isRosterDateViewableがtrueの日」と
+// 完全に同じ条件にしてあり、ここがズレると「回数が出る月・出ない月」のような
+// 不整合が再発するため、以前の実装の反省を踏まえて特に注意している。
+// =============================================
+let myDutyRankMap = {}; // { dateStr: 通算回数 }
+
+async function loadMyDutyRankMap() {
+  myDutyRankMap = {};
+  if (!currentMember) return;
+  try {
+    const [rosterRes, baselineRes] = await Promise.all([
+      sbClient.from('annual_roster').select('duty_date').eq('member_id', currentMember.id),
+      sbClient.from('duty_count_baseline').select('baseline_count').eq('member_id', currentMember.id)
+    ]);
+    if (rosterRes.error) return;
+    const baselineCount = (!baselineRes.error && baselineRes.data && baselineRes.data[0])
+      ? (baselineRes.data[0].baseline_count || 0) : 0;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const allDates = (rosterRes.data || []).map(r => r.duty_date).sort();
+    // 当番表に名前が表示される日（＝「決定」済み、またはすでに終わった過去の日）だけを対象にする。
+    // 将来の未決定分をここに含めると、年度計画の入力状況によって通算回数が変動してしまうため除外する。
+    const viewableDates = allDates.filter(d => isRosterDateViewable(d, todayStr));
+    // 「決定」記録の無い表示対象日（＝運用前の記録や、決定記録が始まる前の過去分）の件数。
+    // baseline（運用前の回数）とこの件数がほぼ一致する設計になっているため、両方をそのまま
+    // 足すと二重計上になる。差し引き分だけをオフセットとして通算の位置に加える。
+    const undecidedViewableCount = viewableDates.filter(d => !isDutyDateDecided(d)).length;
+    const offset = baselineCount - undecidedViewableCount;
+    viewableDates.forEach((d, idx) => {
+      myDutyRankMap[d] = Math.max(1, idx + 1 + offset);
+    });
+  } catch (e) { myDutyRankMap = {}; }
+}
+
+let _dutyRankToastTimer = null;
+function showMyDutyRankToast(dateStr) {
+  const rank = myDutyRankMap[dateStr];
+  const el = document.getElementById('duty-rank-toast');
+  if (!el || !rank) return;
+  el.textContent = `この日の当番が通算${rank}回目です`;
+  el.classList.add('show');
+  clearTimeout(_dutyRankToastTimer);
+  _dutyRankToastTimer = setTimeout(() => { el.classList.remove('show'); }, 3500);
+}
+
+// ご自身の当番日（黄色のマス）だけに長押し（500ms）検出を付ける。
+// タッチ端末・マウス操作の両方に対応する。
+const DUTY_RANK_LONG_PRESS_MS = 500;
+function attachDutyRankLongPress() {
+  document.querySelectorAll('#roster-cal-body .day-cell.roster-cell.my-duty').forEach(cell => {
+    let timer = null;
+    const start = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        showMyDutyRankToast(cell.getAttribute('data-date'));
+      }, DUTY_RANK_LONG_PRESS_MS);
+    };
+    const cancel = () => clearTimeout(timer);
+    cell.addEventListener('touchstart', start, { passive: true });
+    cell.addEventListener('touchend', cancel);
+    cell.addEventListener('touchcancel', cancel);
+    cell.addEventListener('touchmove', cancel);
+    cell.addEventListener('mousedown', start);
+    cell.addEventListener('mouseup', cancel);
+    cell.addEventListener('mouseleave', cancel);
   });
 }
 
