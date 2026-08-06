@@ -598,7 +598,7 @@ async function renderCalendar() {
 
     const checkMark = (isRegistered && !isPendingRemove && isConfirmed) ? '<span class="confirm-check">✓</span>' : '';
     const holBadge = isHol ? '<span class="hol-badge">休日</span>' : '';
-    const dayLabel = isNextMonth ? `${day.m}/${day.d}` : String(day.d);
+    const dayLabel = isNextMonth ? `${day.m}/${day.d}` : `${day.d}日`;
     html += `<td><div class="${cls}" onclick="toggleDate('${dateStr}')">${checkMark}<span class="day-num">${dayLabel}</span>${holBadge}</div></td>`;
     if ((firstDay + idx + 1) % 7 === 0 && idx < dayList.length - 1) html += '</tr><tr>';
   });
@@ -816,7 +816,7 @@ async function renderRosterCalendar() {
     if (isMyDuty) cls += ' my-duty';
 
     const holBadge = isHol ? '<span class="hol-badge" style="margin-top:0">休日</span>' : '';
-    const dayLabel = isNextMonth ? `${day.m}/${day.d}` : String(day.d);
+    const dayLabel = isNextMonth ? `${day.m}/${day.d}` : `${day.d}日`;
     const nameLongCls = dutyName.length >= 5 ? ' name-long' : '';
     const nameHtml = dutyName ? `<span class="duty-name${nameLongCls}">${dutyName}</span>` : '';
     const dayRowHtml = `<div style="display:flex;align-items:center;justify-content:center;gap:2px;line-height:1">
