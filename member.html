@@ -846,6 +846,13 @@ function fitDutyNameSizes() {
   document.querySelectorAll('#roster-cal-body .duty-name.name-long').forEach(el => {
     el.style.fontSize = longSize.toFixed(1) + 'px';
   });
+  // 日付の数字（例：「10日」）はCSS上は14px固定だったため、名前の文字サイズに対して
+  // 相対的に大きく見えすぎていた。マス目の実際の幅に応じて、名前とバランスの
+  // 取れたサイズまで縮小する（支障日入力タブの日付表示には影響しない）。
+  const dayNumSize = Math.max(10, Math.min(13, cellWidth * 0.24));
+  document.querySelectorAll('#roster-cal-body .day-num').forEach(el => {
+    el.style.fontSize = dayNumSize.toFixed(1) + 'px';
+  });
 }
 
 function shiftRosterMonth(delta) {
