@@ -389,6 +389,7 @@
   .alert-success { background: var(--accent-light); color: var(--accent-dark); border: 1px solid #c8d8b4; }
   .alert-error { background: var(--danger-light); color: var(--danger); border: 1px solid #f0b8b8; }
   .alert-info { background: var(--info-light); color: var(--info); border: 1px solid #b8cfe8; }
+  .alert-warning { background: #fff7e6; color: #8a5a00; border: 1px solid #e0b45a; }
 
   /* システムの仕組み：GitHub・Supabase・当番表作成者・各詰員の関係図 */
   #page-system-guide .sys-diagram { display: flex; flex-direction: column; align-items: center; margin: 4px 0 20px; }
@@ -913,6 +914,7 @@
     <div id="page-nye-duty-record" class="page">
       <div class="section-title">年末年始当番記録</div>
       <div class="alert alert-info">2013年度から来年度（未来）分までを、日付ごとにまとめて確認できる記録ページです。日付ごとの割り当ての変更や、過去の記録の入力は「年度別 当番一覧」の該当セルから直接行ってください。</div>
+      <div id="nye-consistency-check" style="margin-bottom:12px">読み込み中...</div>
       <div class="card">
         <div class="card-title">年度別 当番一覧（2013年度＋来年度）</div>
         <p style="font-size:12px;color:var(--text-muted);margin-bottom:6px">日曜・祝日にあたるセルは赤字で表示しています。以前登録された導入前の記録（年・日付が分かるもの）は、該当する日付のセルに自動で反映されます。それ以外の、システムにも記録がない日は、セルに直接お名前を手入力できます（名簿にない名前でも構いません）。</p>
@@ -2130,6 +2132,27 @@ function getNyePastRecordsByDate() {
 // nyePastRecordsByMember/loadNyePastRecords/getNyePastRecordsByDateは、既存登録済みデータを
 // 通算回数に加算し、日付が分かるものはマトリクスに反映するために引き続き使用する。
 
+// 「メンバーごとの通算回数」の集計用：あるメンバーの「導入前の記録」件数を数える。
+// ただし、月日が判明していて、かつその同じ日付・同じ人物がすでに「年度別 当番一覧」の
+// システム記録（annual_roster）にも登録されている場合は、二重計上を防ぐためカウントしない
+// （マトリクス表示側は元々システム記録を優先して1回だけ表示しているのに対し、通算回数の
+// 集計側だけがシステム記録・導入前の記録の両方をそのまま合算していたため、同じ当番日が
+// 二重に数えられ、通算回数が実際より多く表示されてしまっていた）。
+function countNyePastRecordsForTotal(memberId) {
+  const records = nyePastRecordsByMember[memberId] || [];
+  let count = 0;
+  records.forEach(r => {
+    if (r.month_day) {
+      const y = r.month_day.startsWith('12') ? r.season_year : r.season_year + 1;
+      const dateStr = `${y}-${r.month_day}`;
+      const sysRec = schedules[dateStr];
+      if (sysRec && sysRec.member_id === memberId) return; // システム記録と同じ当番日なのでカウントしない
+    }
+    count++;
+  });
+  return count;
+}
+
 async function renderNyeDutyPage() {
   const assignBody = document.getElementById('nye-assign-body');
   if (!assignBody) return;
@@ -2277,15 +2300,71 @@ async function onNyeManualAssigneeChange(el) {
   await renderNyeDutyRecordPage();
 }
 
+// 「導入前の記録」と「年度別 当番一覧」のシステム記録の間に、見た目だけでは気づきにくい
+// データの矛盾がないかを自動チェックする（過去に「メンバーごとの通算回数」が実際より
+// 多く表示されてしまっていた不具合の再発防止のため）。
+//   ・duplicates: 同じ日付・同じ人物が両方に登録されている（通算回数では二重に数えないよう
+//     自動調整済みだが、記録としては重複しているので整理を促す）
+//   ・conflicts: 同じ日付なのに、登録されている人物が食い違っている（要確認・要修正）
+function computeNyeDataConsistencyIssues(pastRecordsByDate) {
+  const duplicates = [];
+  const conflicts = [];
+  Object.keys(pastRecordsByDate).forEach(dateStr => {
+    const sysRec = schedules[dateStr];
+    if (!sysRec || sysRec.member_id == null) return;
+    (pastRecordsByDate[dateStr] || []).forEach(pastMemberId => {
+      if (pastMemberId === sysRec.member_id) {
+        duplicates.push({ dateStr, memberId: pastMemberId });
+      } else {
+        conflicts.push({ dateStr, pastMemberId, sysMemberId: sysRec.member_id });
+      }
+    });
+  });
+  return { duplicates, conflicts };
+}
+
+function renderNyeDataConsistencyCheck(pastRecordsByDate) {
+  const el = document.getElementById('nye-consistency-check');
+  if (!el) return;
+  const { duplicates, conflicts } = computeNyeDataConsistencyIssues(pastRecordsByDate);
+  const nm = (id) => allMembersById[id]?.name || `ID:${id}`;
+  const fmtDate = (dateStr) => {
+    const [, mo, da] = dateStr.split('-').map(Number);
+    return `${nyeSeasonYear(dateStr)}年度 ${mo}/${da}`;
+  };
+
+  if (!conflicts.length && !duplicates.length) {
+    el.innerHTML = `<div class="alert alert-success">✓ データの矛盾は見つかりませんでした（「導入前の記録」と「年度別 当番一覧」の重複・食い違いなし）。</div>`;
+    return;
+  }
+
+  let html = '';
+  if (conflicts.length) {
+    html += `<div class="alert alert-error"><strong>⚠ 記録が食い違っています（要確認）</strong><br>
+      同じ日付なのに、「導入前の記録」と「年度別 当番一覧」で当番者が異なっています。どちらが正しいかご確認のうえ、「年度別 当番一覧」の該当セルから修正してください。<br>
+      ${conflicts.map(c => `・${fmtDate(c.dateStr)}：導入前の記録＝${nm(c.pastMemberId)}さん／年度別 当番一覧＝${nm(c.sysMemberId)}さん`).join('<br>')}
+    </div>`;
+  }
+  if (duplicates.length) {
+    html += `<div class="alert alert-warning"><strong>△ 重複した記録があります</strong><br>
+      「導入前の記録」と「年度別 当番一覧」の両方に、同じ日付・同じ人物の記録が入力されています。「メンバーごとの通算回数」では二重に数えないよう自動的に調整済みですが、記録を整理したい場合はどちらか一方を削除してください。<br>
+      ${duplicates.map(d => `・${fmtDate(d.dateStr)}：${nm(d.memberId)}さん`).join('<br>')}
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
 async function renderNyeDutyRecordPage() {
   const head = document.getElementById('nye-record-head');
   const body = document.getElementById('nye-record-body');
   const summaryBody = document.getElementById('nye-duty-body');
+  const consistencyEl = document.getElementById('nye-consistency-check');
   if (!head || !body) return;
   const seasonYears = getNyeRecordSeasonYears();
   const colspan = seasonYears.length + 1;
   body.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr>`;
   if (summaryBody) summaryBody.innerHTML = `<div style="color:var(--text-hint)">読み込み中...</div>`;
+  if (consistencyEl) consistencyEl.innerHTML = `<div style="color:var(--text-hint);font-size:13px">読み込み中...</div>`;
 
   try {
     await loadSchedules();
@@ -2293,6 +2372,7 @@ async function renderNyeDutyRecordPage() {
   } catch (e) {
     body.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center;color:var(--danger)">読み込み失敗: ${e.message}</td></tr>`;
     if (summaryBody) summaryBody.innerHTML = `<div style="color:var(--danger)">読み込み失敗: ${e.message}</div>`;
+    if (consistencyEl) consistencyEl.innerHTML = '';
     return;
   }
 
@@ -2301,6 +2381,7 @@ async function renderNyeDutyRecordPage() {
   // 月日部分（12/28〜1/4）は全年度共通。曜日・祝日は年度ごとに異なるため、セル単位で赤字表示する。
   const monthDays = ['12-28', '12-29', '12-30', '12-31', '01-01', '01-02', '01-03', '01-04'];
   const pastRecordsByDate = getNyePastRecordsByDate();
+  renderNyeDataConsistencyCheck(pastRecordsByDate);
   body.innerHTML = monthDays.map(md => {
     const [mo, da] = md.split('-').map(Number);
     const cells = seasonYears.map(sy => {
@@ -2360,7 +2441,7 @@ async function renderNyeDutyRecordPage() {
   // 「氏名 回数」タグ形式（詰員名簿順）で並べて表示する
   const totalByMember = {};
   members.forEach(m => {
-    const past = (nyePastRecordsByMember[m.id] || []).length;
+    const past = countNyePastRecordsForTotal(m.id);
     const sys = sysCountByMember[m.id] || 0;
     const manual = manualCountByMember[m.id] || 0;
     totalByMember[m.id] = past + sys + manual;
