@@ -482,7 +482,11 @@
 
   <main class="main">
     <div id="page-calendar" class="page active">
-      <div class="section-title">カレンダー表示</div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="section-title" style="margin-bottom:0">カレンダー表示</div>
+        <button type="button" class="btn btn-sm" id="cal-settings-toggle-btn" onclick="toggleCalSettings()">操作パネルを隠す</button>
+      </div>
+      <div id="cal-settings-body" style="flex:none">
       <div class="cal-nav">
         <button class="btn btn-sm" onclick="prevMonth()">◀</button>
         <div class="cal-title" id="cal-title">2026年 1月</div>
@@ -496,6 +500,7 @@
       <div id="cal-info-row">
         <div id="cal-decide-bar"></div>
         <div id="print-scale-hint"></div>
+      </div>
       </div>
 
       <div class="cal-grid" id="cal-dow"></div>
@@ -4911,6 +4916,18 @@ function buildRecordTitle(sel) {
     return `${sel.targetMonth}月：${sel.year}年〜${endYear}年（${sel.yearCount}年分）の当番記録`;
   }
   return `${sel.year}年${sel.month}月 から ${sel.count}ヶ月分の当番記録`;
+}
+
+// 「カレンダー表示」の月移動・CSV出力・決定状態などの操作パネルを、開閉ボタンで表示／非表示切り替える
+// #page-calendarはflexレイアウトで#cal-bodyがflex:1のため、操作パネルを隠すと
+// その分だけ自動的にカレンダー本体（当番者名のマス目）の表示範囲が広がる
+function toggleCalSettings(forceHide) {
+  const body = document.getElementById('cal-settings-body');
+  const btn = document.getElementById('cal-settings-toggle-btn');
+  if (!body || !btn) return;
+  const shouldHide = (typeof forceHide === 'boolean') ? forceHide : (body.style.display !== 'none');
+  body.style.display = shouldHide ? 'none' : '';
+  btn.textContent = shouldHide ? '操作パネルを表示' : '操作パネルを隠す';
 }
 
 // 「割当確認（表形式）」の表示設定カードを、開閉ボタンで表示／非表示切り替える
