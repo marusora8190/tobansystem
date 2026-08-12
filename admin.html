@@ -768,9 +768,13 @@
 
     <div id="page-records" class="page">
       <div class="section-title">割当確認（表形式）</div>
-      <div class="card">
-        <div class="card-title">表示設定</div>
-        <div class="rec-controls-row" style="display:flex;gap:8px;align-items:flex-end">
+      <div class="card" id="rec-settings-card">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div class="card-title" style="margin-bottom:0">表示設定</div>
+          <button type="button" class="btn btn-sm" id="rec-settings-toggle-btn" onclick="toggleRecordSettings()">表示設定を隠す</button>
+        </div>
+        <div id="rec-settings-body">
+        <div class="rec-controls-row" style="display:flex;gap:8px;align-items:flex-end;margin-top:8px">
           <div class="form-group" style="width:170px">
             <label>表示形式</label>
             <select id="rec-mode" onchange="updateRecordModeUI()">
@@ -811,6 +815,7 @@
           <button class="btn" onclick="printRecordTable()">🖨 印刷</button>
         </div>
         <p class="rec-help-text" style="font-size:11px;color:var(--text-muted)">「同じ月を複数年表示」を選ぶと、例えば「開始年2013年・対象月5月・5年分」で2013年5月・2014年5月・2015年5月・2016年5月・2017年5月のように、年をまたいで同じ月同士を並べて比較できます。</p>
+        </div>
       </div>
       <div class="card" style="padding-top:6px">
         <div class="card-title" id="rec-title" style="margin-bottom:4px">年月・表示件数を選択して「表示」を押してください</div>
@@ -4906,6 +4911,16 @@ function buildRecordTitle(sel) {
     return `${sel.targetMonth}月：${sel.year}年〜${endYear}年（${sel.yearCount}年分）の当番記録`;
   }
   return `${sel.year}年${sel.month}月 から ${sel.count}ヶ月分の当番記録`;
+}
+
+// 「割当確認（表形式）」の表示設定カードを、開閉ボタンで表示／非表示切り替える
+function toggleRecordSettings(forceHide) {
+  const body = document.getElementById('rec-settings-body');
+  const btn = document.getElementById('rec-settings-toggle-btn');
+  if (!body || !btn) return;
+  const shouldHide = (typeof forceHide === 'boolean') ? forceHide : (body.style.display !== 'none');
+  body.style.display = shouldHide ? 'none' : '';
+  btn.textContent = shouldHide ? '表示設定を表示' : '表示設定を隠す';
 }
 
 async function renderRecordTable() {
