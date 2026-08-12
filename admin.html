@@ -389,7 +389,6 @@
   .alert-success { background: var(--accent-light); color: var(--accent-dark); border: 1px solid #c8d8b4; }
   .alert-error { background: var(--danger-light); color: var(--danger); border: 1px solid #f0b8b8; }
   .alert-info { background: var(--info-light); color: var(--info); border: 1px solid #b8cfe8; }
-  .alert-warning { background: #fff7e6; color: #8a5a00; border: 1px solid #e0b45a; }
 
   /* システムの仕組み：GitHub・Supabase・当番表作成者・各詰員の関係図 */
   #page-system-guide .sys-diagram { display: flex; flex-direction: column; align-items: center; margin: 4px 0 20px; }
@@ -482,11 +481,7 @@
 
   <main class="main">
     <div id="page-calendar" class="page active">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div class="section-title" style="margin-bottom:0">カレンダー表示</div>
-        <button type="button" class="btn btn-sm" id="cal-settings-toggle-btn" onclick="toggleCalSettings()">操作パネルを隠す</button>
-      </div>
-      <div id="cal-settings-body" style="flex:none">
+      <div class="section-title">カレンダー表示</div>
       <div class="cal-nav">
         <button class="btn btn-sm" onclick="prevMonth()">◀</button>
         <div class="cal-title" id="cal-title">2026年 1月</div>
@@ -500,7 +495,6 @@
       <div id="cal-info-row">
         <div id="cal-decide-bar"></div>
         <div id="print-scale-hint"></div>
-      </div>
       </div>
 
       <div class="cal-grid" id="cal-dow"></div>
@@ -773,13 +767,9 @@
 
     <div id="page-records" class="page">
       <div class="section-title">割当確認（表形式）</div>
-      <div class="card" id="rec-settings-card">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <div class="card-title" style="margin-bottom:0">表示設定</div>
-          <button type="button" class="btn btn-sm" id="rec-settings-toggle-btn" onclick="toggleRecordSettings()">表示設定を隠す</button>
-        </div>
-        <div id="rec-settings-body">
-        <div class="rec-controls-row" style="display:flex;gap:8px;align-items:flex-end;margin-top:8px">
+      <div class="card">
+        <div class="card-title">表示設定</div>
+        <div class="rec-controls-row" style="display:flex;gap:8px;align-items:flex-end">
           <div class="form-group" style="width:170px">
             <label>表示形式</label>
             <select id="rec-mode" onchange="updateRecordModeUI()">
@@ -820,11 +810,10 @@
           <button class="btn" onclick="printRecordTable()">🖨 印刷</button>
         </div>
         <p class="rec-help-text" style="font-size:11px;color:var(--text-muted)">「同じ月を複数年表示」を選ぶと、例えば「開始年2013年・対象月5月・5年分」で2013年5月・2014年5月・2015年5月・2016年5月・2017年5月のように、年をまたいで同じ月同士を並べて比較できます。</p>
-        </div>
       </div>
       <div class="card" style="padding-top:6px">
         <div class="card-title" id="rec-title" style="margin-bottom:4px">年月・表示件数を選択して「表示」を押してください</div>
-        <div id="rec-table-wrap" style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 345px);transition:max-height 0.15s ease;display:flex;gap:12px;padding-bottom:8px;align-items:flex-start"></div>
+        <div id="rec-table-wrap" style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 345px);display:flex;gap:12px;padding-bottom:8px;align-items:flex-start"></div>
         <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap">
           <span style="font-size:12px;color:var(--text-muted)"><span style="background:var(--danger);color:#fff;padding:1px 6px;border-radius:3px;font-size:11px">1日(日)</span> 日曜・祝日</span>
         </div>
@@ -2314,8 +2303,10 @@ async function onNyeManualAssigneeChange(el) {
 // データの矛盾がないかを自動チェックする（過去に「メンバーごとの通算回数」が実際より
 // 多く表示されてしまっていた不具合の再発防止のため）。
 //   ・duplicates: 同じ日付・同じ人物が両方に登録されている（通算回数では二重に数えないよう
-//     自動調整済みだが、記録としては重複しているので整理を促す）
-//   ・conflicts: 同じ日付なのに、登録されている人物が食い違っている（要確認・要修正）
+//     自動調整済みのため実害はない。過去データを2013年度分まで遡って登録した際に大量に
+//     発生する、ごくありふれた状態のため、警告表示の対象にはしない）
+//   ・conflicts: 同じ日付なのに、登録されている人物が食い違っている（実際にどちらが正しいか
+//     確認が必要な、本当のデータ矛盾。これだけを警告表示の対象にする）
 function computeNyeDataConsistencyIssues(pastRecordsByDate) {
   const duplicates = [];
   const conflicts = [];
@@ -2336,32 +2327,22 @@ function computeNyeDataConsistencyIssues(pastRecordsByDate) {
 function renderNyeDataConsistencyCheck(pastRecordsByDate) {
   const el = document.getElementById('nye-consistency-check');
   if (!el) return;
-  const { duplicates, conflicts } = computeNyeDataConsistencyIssues(pastRecordsByDate);
+  const { conflicts } = computeNyeDataConsistencyIssues(pastRecordsByDate);
   const nm = (id) => allMembersById[id]?.name || `ID:${id}`;
   const fmtDate = (dateStr) => {
     const [, mo, da] = dateStr.split('-').map(Number);
     return `${nyeSeasonYear(dateStr)}年度 ${mo}/${da}`;
   };
 
-  if (!conflicts.length && !duplicates.length) {
-    el.innerHTML = `<div class="alert alert-success">✓ データの矛盾は見つかりませんでした（「導入前の記録」と「年度別 当番一覧」の重複・食い違いなし）。</div>`;
+  if (!conflicts.length) {
+    el.innerHTML = `<div class="alert alert-success">✓ データの矛盾は見つかりませんでした。</div>`;
     return;
   }
 
-  let html = '';
-  if (conflicts.length) {
-    html += `<div class="alert alert-error"><strong>⚠ 記録が食い違っています（要確認）</strong><br>
-      同じ日付なのに、「導入前の記録」と「年度別 当番一覧」で当番者が異なっています。どちらが正しいかご確認のうえ、「年度別 当番一覧」の該当セルから修正してください。<br>
-      ${conflicts.map(c => `・${fmtDate(c.dateStr)}：導入前の記録＝${nm(c.pastMemberId)}さん／年度別 当番一覧＝${nm(c.sysMemberId)}さん`).join('<br>')}
-    </div>`;
-  }
-  if (duplicates.length) {
-    html += `<div class="alert alert-warning"><strong>△ 重複した記録があります</strong><br>
-      「導入前の記録」と「年度別 当番一覧」の両方に、同じ日付・同じ人物の記録が入力されています。「メンバーごとの通算回数」では二重に数えないよう自動的に調整済みですが、記録を整理したい場合はどちらか一方を削除してください。<br>
-      ${duplicates.map(d => `・${fmtDate(d.dateStr)}：${nm(d.memberId)}さん`).join('<br>')}
-    </div>`;
-  }
-  el.innerHTML = html;
+  el.innerHTML = `<div class="alert alert-error"><strong>⚠ 記録が食い違っています（要確認）</strong><br>
+    同じ日付なのに、「導入前の記録」と「年度別 当番一覧」で当番者が異なっています。どちらが正しいかご確認のうえ、「年度別 当番一覧」の該当セルから修正してください。<br>
+    ${conflicts.map(c => `・${fmtDate(c.dateStr)}：導入前の記録＝${nm(c.pastMemberId)}さん／年度別 当番一覧＝${nm(c.sysMemberId)}さん`).join('<br>')}
+  </div>`;
 }
 
 async function renderNyeDutyRecordPage() {
@@ -4916,34 +4897,6 @@ function buildRecordTitle(sel) {
     return `${sel.targetMonth}月：${sel.year}年〜${endYear}年（${sel.yearCount}年分）の当番記録`;
   }
   return `${sel.year}年${sel.month}月 から ${sel.count}ヶ月分の当番記録`;
-}
-
-// 「カレンダー表示」の月移動・CSV出力・決定状態などの操作パネルを、開閉ボタンで表示／非表示切り替える
-// #page-calendarはflexレイアウトで#cal-bodyがflex:1のため、操作パネルを隠すと
-// その分だけ自動的にカレンダー本体（当番者名のマス目）の表示範囲が広がる
-function toggleCalSettings(forceHide) {
-  const body = document.getElementById('cal-settings-body');
-  const btn = document.getElementById('cal-settings-toggle-btn');
-  if (!body || !btn) return;
-  const shouldHide = (typeof forceHide === 'boolean') ? forceHide : (body.style.display !== 'none');
-  body.style.display = shouldHide ? 'none' : '';
-  btn.textContent = shouldHide ? '操作パネルを表示' : '操作パネルを隠す';
-}
-
-// 「割当確認（表形式）」の表示設定カードを、開閉ボタンで表示／非表示切り替える
-// 設定を隠したときは、その分だけ下の表の表示範囲（高さ）を自動で広げる
-function toggleRecordSettings(forceHide) {
-  const body = document.getElementById('rec-settings-body');
-  const btn = document.getElementById('rec-settings-toggle-btn');
-  const tableWrap = document.getElementById('rec-table-wrap');
-  if (!body || !btn) return;
-  const shouldHide = (typeof forceHide === 'boolean') ? forceHide : (body.style.display !== 'none');
-  body.style.display = shouldHide ? 'none' : '';
-  btn.textContent = shouldHide ? '表示設定を表示' : '表示設定を隠す';
-  if (tableWrap) {
-    // 表示設定カード（表示設定を隠すボタンの行を除いた本体分）のおおよその高さを差し引く
-    tableWrap.style.maxHeight = shouldHide ? 'calc(100vh - 230px)' : 'calc(100vh - 345px)';
-  }
 }
 
 async function renderRecordTable() {
