@@ -3770,6 +3770,15 @@ async function generateSchedule() {
   const baseYearCount = {};
   (yearSched || []).forEach(s => { baseYearCount[s.member_id] = (baseYearCount[s.member_id] || 0) + 1; });
 
+  // 対象月のロック状況は、この場でSupabaseから直接あらためて取得する（画面上のカレンダー用
+  // キャッシュ変数`schedules`を使わない）。カレンダー表示でロックをかけた直後にそのまま
+  // 「当番表を作成」を押した場合はもちろん、別のページを経由してから作成した場合でも、
+  // 「ロックした当番者が案の生成・保存で書き換わってしまわないか」を気にせず済むように、
+  // 毎回のデータベースの実際の値を確実な基準にするための対応。
+  const { data: curMonthSched } = await sbClient.from('annual_roster').select('duty_date, member_id, locked').gte('duty_date', rangeStart).lte('duty_date', rangeEnd);
+  const curMonthMap = {};
+  (curMonthSched || []).forEach(s => { curMonthMap[s.duty_date] = s; });
+
   const twiceMembers = new Set();
   const zeroMembers = new Set();
   const holidayMembers = new Set();
@@ -3942,8 +3951,10 @@ async function generateSchedule() {
       const isSpecialDay = (dow === 0 || isHol);
 
       // ロック済みの日は自動生成の対象外とし、既に決まっている当番者をそのまま採用する
-      // （①カレンダーで保存済みのロック、②保存前のプレビュー画面で一時的にロックした行、の両方を対象とする）
-      const existingSched = schedules[dateStr];
+      // （①カレンダーで保存済みのロック（curMonthMapはこの場で取得した最新のデータベースの
+      //   値なので、直前にカレンダーでロックしたばかりの当番者も確実に反映される）、
+      //   ②保存前のプレビュー画面で一時的にロックした行、の両方を対象とする）
+      const existingSched = curMonthMap[dateStr];
       const dbLockedMemberId = (existingSched && existingSched.locked && existingSched.member_id) ? existingSched.member_id : null;
       const previewLockedMemberId = prevPreviewLocked[dateStr] || null;
       const lockedMemberId = dbLockedMemberId || previewLockedMemberId;
@@ -4071,6 +4082,17 @@ function buildProposalCardHtml(idx, rows, unassignedCount) {
     </tr>`;
   });
 
+  // この案の中で、1日も当番に選ばれなかった在籍メンバーをカレンダー表の下に一覧表示する
+  // （支障日や上限回数などの兼ね合いで、月全体を通して一度も出番が回ってこない人がいないか、
+  // 一目で確認できるようにするため）。
+  const assignedIds = new Set(rows.filter(r => r.member_id).map(r => r.member_id));
+  const noDutyMembers = members.filter(m => !assignedIds.has(m.id));
+  const noDutySection = `
+    <div id="proposal-noduty-${idx}" style="padding:6px 8px;border-top:1px solid var(--border);font-size:11px;line-height:1.5;background:var(--bg);border-radius:0 0 var(--radius) var(--radius)">
+      <div style="font-weight:600;color:var(--text-muted);margin-bottom:2px">この案で当番が1回もない人（${noDutyMembers.length}名）</div>
+      <div id="proposal-noduty-list-${idx}" style="color:${noDutyMembers.length ? 'var(--text)' : 'var(--text-hint)'}">${noDutyMembers.length ? noDutyMembers.map(m => m.name).join('、') : '全員に当番が割り当てられています'}</div>
+    </div>`;
+
   return `
     <div style="flex:0 0 auto;min-width:200px;border:1px solid var(--border);border-radius:var(--radius)">
       <div style="position:sticky;top:0;z-index:6;background:var(--accent-light);border-bottom:1px solid var(--border);border-radius:var(--radius) var(--radius) 0 0;padding:4px">
@@ -4086,6 +4108,7 @@ function buildProposalCardHtml(idx, rows, unassignedCount) {
         </thead>
         <tbody>${bodyRows}</tbody>
       </table>
+      ${noDutySection}
     </div>`;
 }
 
@@ -4368,6 +4391,28 @@ async function saveDaySchedule() {
   const locked = document.getElementById('day-modal-locked').checked;
   const d = new Date(date + 'T00:00:00');
   const isHol = (d.getDay() === 0 || !!holidays[date]);
+
+  // 手入力で当番者を選んだ場合、自動作成では絶対条件として扱っている
+  // 「支障日」「日祝当番の設定」に反していないかを確認し、反している場合だけ
+  // 確認ダイアログを出す（キャンセルした場合は保存しない。あくまで確認であり、
+  // 「はい」を選べばこれまで通りそのまま登録できる＝手入力の最終判断は当番表作成者に委ねる）。
+  if (member_id) {
+    const { data: unavailRows } = await sbClient.from('unavailable_dates').select('id').eq('member_id', member_id).eq('blocked_date', date);
+    if (unavailRows && unavailRows.length > 0) {
+      if (!confirm('この日は支障日です。それでもよろしいですか？')) return;
+    }
+
+    if (isHol) {
+      const year = d.getFullYear();
+      const month = d.getMonth() + 1;
+      const { data: planRows } = await sbClient.from('annual_plans').select('holiday_months').eq('member_id', member_id).eq('year', year);
+      const holMonths = ((planRows && planRows[0] && planRows[0].holiday_months) || []).map(Number);
+      if (!holMonths.includes(month)) {
+        if (!confirm('この日は休日です。それでもよろしいですか？')) return;
+      }
+    }
+  }
+
   const { error } = await sbClient.from('annual_roster').upsert({ duty_date: date, member_id, manual_assignee, notes: note, is_holiday: isHol, locked: member_id ? locked : false }, { onConflict: 'duty_date' });
   if (error) { showMsg('day-modal-msg', error.message, 'error'); return; }
   await loadSchedules();
