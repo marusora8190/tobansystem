@@ -736,21 +736,28 @@
           </div>
         </div>
       </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="generateSchedule()">当番表を作成</button>
+        <button class="btn btn-danger" onclick="resetMonthSchedule()">選択した月の当番表をリセット</button>
+      </div>
+      <div id="gen-msg" style="margin-top:8px"></div>
+      <div id="gen-proposals" style="display:none" class="card">
+        <div class="card-title">📋 作成された案（採用したい案の「この案を採用する」を押してください）</div>
+        <div id="gen-proposals-wrap" style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 345px);display:flex;gap:12px;padding-bottom:8px;align-items:flex-start"></div>
+      </div>
       <div id="gen-preview" style="display:none" class="card">
-        <div class="card-title">📋 作成プレビュー</div>
+        <div class="card-title">📋 採用した案の確認・調整</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:6px">この画面で当番者の変更・ロックができます。内容を確認したら「保存する」を押してください。</p>
         <div class="table-wrap">
           <table class="gen-preview-table">
             <thead><tr><th>日付</th><th>曜日</th><th>当番者</th><th>種別</th></tr></thead>
             <tbody id="gen-preview-body"></tbody>
           </table>
         </div>
+        <div class="btn-row" style="margin-top:12px">
+          <button class="btn" id="btn-save-gen" style="display:none" onclick="saveGeneratedSchedule()">保存する</button>
+        </div>
       </div>
-      <div class="btn-row">
-        <button class="btn btn-primary" onclick="generateSchedule()">当番表を作成</button>
-        <button class="btn" id="btn-save-gen" style="display:none" onclick="saveGeneratedSchedule()">保存する</button>
-        <button class="btn btn-danger" onclick="resetMonthSchedule()">選択した月の当番表をリセット</button>
-      </div>
-      <div id="gen-msg" style="margin-top:8px"></div>
     </div>
 
     <div id="page-gen-rules" class="page">
@@ -1186,6 +1193,7 @@ function getServiceMonthDays(year, month) {
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
 let generatedSchedule = [];
+let scheduleProposals = []; // 「当番表を作成」で生成された複数案（案1〜案5）を保持する
 let selectedUnavailDates = new Set();
 let allMembersById = {};
 let allMembersLoaded = false;
@@ -3727,11 +3735,10 @@ async function generateSchedule() {
   if (!monthStr) { showMsg('gen-msg', '対象月を選択してください', 'error'); return; }
   if (!members.length) { showMsg('gen-msg', 'メンバーが登録されていません', 'error'); return; }
 
-  showMsg('gen-msg', '<span class="spinner"></span> 生成中...', 'info');
+  showMsg('gen-msg', '<span class="spinner"></span> 生成中...（複数の案を作成しています）', 'info');
 
   const [year, month] = monthStr.split('-').map(Number);
   const serviceDays = getServiceMonthDays(year, month);
-  const daysInMonth = serviceDays.length;
   const monthNum = month;
   const rangeStart = serviceDays[0].dateStr;
   const rangeEnd = serviceDays[serviceDays.length - 1].dateStr;
@@ -3750,9 +3757,9 @@ async function generateSchedule() {
 
   const prevDate = new Date(year, month - 2, 1);
   const { data: prevSched } = await sbClient.from('annual_roster').select('duty_date, member_id').gte('duty_date', prevDate.toISOString().slice(0,10)).lt('duty_date', `${year}-${String(month).padStart(2,'0')}-01`);
-  const lastAssigned = {};
+  const baseLastAssigned = {};
   (prevSched || []).forEach(s => {
-    if (!lastAssigned[s.member_id] || s.duty_date > lastAssigned[s.member_id]) { lastAssigned[s.member_id] = s.duty_date; }
+    if (!baseLastAssigned[s.member_id] || s.duty_date > baseLastAssigned[s.member_id]) { baseLastAssigned[s.member_id] = s.duty_date; }
   });
 
   const { data: plans } = await sbClient.from('annual_plans').select('*').eq('year', year);
@@ -3760,8 +3767,8 @@ async function generateSchedule() {
   (plans || []).forEach(p => { planMap[p.member_id] = p; });
 
   const { data: yearSched } = await sbClient.from('annual_roster').select('duty_date, member_id, is_holiday').gte('duty_date', `${year}-01-01`).lt('duty_date', `${year}-${String(month).padStart(2,'0')}-01`);
-  const yearCount = {}; 
-  (yearSched || []).forEach(s => { yearCount[s.member_id] = (yearCount[s.member_id] || 0) + 1; });
+  const baseYearCount = {};
+  (yearSched || []).forEach(s => { baseYearCount[s.member_id] = (baseYearCount[s.member_id] || 0) + 1; });
 
   const twiceMembers = new Set();
   const zeroMembers = new Set();
@@ -3774,173 +3781,324 @@ async function generateSchedule() {
     if (p && (p.holiday_months || []).map(Number).includes(monthNum)) holidayMembers.add(m.id);
   });
 
-  const result = [];
-  const monthCount = {};
-  const specialCount = {}; // 「2回当番かつ日祝対象」の人が、当月ですでに日祝当番に何回当たったかを記録する
-
   // 「月の予定回数（0回／1回／2回）」を基準に、各人の当月の上限回数を求める
   function maxMonthlyOf(m) { return twiceMembers.has(m.id) ? 2 : 1; }
 
-  // hard 制約（どの段階でも絶対に緩めない）：
-  //   ・支障日には割り当てない
-  //   ・月の予定回数が「0回」の人はその月は対象外
-  //   ・月の上限回数（1回／2回）は超えない（候補が見つからない日は「未割当」のまま残す）
-  //   ・日曜・祝日の当番は「日祝」設定のある人だけに限定する（未設定の人には割り当てない）
-  //   ・「2回当番」かつ「日祝対象」の人は、2回のうち必ず1回は日祝・もう1回は平日にする
-  // それ以外（前回当番からの間隔／年間目標回数／平日での日祝限定者の除外）は、
-  // 候補者がどうしても見つからない場合にのみ、下の tiers の順で段階的に緩める。
-  function getCandidatesForTier(dateStr, isSpecialDay, opts) {
-    return members.map(m => {
-      if (zeroMembers.has(m.id)) return null;                      // hard: 月0回
-      if ((unavailMap[dateStr] || new Set()).has(m.id)) return null; // hard: 支障日
+  // 1回分の当番表生成を実行する（案を1つ作る）。
+  // tieRandomは、他の条件（当番回数・前回当番日からの間隔など）が完全に同点だった
+  // 場合にのみ使う、メンバーIDごとのランダムな順序決定値。空オブジェクト{}を渡すと
+  // 常に一定の順序になり、これが最も標準的な「基準案」になる。
+  // 複数の案（案1〜5）を作るため、この関数を毎回異なるtieRandomで複数回呼び出し、
+  // 割り当て結果が実際に異なるものだけを別の案として採用する。
+  function runOneGeneration(tieRandom) {
+    const monthCount = {};
+    const specialCount = {}; // 「2回当番かつ日祝対象」の人が、当月ですでに日祝当番に何回当たったかを記録する
+    const lastAssigned = { ...baseLastAssigned };
+    const yearCount = { ...baseYearCount };
 
-      if (!opts.ignoreInterval) {
-        const lastDate = lastAssigned[m.id];
-        if (lastDate) {
-          const diff = (new Date(dateStr) - new Date(lastDate)) / 86400000;
-          if (diff < opts.minGap) return null;
+    // hard 制約（どの段階でも絶対に緩めない）：
+    //   ・支障日には割り当てない
+    //   ・月の予定回数が「0回」の人はその月は対象外
+    //   ・月の上限回数（1回／2回）は超えない（候補が見つからない日は「未割当」のまま残す）
+    //   ・日曜・祝日の当番は「日祝」設定のある人だけに限定する（未設定の人には割り当てない）
+    //   ・「2回当番」かつ「日祝対象」の人は、2回のうち必ず1回は日祝・もう1回は平日にする
+    // それ以外（前回当番からの間隔／年間目標回数／平日での日祝限定者の除外）は、
+    // 候補者がどうしても見つからない場合にのみ、下の tiers の順で段階的に緩める。
+    function getCandidatesForTier(dateStr, isSpecialDay, opts) {
+      return members.map(m => {
+        if (zeroMembers.has(m.id)) return null;                      // hard: 月0回
+        if ((unavailMap[dateStr] || new Set()).has(m.id)) return null; // hard: 支障日
+
+        if (!opts.ignoreInterval) {
+          const lastDate = lastAssigned[m.id];
+          if (lastDate) {
+            const diff = (new Date(dateStr) - new Date(lastDate)) / 86400000;
+            if (diff < opts.minGap) return null;
+          }
         }
-      }
 
-      if (!opts.ignoreMonthlyCap) {
-        if ((monthCount[m.id] || 0) >= maxMonthlyOf(m)) return null;
-      }
+        if (!opts.ignoreMonthlyCap) {
+          if ((monthCount[m.id] || 0) >= maxMonthlyOf(m)) return null;
+        }
 
-      if (!opts.ignoreYearTarget) {
-        const p = planMap[m.id];
-        const yearTgt = p ? (p.target_count || 12) : 12;
-        if ((yearCount[m.id] || 0) >= yearTgt) return null;
-      }
+        if (!opts.ignoreYearTarget) {
+          const p = planMap[m.id];
+          const yearTgt = p ? (p.target_count || 12) : 12;
+          if ((yearCount[m.id] || 0) >= yearTgt) return null;
+        }
 
-      // 日祝の日は「日祝」設定がある人だけに限定する（絶対条件・緩めない）
-      if (isSpecialDay && !holidayMembers.has(m.id)) return null;
+        // 日祝の日は「日祝」設定がある人だけに限定する（絶対条件・緩めない）
+        if (isSpecialDay && !holidayMembers.has(m.id)) return null;
 
-      if (!opts.ignoreHolidayMatch) {
-        // 平日は、月2回の人であれば日祝設定の有無を問わない
-        if (!isSpecialDay && holidayMembers.has(m.id) && !twiceMembers.has(m.id)) return null;
-      }
+        if (!opts.ignoreHolidayMatch) {
+          // 平日は、月2回の人であれば日祝設定の有無を問わない
+          if (!isSpecialDay && holidayMembers.has(m.id) && !twiceMembers.has(m.id)) return null;
+        }
 
-      // 「2回当番」かつ「日祝対象」の人は、2回のうち必ず1回は日祝、もう1回は平日に固定する
-      // （絶対条件・緩めない）：
-      //   ・すでに日祝を1回確保している人には、これ以上日祝を割り当てない
-      //   ・まだ日祝を確保していないのに、平日で2回目（最後の枠）を使わせない
-      //     （平日に2回とも消費してしまうと、日祝担当が0回になってしまうため）
-      if (twiceMembers.has(m.id) && holidayMembers.has(m.id)) {
-        const sc = specialCount[m.id] || 0;
-        if (isSpecialDay && sc >= 1) return null;
-        if (!isSpecialDay && sc === 0 && (monthCount[m.id] || 0) >= 1) return null;
-      }
+        // 「2回当番」かつ「日祝対象」の人は、2回のうち必ず1回は日祝、もう1回は平日に固定する
+        // （絶対条件・緩めない）：
+        //   ・すでに日祝を1回確保している人には、これ以上日祝を割り当てない
+        //   ・まだ日祝を確保していないのに、平日で2回目（最後の枠）を使わせない
+        //     （平日に2回とも消費してしまうと、日祝担当が0回になってしまうため）
+        if (twiceMembers.has(m.id) && holidayMembers.has(m.id)) {
+          const sc = specialCount[m.id] || 0;
+          if (isSpecialDay && sc >= 1) return null;
+          if (!isSpecialDay && sc === 0 && (monthCount[m.id] || 0) >= 1) return null;
+        }
 
-      return m;
-    }).filter(Boolean);
-  }
-
-  // 公平に割り当てるための並び替え：
-  //   1. 当番回数が2回の人を先に割り当てる（2回の人の枠を優先的に埋める）
-  //   2. 同じグループ内では、当月の当番回数が少ない人を優先（1回も当たらない人が出ないようにする）
-  //   3. 前回の当番日から日数が空いている人を優先（連続当番を防ぐ）
-  function sortCandidatesFair(list) {
-    list.sort((a, b) => {
-      const twiceA = twiceMembers.has(a.id) ? 0 : 1;
-      const twiceB = twiceMembers.has(b.id) ? 0 : 1;
-      if (twiceA !== twiceB) return twiceA - twiceB;
-
-      const cntA = monthCount[a.id] || 0;
-      const cntB = monthCount[b.id] || 0;
-      if (cntA !== cntB) return cntA - cntB;
-
-      const dateA = lastAssigned[a.id] ? new Date(lastAssigned[a.id]) : new Date(2000, 0, 1);
-      const dateB = lastAssigned[b.id] ? new Date(lastAssigned[b.id]) : new Date(2000, 0, 1);
-      return dateA - dateB;
-    });
-    return list;
-  }
-
-  // 候補者が見つからない場合に、制約を段階的に緩めながら選び直す。
-  // 「月の予定回数の上限（monthlyCap）」「日祝当番は日祝設定のある人限定」は、
-  // 当番表作成者の方針により絶対に緩めない条件とする。
-  // どうしても候補が見つからない日は、誰かに無理に割り当てず「未割当」のまま残す
-  // （未割当の日は、当番表作成者が手動で確認・調整することを想定している）。
-  const RELAX_TIERS = [
-    { minGap: 8 },
-    { minGap: 5 },
-    { minGap: 2 },
-    { ignoreInterval: true },
-    { ignoreInterval: true, ignoreHolidayMatch: true },
-    { ignoreInterval: true, ignoreHolidayMatch: true, ignoreYearTarget: true }
-  ];
-
-  function pickCandidate(dateStr, isSpecialDay) {
-    for (const opts of RELAX_TIERS) {
-      const cands = sortCandidatesFair(getCandidatesForTier(dateStr, isSpecialDay, opts));
-      if (cands.length > 0) return cands[0];
+        return m;
+      }).filter(Boolean);
     }
-    return null;
-  }
 
-  for (const sd of serviceDays) {
-    const dateStr = sd.dateStr;
-    const d = sd.d;
-    const dow = new Date(dateStr + 'T00:00:00').getDay();
-    const isHol = !!holidays[dateStr];
-    const isSpecialDay = (dow === 0 || isHol);
+    // 公平に割り当てるための並び替え：
+    //   1. 当番回数が2回の人を先に割り当てる（2回の人の枠を優先的に埋める）
+    //   2. 同じグループ内では、当月の当番回数が少ない人を優先（1回も当たらない人が出ないようにする）
+    //   3. 前回の当番日から日数が空いている人を優先（連続当番を防ぐ）
+    //   4. 上記までが完全に同点の場合のみ、案ごとのランダムな順序（tieRandom）で決める
+    function sortCandidatesFair(list) {
+      list.sort((a, b) => {
+        const twiceA = twiceMembers.has(a.id) ? 0 : 1;
+        const twiceB = twiceMembers.has(b.id) ? 0 : 1;
+        if (twiceA !== twiceB) return twiceA - twiceB;
 
-    // ロック済みの日は自動生成の対象外とし、既に決まっている当番者をそのまま採用する
-    // （①カレンダーで保存済みのロック、②保存前のプレビュー画面で一時的にロックした行、の両方を対象とする）
-    const existingSched = schedules[dateStr];
-    const dbLockedMemberId = (existingSched && existingSched.locked && existingSched.member_id) ? existingSched.member_id : null;
-    const previewLockedMemberId = prevPreviewLocked[dateStr] || null;
-    const lockedMemberId = dbLockedMemberId || previewLockedMemberId;
-    if (lockedMemberId) {
-      const lockedMember = members.find(m => m.id === lockedMemberId) || null;
+        const cntA = monthCount[a.id] || 0;
+        const cntB = monthCount[b.id] || 0;
+        if (cntA !== cntB) return cntA - cntB;
 
-      result.push({
+        const dateA = lastAssigned[a.id] ? new Date(lastAssigned[a.id]) : new Date(2000, 0, 1);
+        const dateB = lastAssigned[b.id] ? new Date(lastAssigned[b.id]) : new Date(2000, 0, 1);
+        if (dateA.getTime() !== dateB.getTime()) return dateA - dateB;
+
+        const tieA = (tieRandom && tieRandom[a.id] != null) ? tieRandom[a.id] : 0;
+        const tieB = (tieRandom && tieRandom[b.id] != null) ? tieRandom[b.id] : 0;
+        return tieA - tieB;
+      });
+      return list;
+    }
+
+    // 候補者が見つからない場合に、制約を段階的に緩めながら選び直す。
+    // 「月の予定回数の上限（monthlyCap）」「日祝当番は日祝設定のある人限定」は、
+    // 当番表作成者の方針により絶対に緩めない条件とする。
+    // どうしても候補が見つからない日は、誰かに無理に割り当てず「未割当」のまま残す
+    // （未割当の日は、当番表作成者が手動で確認・調整することを想定している）。
+    const RELAX_TIERS = [
+      { minGap: 8 },
+      { minGap: 5 },
+      { minGap: 2 },
+      { ignoreInterval: true },
+      { ignoreInterval: true, ignoreHolidayMatch: true },
+      { ignoreInterval: true, ignoreHolidayMatch: true, ignoreYearTarget: true }
+    ];
+
+    function pickCandidate(dateStr, isSpecialDay) {
+      for (const opts of RELAX_TIERS) {
+        const cands = sortCandidatesFair(getCandidatesForTier(dateStr, isSpecialDay, opts));
+        if (cands.length > 0) return cands[0];
+      }
+      return null;
+    }
+
+    // 「未割当」になった日について、最も条件を緩めた状態（間隔・年間目標回数・平日での
+    // 日祝限定者の除外は無視）でも、なぜ在籍メンバー全員が対象外になったのかを、
+    // getCandidatesForTierの絶対条件（月0回／支障日／月の上限回数／日祝当番の設定／
+    // 「2回当番かつ日祝対象」のペアリング）と同じ判定順でメンバーごとに集計し、
+    // 当番表作成者がすぐに対処法を判断できるよう理由を文言にして返す。
+    function explainNoCandidate(dateStr, isSpecialDay) {
+      const total = members.length;
+      const reasonCounts = { zero: 0, unavailable: 0, cap: 0, noHolidaySetting: 0, pairing: 0 };
+      members.forEach(m => {
+        if (zeroMembers.has(m.id)) { reasonCounts.zero++; return; }
+        if ((unavailMap[dateStr] || new Set()).has(m.id)) { reasonCounts.unavailable++; return; }
+        if ((monthCount[m.id] || 0) >= maxMonthlyOf(m)) { reasonCounts.cap++; return; }
+        if (isSpecialDay && !holidayMembers.has(m.id)) { reasonCounts.noHolidaySetting++; return; }
+        if (twiceMembers.has(m.id) && holidayMembers.has(m.id)) {
+          const sc = specialCount[m.id] || 0;
+          if (isSpecialDay && sc >= 1) { reasonCounts.pairing++; return; }
+          if (!isSpecialDay && sc === 0 && (monthCount[m.id] || 0) >= 1) { reasonCounts.pairing++; return; }
+        }
+      });
+
+      // 単一の理由だけで全員が対象外になっている、分かりやすいケースには専用の文言を用意する
+      if (reasonCounts.unavailable === total) return `在籍メンバー${total}名全員が、この日を支障日として登録しているためです。`;
+      if (reasonCounts.zero === total) return `在籍メンバー${total}名全員が「月0回」の設定になっているためです。`;
+      if (isSpecialDay && reasonCounts.noHolidaySetting === total) return `この日は日祝当番ですが、「日祝当番」の設定があるメンバーが在籍メンバーの中に誰もいないためです。`;
+      if (reasonCounts.cap === total) return `対象になり得るメンバー全員が、すでに今月の当番回数の上限（1回または2回）に達しているためです。`;
+
+      // 複数の理由が組み合わさっている場合は、内訳を列挙する
+      const parts = [];
+      if (reasonCounts.unavailable > 0) parts.push(`支障日：${reasonCounts.unavailable}名`);
+      if (reasonCounts.zero > 0) parts.push(`月0回の設定：${reasonCounts.zero}名`);
+      if (isSpecialDay && reasonCounts.noHolidaySetting > 0) parts.push(`日祝当番の設定なし：${reasonCounts.noHolidaySetting}名`);
+      if (reasonCounts.cap > 0) parts.push(`今月の上限回数に到達：${reasonCounts.cap}名`);
+      if (reasonCounts.pairing > 0) parts.push(`日祝・平日の振り分け調整により対象外：${reasonCounts.pairing}名`);
+      return `在籍メンバー${total}名全員が対象外でした（内訳　${parts.join('／')}）。`;
+    }
+
+    const rows = [];
+    for (const sd of serviceDays) {
+      const dateStr = sd.dateStr;
+      const dow = new Date(dateStr + 'T00:00:00').getDay();
+      const isHol = !!holidays[dateStr];
+      const isSpecialDay = (dow === 0 || isHol);
+
+      // ロック済みの日は自動生成の対象外とし、既に決まっている当番者をそのまま採用する
+      // （①カレンダーで保存済みのロック、②保存前のプレビュー画面で一時的にロックした行、の両方を対象とする）
+      const existingSched = schedules[dateStr];
+      const dbLockedMemberId = (existingSched && existingSched.locked && existingSched.member_id) ? existingSched.member_id : null;
+      const previewLockedMemberId = prevPreviewLocked[dateStr] || null;
+      const lockedMemberId = dbLockedMemberId || previewLockedMemberId;
+      if (lockedMemberId) {
+        const lockedMember = members.find(m => m.id === lockedMemberId) || null;
+
+        rows.push({
+          date: dateStr,
+          dow,
+          isHol,
+          member: lockedMember,
+          member_id: lockedMemberId,
+          locked: true,
+          reason: null
+        });
+
+        lastAssigned[lockedMemberId] = dateStr;
+        monthCount[lockedMemberId] = (monthCount[lockedMemberId] || 0) + 1;
+        yearCount[lockedMemberId] = (yearCount[lockedMemberId] || 0) + 1;
+        if (isSpecialDay) specialCount[lockedMemberId] = (specialCount[lockedMemberId] || 0) + 1;
+        continue;
+      }
+
+      // 制約を満たす候補の中から、当月の当番回数が最も少ない人を優先して選ぶ。
+      // どうしても候補が見つからない場合のみ、間隔・日祝・年間目標・月の上限回数の順で
+      // 段階的に条件を緩めて再検索する（月の上限回数は最後の最終手段）。
+      const chosen = pickCandidate(dateStr, isSpecialDay);
+
+      rows.push({
         date: dateStr,
         dow,
         isHol,
-        member: lockedMember,
-        member_id: lockedMemberId,
-        locked: true
+        member: chosen,
+        member_id: chosen ? chosen.id : null,
+        locked: false,
+        reason: chosen ? null : explainNoCandidate(dateStr, isSpecialDay)
       });
 
-      lastAssigned[lockedMemberId] = dateStr;
-      monthCount[lockedMemberId] = (monthCount[lockedMemberId] || 0) + 1;
-      yearCount[lockedMemberId] = (yearCount[lockedMemberId] || 0) + 1;
-      if (isSpecialDay) specialCount[lockedMemberId] = (specialCount[lockedMemberId] || 0) + 1;
-      continue;
+      if (chosen) {
+        lastAssigned[chosen.id] = dateStr;
+        monthCount[chosen.id] = (monthCount[chosen.id] || 0) + 1;
+        yearCount[chosen.id] = (yearCount[chosen.id] || 0) + 1;
+        if (isSpecialDay) specialCount[chosen.id] = (specialCount[chosen.id] || 0) + 1;
+      }
     }
 
-    // 制約を満たす候補の中から、当月の当番回数が最も少ない人を優先して選ぶ。
-    // どうしても候補が見つからない場合のみ、間隔・日祝・年間目標・月の上限回数の順で
-    // 段階的に条件を緩めて再検索する（月の上限回数は最後の最終手段）。
-    let chosen = pickCandidate(dateStr, isSpecialDay);
+    const unassignedCount = rows.filter(r => !r.member_id).length;
+    const signature = rows.map(r => r.member_id ?? '_').join(',');
+    return { rows, unassignedCount, signature };
+  }
 
-    result.push({
-      date: dateStr,
-      dow,
-      isHol,
-      member: chosen,
-      member_id: chosen ? chosen.id : null,
-      locked: false
-    });
+  // まず、ランダム要素なし（最も標準的な判定順）の案を1つ作り、これを基準案とする。
+  // その後、他の条件が同点だった場合の順序だけをランダムに変えた案を複数回試し、
+  // 割り当て結果が実際に異なるものだけを、最大5案まで採用する。
+  // 何度試しても同じ結果にしかならない場合は、その時点で作れた案の数（3案など）だけを
+  // 表示する（無理に5案そろえようとはしない）。
+  const MAX_PROPOSALS = 5;
+  const MAX_ATTEMPTS = 40;
+  const seenSignatures = new Set();
+  const proposals = [];
 
-    if (chosen) {
-      lastAssigned[chosen.id] = dateStr;
-      monthCount[chosen.id] = (monthCount[chosen.id] || 0) + 1;
-      yearCount[chosen.id] = (yearCount[chosen.id] || 0) + 1;
-      if (isSpecialDay) specialCount[chosen.id] = (specialCount[chosen.id] || 0) + 1;
+  const baseline = runOneGeneration({});
+  proposals.push(baseline);
+  seenSignatures.add(baseline.signature);
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS && proposals.length < MAX_PROPOSALS; attempt++) {
+    const tieRandom = {};
+    members.forEach(m => { tieRandom[m.id] = Math.random(); });
+    const candidate = runOneGeneration(tieRandom);
+    if (!seenSignatures.has(candidate.signature)) {
+      seenSignatures.add(candidate.signature);
+      proposals.push(candidate);
     }
   }
 
-  generatedSchedule = result;
-  renderGenPreview();
+  // 未割当が少ない案を「案1」として優先的に表示する
+  proposals.sort((a, b) => a.unassignedCount - b.unassignedCount);
 
-  const unassigned = result.filter(r => !r.member).length;
-  if (unassigned > 0) {
-    showMsg('gen-msg', `生成完了。未割当が ${unassigned} 日あります。支障日を減らすか手動調整してください。`, 'error');
+  scheduleProposals = proposals;
+  generatedSchedule = [];
+  document.getElementById('gen-preview').style.display = 'none';
+  document.getElementById('btn-save-gen').style.display = 'none';
+  renderScheduleProposals();
+
+  const best = proposals[0];
+  if (best.unassignedCount > 0) {
+    showMsg('gen-msg', `${proposals.length}案を作成しました。最も未割当が少ない案でも未割当が${best.unassignedCount}日あります。各案の未割当の日には、その下に理由を表示していますのでご確認のうえ、採用したい案の「この案を採用する」を押してください。`, 'error');
   } else {
-    showMsg('gen-msg', `指定月の条件を満たす最適な当番表の自動作成に成功しました！`, 'success');
+    showMsg('gen-msg', `${proposals.length}案を作成しました。内容をご確認のうえ、採用したい案の「この案を採用する」を押してください。`, 'success');
   }
+}
+
+// 「当番表を作成」で生成された複数案（案1〜案5、最大5案）を、#gen-proposals-wrap に
+// 横並びの縦長カードとして描画する。各案には「この案を採用する」ボタンを付け、
+// 押すとadoptProposal()が呼ばれて、その案をプレビュー表（既存の1本の編集可能な表）に反映する。
+function renderScheduleProposals() {
+  const wrap = document.getElementById('gen-proposals-wrap');
+  wrap.innerHTML = scheduleProposals.map((p, idx) => buildProposalCardHtml(idx, p.rows, p.unassignedCount)).join('');
+  document.getElementById('gen-proposals').style.display = scheduleProposals.length ? 'block' : 'none';
+}
+
+// 1つの案（案N）を、縦長の日ごとの一覧カードとして描画するHTMLを作る
+// （既存の「割当確認（表形式）」の月カード（buildMonthTableHtml）と同じ見た目にしている）。
+// 該当者なしの日には、その行のすぐ下に「△ 案Nの該当者なしの理由：〜」を赤字で表示する。
+function buildProposalCardHtml(idx, rows, unassignedCount) {
+  const label = `案${idx + 1}`;
+  let bodyRows = '';
+  rows.forEach(r => {
+    const dow = r.dow;
+    const isHol = r.isHol;
+    const isRed = (dow === 0 || isHol);
+    const rowStyle = isRed ? 'style="background:var(--danger-light)"' : '';
+    const dowBadgeStyle = isRed
+      ? 'background:var(--danger);color:#fff'
+      : (dow === 6 ? 'background:var(--info-light);color:var(--info)' : 'color:var(--text)');
+    const d = Number(r.date.slice(-2));
+    const name = r.member ? r.member.name : '';
+
+    bodyRows += `<tr ${rowStyle}>
+      <td style="text-align:center;white-space:nowrap;padding:0 6px"><span style="display:inline-block;min-width:46px;border-radius:4px;padding:0 4px;font-size:11px;font-weight:500;${dowBadgeStyle}">${d}日(${DOW_JP[dow]})</span></td>
+      <td style="padding:2px 6px;font-size:12px">
+        <div style="white-space:nowrap">${name || '<span style="color:var(--text-hint)">未割当</span>'}</div>
+        ${(!r.member_id && r.reason) ? `<div id="proposal-reason-${idx}-${r.date}" style="color:var(--danger);font-size:10px;margin-top:1px;max-width:170px;white-space:normal;line-height:1.3">△ ${label}の該当者なしの理由：${r.reason}</div>` : ''}
+      </td>
+    </tr>`;
+  });
+
+  return `
+    <div style="flex:0 0 auto;min-width:200px;border:1px solid var(--border);border-radius:var(--radius)">
+      <div style="position:sticky;top:0;z-index:6;background:var(--accent-light);border-bottom:1px solid var(--border);border-radius:var(--radius) var(--radius) 0 0;padding:4px">
+        <div style="text-align:center;font-size:13px;font-weight:600;color:var(--accent-dark)">${label}${unassignedCount > 0 ? `（未割当 ${unassignedCount}日）` : '（全日割当済み）'}</div>
+        <button type="button" class="btn btn-primary btn-sm" style="width:100%;margin-top:4px;font-size:12px" onclick="adoptProposal(${idx})">この案を採用する</button>
+      </div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr>
+            <th style="position:sticky;top:52px;z-index:5;text-align:center;font-size:10px;padding:1px 2px;border-bottom:1px solid var(--border);background:var(--bg)">日</th>
+            <th style="position:sticky;top:52px;z-index:5;text-align:left;font-size:10px;padding:1px 2px;border-bottom:1px solid var(--border);background:var(--bg)">当番者</th>
+          </tr>
+        </thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+    </div>`;
+}
+
+// 案（scheduleProposals[idx]）を採用する：既存の1本の編集可能なプレビュー表
+// （renderGenPreview／ロック・手動変更・保存の一連の流れ）にそのままコピーして反映する。
+function adoptProposal(idx) {
+  const p = scheduleProposals[idx];
+  if (!p) return;
+  generatedSchedule = p.rows.map(r => ({ ...r }));
+  renderGenPreview();
+  showMsg('gen-msg', `${idx + 1}案目を採用しました。内容を確認・調整のうえ「保存する」を押してください。`, 'success');
+  const previewEl = document.getElementById('gen-preview');
+  if (previewEl) previewEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // プレビュー表（当番表作成ページ）を generatedSchedule の内容で描画する。
@@ -3959,6 +4117,7 @@ function renderGenPreview() {
           </select>
           <button type="button" class="gen-lock-btn ${r.locked ? 'locked' : ''}" title="${r.locked ? 'ロック中（クリックで解除）' : 'クリックでこの日の当番をロック（作成ボタンを押しても変更されなくなります）'}" onclick="togglePreviewLock(${i})">${lockIconSvg(r.locked)}</button>
         </div>
+        <div id="gen-reason-${i}" style="font-size:11px;color:var(--danger);margin-top:2px;max-width:280px;${r.member_id ? 'display:none' : ''}">${r.reason ? ('△ ' + r.reason) : ''}</div>
       </td>
       <td>${r.dow===0||r.isHol ? '<span class="badge badge-gold">日祝当番</span>' : '<span class="badge badge-green">平日当番</span>'}</td>
     </tr>
@@ -3992,6 +4151,9 @@ function updatePreviewMember(selectEl) {
   if (!r || r.locked) return;
   r.member_id = newId;
   r.member = newId ? members.find(m => m.id === newId) : null;
+  // 手入力でメンバーを選んだ場合は「未割当」の理由表示を隠し、「未割当」に戻したら再び表示する
+  const reasonEl = document.getElementById(`gen-reason-${idx}`);
+  if (reasonEl) reasonEl.style.display = newId ? 'none' : (r.reason ? '' : 'none');
 }
 
 async function saveGeneratedSchedule() {
@@ -4043,11 +4205,13 @@ async function resetMonthSchedule() {
   }
 
   showMsg('gen-msg', `${year}年${month}月の当番表をリセットしました。これで新しく支障日を登録し直せます。`, 'success');
-  
+
   generatedSchedule = [];
+  scheduleProposals = [];
   document.getElementById('gen-preview').style.display = 'none';
   document.getElementById('btn-save-gen').style.display = 'none';
-  
+  document.getElementById('gen-proposals').style.display = 'none';
+
   await loadSchedules();
   renderCalendar();
 }
