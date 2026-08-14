@@ -1100,7 +1100,7 @@
     <div id="day-modal-member-info" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;min-height:16px"></div>
     <div class="form-group" style="margin-bottom:4px">
       <label>手入力（退職者など、名簿にない方）</label>
-      <input id="day-modal-manual" placeholder="例：山本和幸（退職）">
+      <input id="day-modal-manual" placeholder="例：山田太郎（退職）">
     </div>
     <p style="font-size:11px;color:var(--text-muted);margin:0 0 12px">※ 上の「当番者」で選択した場合は、そちらが優先して表示されます。当番回数の集計には含まれません。</p>
     <div class="form-group">
@@ -3804,15 +3804,22 @@ async function generateSchedule() {
 
   // 1回分の当番表生成を実行する（案を1つ作る）。
   // tieRandomは、他の条件（当番回数・前回当番日からの間隔など）が完全に同点だった
-  // 場合にのみ使う、メンバーIDごとのランダムな順序決定値。空オブジェクト{}を渡すと
-  // 常に一定の順序になり、これが最も標準的な「基準案」になる。
-  // 複数の案（案1〜5）を作るため、この関数を毎回異なるtieRandomで複数回呼び出し、
-  // 割り当て結果が実際に異なるものだけを別の案として採用する。
-  function runOneGeneration(tieRandom) {
+  // 場合にのみ使う、メンバーIDごとのランダムな順序決定値。
+  // deviationRateは、それとは別に「本来最優先すべき候補（1位）ではなく、条件をすべて
+  // 満たす次点の候補（2位）をあえて選ぶ」確率（0〜1）。支障日の登録がまだ少ない月などは
+  // 同点になる場面がほとんど無く、tieRandomだけでは案の差が出ないため、あえて次点の
+  // 候補を選ぶことで「標準的な割り当て（1位）」と「その次に妥当な割り当て（2位、3位…）」
+  // という複数のパターンを作れるようにしている。
+  // deviationRateを0（および空のtieRandom）にして呼び出すと、常に一定の・最も標準的な
+  // 判定順の「基準案（＝いわば最高点のパターン）」になる。deviationCountは、この基準案の
+  // 選び方からどれだけ外れた（次点の候補を選んだ）日数で、案どうしを「標準からの近さ」で
+  // 順位付けするために使う。
+  function runOneGeneration(tieRandom, deviationRate) {
     const monthCount = {};
     const specialCount = {}; // 「2回当番かつ日祝対象」の人が、当月ですでに日祝当番に何回当たったかを記録する
     const lastAssigned = { ...baseLastAssigned };
     const yearCount = { ...baseYearCount };
+    let deviationCount = 0;
 
     // hard 制約（どの段階でも絶対に緩めない）：
     //   ・支障日には割り当てない
@@ -3911,7 +3918,16 @@ async function generateSchedule() {
     function pickCandidate(dateStr, isSpecialDay) {
       for (const opts of RELAX_TIERS) {
         const cands = sortCandidatesFair(getCandidatesForTier(dateStr, isSpecialDay, opts));
-        if (cands.length > 0) return cands[0];
+        if (cands.length > 0) {
+          // deviationRateが指定されている場合、条件をすべて満たす次点の候補（2位）が
+          // 他にもいる時に限り、その確率であえて2位の候補を選ぶ（=標準の案とは異なる
+          // 別パターンを作るため）。1位しか候補がいない日は、これまで通り必ず1位を選ぶ。
+          if (deviationRate > 0 && cands.length > 1 && Math.random() < deviationRate) {
+            deviationCount++;
+            return cands[1];
+          }
+          return cands[0];
+        }
       }
       return null;
     }
@@ -4012,12 +4028,17 @@ async function generateSchedule() {
 
     const unassignedCount = rows.filter(r => !r.member_id).length;
     const signature = rows.map(r => r.member_id ?? '_').join(',');
-    return { rows, unassignedCount, signature };
+    return { rows, unassignedCount, signature, deviationCount };
   }
 
-  // まず、ランダム要素なし（最も標準的な判定順）の案を1つ作り、これを基準案とする。
-  // その後、他の条件が同点だった場合の順序だけをランダムに変えた案を複数回試し、
-  // 割り当て結果が実際に異なるものだけを、最大5案まで採用する。
+  // まず、ランダム要素なし（最も標準的な判定順）の案を1つ作り、これを基準案（いわば
+  // 「パターン1・最高点」＝最も標準的な割り当て）とする。
+  // その後、①他の条件が同点だった場合の順序をランダムに変える、②同点でなくても
+  // 一定の確率であえて次点の候補を選ぶ、という2種類のランダム要素を組み合わせて複数回
+  // 試し、割り当て結果が実際に異なるものだけを最大5案まで採用する。支障日の登録がまだ
+  // 少ない月などは同点になる場面がほとんど無く、①だけでは案の差が出ないことがあるため、
+  // ②を加えることで、支障日が少ない状況でも複数の妥当なパターン（パターン2・次席点…）を
+  // 作れるようにしている。
   // 何度試しても同じ結果にしかならない場合は、その時点で作れた案の数（3案など）だけを
   // 表示する（無理に5案そろえようとはしない）。
   const MAX_PROPOSALS = 5;
@@ -4025,22 +4046,31 @@ async function generateSchedule() {
   const seenSignatures = new Set();
   const proposals = [];
 
-  const baseline = runOneGeneration({});
+  const baseline = runOneGeneration({}, 0);
   proposals.push(baseline);
   seenSignatures.add(baseline.signature);
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS && proposals.length < MAX_PROPOSALS; attempt++) {
     const tieRandom = {};
     members.forEach(m => { tieRandom[m.id] = Math.random(); });
-    const candidate = runOneGeneration(tieRandom);
+    // 次点候補をあえて選ぶ確率は、試行ごとに5%〜30%の範囲でランダムに変える
+    // （毎回同じ確率だと、できあがる案の傾向が偏りやすいため）
+    const deviationRate = 0.05 + Math.random() * 0.25;
+    const candidate = runOneGeneration(tieRandom, deviationRate);
     if (!seenSignatures.has(candidate.signature)) {
       seenSignatures.add(candidate.signature);
       proposals.push(candidate);
     }
   }
 
-  // 未割当が少ない案を「案1」として優先的に表示する
-  proposals.sort((a, b) => a.unassignedCount - b.unassignedCount);
+  // 案の並び順：①未割当が少ない案を優先する、②未割当の数が同じなら、標準的な割り当て
+  // （基準案）に近い案（＝次点候補を選んだ日数=deviationCountが少ない案）を優先する。
+  // これにより「案1＝最も標準的なパターン（最高点）」「案2＝それに次いで妥当なパターン
+  // （次席点）」という順位付けになる。
+  proposals.sort((a, b) => {
+    if (a.unassignedCount !== b.unassignedCount) return a.unassignedCount - b.unassignedCount;
+    return a.deviationCount - b.deviationCount;
+  });
 
   scheduleProposals = proposals;
   generatedSchedule = [];
@@ -4061,14 +4091,14 @@ async function generateSchedule() {
 // 押すとadoptProposal()が呼ばれて、その案をプレビュー表（既存の1本の編集可能な表）に反映する。
 function renderScheduleProposals() {
   const wrap = document.getElementById('gen-proposals-wrap');
-  wrap.innerHTML = scheduleProposals.map((p, idx) => buildProposalCardHtml(idx, p.rows, p.unassignedCount)).join('');
+  wrap.innerHTML = scheduleProposals.map((p, idx) => buildProposalCardHtml(idx, p.rows, p.unassignedCount, p.deviationCount)).join('');
   document.getElementById('gen-proposals').style.display = scheduleProposals.length ? 'block' : 'none';
 }
 
 // 1つの案（案N）を、縦長の日ごとの一覧カードとして描画するHTMLを作る
 // （既存の「割当確認（表形式）」の月カード（buildMonthTableHtml）と同じ見た目にしている）。
 // 該当者なしの日には、その行のすぐ下に「△ 案Nの該当者なしの理由：〜」を赤字で表示する。
-function buildProposalCardHtml(idx, rows, unassignedCount) {
+function buildProposalCardHtml(idx, rows, unassignedCount, deviationCount) {
   const label = `案${idx + 1}`;
   let bodyRows = '';
   rows.forEach(r => {
@@ -4106,6 +4136,7 @@ function buildProposalCardHtml(idx, rows, unassignedCount) {
     <div style="flex:0 0 auto;min-width:200px;border:1px solid var(--border);border-radius:var(--radius)">
       <div style="position:sticky;top:0;z-index:6;background:var(--accent-light);border-bottom:1px solid var(--border);border-radius:var(--radius) var(--radius) 0 0;padding:4px">
         <div style="text-align:center;font-size:13px;font-weight:600;color:var(--accent-dark)">${label}${unassignedCount > 0 ? `（未割当 ${unassignedCount}日）` : '（全日割当済み）'}</div>
+        <div style="text-align:center;font-size:11px;color:var(--text-muted)">${deviationCount > 0 ? `標準的な割り当てとの違い：${deviationCount}日` : '最も標準的な割り当て'}</div>
         <button type="button" class="btn btn-primary btn-sm" style="width:100%;margin-top:4px;font-size:12px" onclick="adoptProposal(${idx})">この案を採用する</button>
       </div>
       <table style="width:100%;border-collapse:collapse">
