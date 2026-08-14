@@ -725,7 +725,11 @@
     </div>
 
     <div id="page-generate" class="page">
-      <div class="section-title">当番表の自動作成</div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="section-title" style="margin-bottom:0">当番表の自動作成</div>
+        <button type="button" class="btn btn-sm" id="gen-settings-toggle-btn" onclick="toggleGenSettings()">操作パネルを隠す</button>
+      </div>
+      <div id="gen-settings-body">
       <div class="form-grid" style="margin-bottom:16px">
         <div class="form-group">
           <label>対象年月 *</label>
@@ -739,6 +743,7 @@
       <div class="btn-row">
         <button class="btn btn-primary" onclick="generateSchedule()">当番表を作成</button>
         <button class="btn btn-danger" onclick="resetMonthSchedule()">選択した月の当番表をリセット</button>
+      </div>
       </div>
       <div id="gen-msg" style="margin-top:8px"></div>
       <div id="gen-proposals" style="display:none" class="card">
@@ -5145,6 +5150,23 @@ function toggleRecordSettings(forceHide) {
   if (tableWrap) {
     // 表示設定カード（表示設定を隠すボタンの行を除いた本体分）のおおよその高さを差し引く
     tableWrap.style.maxHeight = shouldHide ? 'calc(100vh - 230px)' : 'calc(100vh - 345px)';
+  }
+}
+
+// 「当番表の自動作成」の対象年月・作成/リセットボタンなどの操作パネルを、開閉ボタンで
+// 表示／非表示切り替える。案（案1〜案5）を見比べる際に操作パネル分の高さを詰めて、
+// カードの表示範囲を広げられるようにするための機能。
+function toggleGenSettings(forceHide) {
+  const body = document.getElementById('gen-settings-body');
+  const btn = document.getElementById('gen-settings-toggle-btn');
+  const proposalsWrap = document.getElementById('gen-proposals-wrap');
+  if (!body || !btn) return;
+  const shouldHide = (typeof forceHide === 'boolean') ? forceHide : (body.style.display !== 'none');
+  body.style.display = shouldHide ? 'none' : '';
+  btn.textContent = shouldHide ? '操作パネルを表示' : '操作パネルを隠す';
+  if (proposalsWrap) {
+    // 操作パネル分（対象年月の行＋ボタン行のおおよその高さ）を差し引いて、案カードの表示範囲を広げる
+    proposalsWrap.style.maxHeight = shouldHide ? 'calc(100vh - 230px)' : 'calc(100vh - 345px)';
   }
 }
 
