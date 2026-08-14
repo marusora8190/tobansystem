@@ -495,11 +495,13 @@
         <button class="btn btn-sm" onclick="exportCSV()">CSV出力</button>
         <button class="btn btn-sm" onclick="printCalendar()">🖨 印刷①</button>
         <button class="btn btn-sm" onclick="openImportModal()">📥 運用前データを読み込む</button>
+        <button class="btn btn-sm" onclick="lockAllAssignedInMonth()" title="表示中の月で、当番者が決まっている日をまとめてロックします">🔒 表示中の当番者を一括ロック</button>
       </div>
       <div id="cal-info-row">
         <div id="cal-decide-bar"></div>
         <div id="print-scale-hint"></div>
       </div>
+      <div id="cal-lock-msg" style="margin-top:6px"></div>
       </div>
 
       <div class="cal-grid" id="cal-dow"></div>
@@ -4388,6 +4390,38 @@ async function toggleDutyLock(dateStr, event) {
   }
   await loadSchedules();
   renderCalendar();
+}
+
+// カレンダーに表示中の月で、当番者が決まっている日（氏名が表示されている日）を
+// まとめてロックする。すでにロック済みの日はそのまま、まだロックしていない日だけが対象。
+// 「名簿にない方（退職者など）の手入力記録」は当番回数の集計対象外の扱いのため、
+// ここでも一括ロックの対象には含めない（従来通り、その日をクリックして個別に設定する）。
+async function lockAllAssignedInMonth() {
+  const month = calMonth + 1;
+  const serviceDays = getServiceMonthDays(calYear, month);
+  const targets = serviceDays
+    .map(sd => sd.dateStr)
+    .filter(dateStr => {
+      const s = schedules[dateStr];
+      return !!(s && s.member_id && !s.locked);
+    });
+
+  if (!targets.length) {
+    showMsg('cal-lock-msg', '表示中の月に、ロックされていない「当番者が決まっている日」はありません。', 'info');
+    return;
+  }
+  const monthLabel = month === 12 ? `${calYear}年12月（〜翌年1/4）` : `${calYear}年${month}月`;
+  if (!confirm(`${monthLabel}で当番者が決まっている日、${targets.length}日をまとめてロックします。よろしいですか？`)) return;
+
+  showMsg('cal-lock-msg', '<span class="spinner"></span> ロック中...', 'info');
+  const { error } = await sbClient.from('annual_roster').update({ locked: true }).in('duty_date', targets);
+  if (error) {
+    showMsg('cal-lock-msg', 'ロックに失敗しました: ' + error.message, 'error');
+    return;
+  }
+  await loadSchedules();
+  renderCalendar();
+  showMsg('cal-lock-msg', `${targets.length}日分の当番者をロックしました ✓`, 'success');
 }
 
 async function saveDaySchedule() {
