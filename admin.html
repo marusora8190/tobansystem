@@ -412,6 +412,21 @@
   #page-system-guide .sys-elements-table td:first-child { font-weight: 600; color: var(--accent-dark); white-space: nowrap; }
   #page-system-guide .sys-elements-table td:last-child { color: var(--text-muted); white-space: nowrap; }
 
+  /* 使い方ガイド：各ページの操作手順を折りたたみ表示する */
+  #page-manual .howto-item { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; overflow: hidden; }
+  #page-manual .howto-item summary { cursor: pointer; padding: 10px 14px; font-weight: 500; font-size: 13px; color: var(--accent-dark); background: var(--bg); list-style: none; }
+  #page-manual .howto-item summary::-webkit-details-marker { display: none; }
+  #page-manual .howto-item summary::before { content: '▶'; display: inline-block; margin-right: 8px; font-size: 10px; transition: transform 0.15s ease; }
+  #page-manual .howto-item[open] summary::before { transform: rotate(90deg); }
+  #page-manual .howto-item[open] summary { border-bottom: 1px solid var(--border); }
+  #page-manual .howto-body { padding: 10px 16px 14px; }
+  #page-manual .howto-body p { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; line-height: 1.5; }
+  #page-manual .howto-body ol { margin: 0 0 8px 20px; padding: 0; }
+  #page-manual .howto-body ol li { font-size: 13px; color: var(--text); padding: 3px 0; line-height: 1.5; }
+  #page-manual .howto-note { background: #f5f3ee; border-left: 3px solid var(--accent); padding: 8px 10px; font-size: 12px; color: #4a4030; border-radius: 0 4px 4px 0; margin: 4px 0 8px; line-height: 1.5; }
+  #page-manual .howto-flow li { font-size: 13px; color: var(--text); padding: 4px 0; line-height: 1.6; }
+  #page-manual .howto-flow { margin: 0 0 8px 20px; padding: 0; }
+
   /* Modal */
   .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; }
   .modal-bg.open { display: flex; }
@@ -460,6 +475,7 @@
 
 <div class="layout">
   <nav class="sidebar" id="sidebar">
+    <div class="sidebar-item" onclick="showPage('manual')">使い方ガイド</div>
     <div class="sidebar-item active" onclick="showPage('calendar')">カレンダー</div>
     <div class="sidebar-item" onclick="showPage('members')">詰員名簿</div>
     <div class="sidebar-item" onclick="showPage('mc2')">月ごと当番回数</div>
@@ -1066,6 +1082,285 @@
         <div class="sys-step-desc">通常は30秒〜1分程度で完了します。</div>
         <div class="sys-step">STEP 6　公開サイトに反映され、新しいバージョンが使えるようになる</div>
         <div class="alert alert-info" style="margin-top:10px;margin-bottom:0"><strong>ワンポイント：</strong>STEP 5のGitHub側の処理がうまくいかないと、ファイル自体は正しく修正されていても、公開サイトへの反映が遅れることがあります。GitHub全体の障害情報は、githubstatus.com（GitHub公式のステータスページ）で確認できます。反映が遅いときは、ブラウザのスーパーリロード（強制再読み込み）やキャッシュ削除も合わせて試してみてください。</div>
+      </div>
+    </div>
+
+    <div id="page-manual" class="page">
+      <div class="section-title">使い方ガイド</div>
+      <div class="alert alert-info">このadmin.html（管理者用画面）の使い方をまとめた、入力なし・確認専用のページです。各項目の見出しをクリックすると、詳しい操作手順が開きます。</div>
+
+      <div class="card">
+        <div class="card-title">1. このシステムについて</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;line-height:1.5">神殿奉仕当番表作成システムは、詰員（奉仕者）の当番表を作成・管理するためのシステムで、次の2つの画面で構成されています。</p>
+        <ul class="rules-list">
+          <li><strong>admin.html（管理者用・このページ）</strong>：当番表作成者が当番の割り当て・支障日の登録・各種設定を行う画面です。</li>
+          <li><strong>member.html（詰員用）</strong>：各詰員が自分の当番日の確認や、支障日の申請を行う画面です。</li>
+        </ul>
+        <div class="howto-note">当番表の内容は、この画面で「決定」ボタンを押してはじめて、各詰員のmember.html画面に表示されるようになります。決定前の内容は詰員側には表示されません（詳しくは下の「4. 当番表作成〜公開までの基本的な流れ」を参照してください）。</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:0;line-height:1.5">ログイン後の画面は、上部のヘッダー（サイドバーの表示切替・接続状況・設定・ログアウト）、左側のサイドバー（17個のメニュー項目）、右側のメイン表示エリアの3つで構成されています。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">2. サイドバーメニュー一覧</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>メニュー名</th><th>できること</th></tr></thead>
+            <tbody>
+              <tr><td>カレンダー</td><td>月ごとの当番表をカレンダー形式で確認・手動編集する、日常的に最もよく使う画面</td></tr>
+              <tr><td>詰員名簿</td><td>奉仕者（詰員）の氏名・部署・連絡先などを登録・管理する</td></tr>
+              <tr><td>月ごと当番回数</td><td>メンバーを横並びにした表で、各月の当番予定回数（0/1/2回）をまとめて設定する</td></tr>
+              <tr><td>日祝当番月（複数年）</td><td>メンバーを横並びにした表で、日曜・祝日の当番を担当する月を複数年分まとめて設定する</td></tr>
+              <tr><td>各メンバー年間設定</td><td>当番予定回数と日祝当番の月を1画面でまとめて設定し、自動均等配分もできる</td></tr>
+              <tr><td>支障日登録</td><td>詰員ごとに、当番に入れない日（支障日）を登録・確認する</td></tr>
+              <tr><td>登録済み支障日一覧</td><td>登録済みの支障日を、メンバー×日付の一覧表で確認・印刷する</td></tr>
+              <tr><td>当番表作成</td><td>対象月の当番表を自動作成し、複数の案（案1〜案5）を見比べて採用する</td></tr>
+              <tr><td>作成ルール</td><td>当番表作成で使われているルールを文章で確認する（確認専用）</td></tr>
+              <tr><td>割当確認（表形式）</td><td>決定済み・作成済みの当番表を、複数月・複数年で表形式に並べて確認する</td></tr>
+              <tr><td>月割当て確認用</td><td>対象月の予定回数と実際の当番回数を照合し、累計当番回数も確認する</td></tr>
+              <tr><td>日曜祝日等管理</td><td>祝日・振替休日をまとめて自動登録し、個別の祝日も追加できる</td></tr>
+              <tr><td>年末年始当番予定</td><td>年末年始期間（12/28〜1/4）の候補者選びと当番割り当てを行う</td></tr>
+              <tr><td>年末年始当番記録</td><td>年度ごとの年末年始当番の記録と、メンバーごとの通算回数を確認する</td></tr>
+              <tr><td>本部祭典日・本部お勤め時間</td><td>本部の年間祭典日と、印刷①に使う朝づとめ・夕づとめの時刻を設定する</td></tr>
+              <tr><td>祭典日当番者記録</td><td>本部祭典日ごとの当番回数を自動集計し、必要に応じて手入力で補正する</td></tr>
+              <tr><td>システムの仕組み</td><td>GitHub・Supabase・admin.html・member.htmlのつながりを図で確認する（確認専用）</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">3. 各ページの操作手順（クリックで開閉）</div>
+
+        <details class="howto-item">
+          <summary>3-1　カレンダー表示</summary>
+          <div class="howto-body">
+            <p>月ごとの当番表を確認・手動編集する画面です。ログイン直後に最初に表示されます。</p>
+            <ol>
+              <li>「◀」「▶」ボタンや年月の指定欄で表示する月を切り替えます。「今月」ボタンで今日の月にすぐ戻れます。</li>
+              <li>各日付のマスに当番者の氏名が表示されます（日曜・祝日は赤い背景）。マスをクリックすると「当番を設定」ウィンドウが開き、当番者の選択・代理入力・メモ・ロックのON/OFFを設定して保存できます。</li>
+              <li>氏名の横の🔒アイコンでその日だけを個別にロック／解除できます。「🔒 表示中の当番者を一括ロック」で、当番者が決まっていてまだロックされていない日をまとめてロックできます。</li>
+              <li>「操作パネルを隠す」で対象年月の選択欄やボタン部分を一時的に隠せます。「CSV出力」「🖨 印刷①」「📥 運用前データを読み込む」も利用できます。</li>
+              <li>内容が固まったら「当番表(当初)決定」を押すと、その月の当番表が確定し、各詰員のmember.html画面にも当番者名が表示されるようになります。</li>
+            </ol>
+            <div class="howto-note">手入力で当番者を選ぶ際、その人がその日を支障日として登録している場合は「この日は支障日です。それでもよろしいですか？」、日曜・祝日なのに日祝当番の設定を持っていない場合は「この日は休日です。それでもよろしいですか？」という確認が表示されます。ロックされた日は、「当番表作成」で自動作成を行っても内容が変わりません。</div>
+          </div>
+        </details>
+
+        <details class="howto-item">
+          <summary>3-2　詰員名簿</summary>
+          <div class="howto-body">
+            <ol>
+              <li>「新しいメンバーを追加」欄に氏名（必須）・部署・連絡先番号を入力し「追加する」を押すと登録されます（ID・ログイン番号は自動採番）。</li>
+              <li>一覧表の各行から、氏名・部署・連絡先の編集や在籍状態（在籍中／退職）の切り替えができます。</li>
+            </ol>
+            <div class="howto-note">退職したメンバーは在籍状態を切り替えることで、以後の当番表作成の対象から外れます（過去の記録は残ります）。</div>
+          </div>
+        </details>
+
+        <details class="howto-item">
+          <summary>3-3　月ごと当番回数</summary>
+          <div class="howto-body">
+            <ol>
+              <li>「開始年度」「表示年数」を選ぶと、対象期間の表が表示されます。</li>
+              <li>各メンバー・各月のセルで回数（0／1／2）を選択します。</li>
+              <li>「この表示期間をまとめて保存」で保存します。</li>
+            </ol>
+            <div class="howto-note">0回＝身上等の都合でその月は当番に入らない、1回＝通常の当番、2回＝通常またはほかの人の代わりに当番、という意味です。ここでの変更は「日祝当番月」「各メンバー年間設定」ページにもその場で反映されます。</div>
+          </div>
+        </details>
+
+        <details class="howto-item">
+          <summary>3-4　日祝当番月（複数年）</summary>
+          <div class="howto-body">
+            <ol>
+              <li>「開始年度」「表示年数」を選び、表を表示します。</li>
+              <li>各メンバー・各月のチェックボックスで、日祝当番を担当する月にチェックを入れます。</li>
+              <li>「この表示期間をまとめて保存」で保存します。</li>
+            </ol>
+          </div>
+        </details>
+
+        <details class="howto-item">
+          <summary>3-5　各メンバー年間設定</summary>
+          <div class="howto-body">
+            <ol>
+              <li>「開始年度」「表示年数」を選んで表を表示します。</li>
+              <li>各メンバー・各月について、当番回数（0／1／2）と日祝当番の有無を設定します。各行の右端の自動チェック（✓一致／×不一致）で過不足がないか確認できます。</li>
+              <li>保存・自動配分の対象年度を選び、「年間予定を保存」で保存します。</li>
+              <li>「自動均等配分」で、その年度の当番回数をメンバー間でできるだけ均等になるよう自動配分できます。</li>
+            </ol>
+          </div>
+        </details>
+
+        <details class="howto-item">
+          <summary>3-6　支障日登録</summary>
+          <div class="howto-body">
+            <p>登録状況の確認：</p>
+            <ol>
+              <li>「登録状況・確認」欄で対象月を選ぶと、詰員ごとの支障日登録状況が表示されます。</li>
+              <li>「確認」ボタンを押すと、その詰員の当月の支障日が「確認済み」になり、詰員本人のmember.html画面にも確認済みと表示されます。</li>
+            </ol>
+            <p>支障日の追加：</p>
+            <ol>
+              <li>「支障日を追加」欄でメンバーと対象月を選ぶと、その月のカレンダーが表示されます。</li>
+              <li>支障日にしたい日付をクリックして選択し（複数選択可）、「選択した日をまとめて登録」で登録します。</li>
+              <li>「この月の登録済み支障日を全削除」で、その月の登録済み支障日をまとめて削除できます。</li>
+            </ol>
+          </div>
+        </details>
+
+        <details class="howto-item">
+          <summary>3-7　登録済み支障日一覧</summary>
+          <div class="howto-body">
+            <ol>
+              <li>表示月を選ぶと、その月の一覧表（メンバー×日付）が表示されます。</li>
+              <li>空欄のセルをクリックすると支障日として登録され、✓が付いたセルをクリックすると削除されます。</li>
+              <li>「🖨 この一覧表を印刷」で印刷できます。</li>
+            </ol>
+            <div class="howto-note">色分け：✓＝登録済みの支障日、黄色＝当番日決定済み、赤塗りつぶし＝日祝当番の人、薄い赤＝日曜・祝日の枠、灰色＝前月の当番から中8日期間。</div>
+          </div>
+        </details>
+
+        <details class="howto-item">
+          <summary>3-8　当番表作成</summary>
+          <div class="howto-body">
+            <p>当番表を作成する：</p>
+            <ol>
+              <li>対象年月を選びます（◀▶ボタンでも移動できます）。</li>
+              <li>「当番表を作成」を押すと、支障日・当番予定回数・前回当番からの間隔・日祝当番の設定などのルールに沿って、条件を満たす割り当てを複数パターン試行します。</li>
+              <li>内容が異なる組み合わせだけが、最大5案（案1〜案5）、縦長のカードとして横に並んで表示されます。</li>
+            </ol>
+            <p>案を見比べる：</p>
+            <ol>
+              <li>各案の見出しに「最も標準的な割り当て」（案1）、または「標準的な割り当てとの違い：N日」（案2以降）という説明が表示されます。標準に近い案ほど前に並びます。</li>
+              <li>未割当の日には、なぜ割り当てられなかったかの理由（支障日・0回設定・上限到達・日祝設定なし、など）が表示されます。</li>
+              <li>各案の下部の「この案で当番が1回もない人」で、割り当ての偏りがないか確認できます。</li>
+              <li>見出し横の「操作パネルを隠す」で、複数の案を見比べる際に画面を広く使えます。</li>
+            </ol>
+            <p>案を採用する：</p>
+            <ol>
+              <li>気に入った案の「この案を採用する」を押すと、下部の「採用した案の確認・調整」欄に反映されます。</li>
+              <li>この欄で当番者の変更やロックの設定を1件ずつ手動で調整し、「保存する」を押すとカレンダーに反映されます。</li>
+            </ol>
+            <div class="howto-note">カレンダー表示ですでにロックされている日は、当番表作成の対象から除外され、ロックされた当番者がそのまま維持されます。自動作成は、ロックされていない日・ロックされていない人だけを対象に行われます。「選択した月の当番表をリセット」で、その月の当番表（ロックされていない分）をまとめて削除できます。</div>
+          </div>
+        </details>
+
+        <details class="howto-item">
+          <summary>3-9　作成ルール</summary>
+          <div class="howto-body">
+            <p>当番表作成で使われているルールを文章で確認できる、入力のない確認専用のページです。詳しい内容はサイドバーの「作成ルール」から直接ご覧いただけます。ルールの変更が必要な場合は、システムの管理・保守担当にご相談ください。</p>
+          </div>
+        </details>
+
+        <details class="howto-item">
+          <summary>3-10　割当確認（表形式）</summary>
+          <div class="howto-body">
+            <ol>
+              <li>「表示設定」で表示形式を選びます。「連続した月」（例：2026年4月から6ヶ月分）または「同じ月を複数年表示」（例：5月だけを5年分比較）から選べます。</li>
+              <li>開始年・開始月（または対象月）・表示件数を選び、「表示」を押します。</li>
+              <li>「CSV出力」「🖨 印刷」で出力・印刷できます。「表示設定を隠す」で操作パネルを一時的に隠せます。</li>
+            </ol>
+          </div>
+        </details>
+
+        <details class="howto-item">
+          <summary>3-11　月割当て確認用</summary>
+          <div class="howto-body">
+            <ol>
+              <li>対象月を選ぶと、メンバーごとの予定回数と実績回数が一覧表示されます（予定通り＝✓、不一致＝⚠）。</li>
+              <li>「累計当番回数」欄で、システム運用前の記録とこれまでの決定済み全期間の通算回数を確認できます。</li>
+            </ol>
+            <div class="howto-note">「当番表(当初)決定」を押した時点の数字が確定記録として残ります。決定前の月は、その時点のカレンダー内容をもとにした下書き表示です。</div>
+          </div>
+        </details>
+
+        <details class="howto-item">
+          <summary>3-12　日曜祝日等管理</summary>
+          <div class="howto-body">
+            <ol>
+              <li>「基本の祝日を一括登録」で、法律で定められた祝日・振替休日・国民の休日を2026〜2050年まで自動計算してまとめて登録します（通常はこれだけで十分です）。</li>
+              <li>一括登録に含まれない祝日は「祝日を個別に追加」欄で日付・名称を入力して登録できます。</li>
+              <li>「登録済み祝日一覧」で対象年を指定し、内容を確認・削除できます。</li>
+            </ol>
+          </div>
+        </details>
+
+        <details class="howto-item">
+          <summary>3-13　年末年始当番予定</summary>
+          <div class="howto-body">
+            <p>年末年始期間（12/28〜1/4）の当番を割り当てる画面です。</p>
+            <ol>
+              <li>「表示・割り当て対象の年度」で対象の年末年始シーズンを選びます。</li>
+              <li>「候補者選び」で候補者にチェックを入れ、「人選済み」で確定します（「候補者を編集」で戻せます）。</li>
+              <li>「当番割り当て」の表で、当番に当たる日のチェックボックスにチェックを入れます（チェックするとすぐ保存されます）。</li>
+            </ol>
+          </div>
+        </details>
+
+        <details class="howto-item">
+          <summary>3-14　年末年始当番記録</summary>
+          <div class="howto-body">
+            <ol>
+              <li>「年度別 当番一覧」で、2013年度から翌年度分までを日付ごとに確認できます。記録がない日はセルに直接手入力できます（名簿にない名前でも可）。</li>
+              <li>「メンバーごとの通算回数」で、年度に関わらずこれまで何回当たったかを回数の多い順に確認できます。</li>
+            </ol>
+          </div>
+        </details>
+
+        <details class="howto-item">
+          <summary>3-15　本部祭典日・本部お勤め時間</summary>
+          <div class="howto-body">
+            <ol>
+              <li>左側「本部祭典日」欄で祭典名・日付を編集し「保存する」を押します。</li>
+              <li>右側「月別 朝づとめ・夕づとめ時間」欄で、月ごと・前半／後半ごとに時刻を編集し「保存する」を押します。</li>
+            </ol>
+          </div>
+        </details>
+
+        <details class="howto-item">
+          <summary>3-16　祭典日当番者記録</summary>
+          <div class="howto-body">
+            <p>元旦祭・月次祭など、本部祭典日ごとの当番回数を、カレンダーの記録から自動集計して確認できます。記録が不足する場合は手入力で補正できます（退職したメンバーの記録は表示されません）。</p>
+          </div>
+        </details>
+
+        <details class="howto-item">
+          <summary>3-17　システムの仕組み</summary>
+          <div class="howto-body">
+            <p>GitHub・Supabase・admin.html・member.htmlのつながりを図解した、入力のない確認専用のページです。詳しい内容はサイドバーの「システムの仕組み」から直接ご覧いただけます。</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="card">
+        <div class="card-title">4. 当番表作成〜公開までの基本的な流れ</div>
+        <ol class="howto-flow">
+          <li>「支障日登録」ページで、各詰員から申告された支障日を登録する。</li>
+          <li>必要に応じて「月ごと当番回数」「日祝当番月（複数年）」「各メンバー年間設定」で、その月・年度の当番予定を確認・調整する。</li>
+          <li>「当番表作成」ページで対象年月を選び「当番表を作成」を押し、表示された案1〜5を見比べて、最も適切な案の「この案を採用する」を押す。</li>
+          <li>「採用した案の確認・調整」欄で内容を確認し、必要なら手動で調整して「保存する」を押す。</li>
+          <li>「カレンダー表示」で内容を最終確認し、確定させたい日は🔒でロックする（一括ロックも利用できる）。</li>
+          <li>内容が固まったら「当番表(当初)決定」を押して当番表を確定・公開する（各詰員のmember.html画面に当番者名が表示されるようになる）。</li>
+        </ol>
+        <div class="howto-note" style="margin-bottom:0">「決定」後も、当番表の内容自体はこれまでどおり編集できます。決定を取り消したい場合も、同じ場所（カレンダー表示の決定バー）から取り消せます。</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">5. 用語集</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>用語</th><th>説明</th></tr></thead>
+            <tbody>
+              <tr><td>支障日</td><td>その詰員が当番に入れない日として登録した日。当番表作成では、この日にはその人を割り当てません。</td></tr>
+              <tr><td>日祝当番</td><td>日曜・祝日（振替休日を含む）の当番。年間設定で「日祝」にチェックがある人だけが割り当てられます。</td></tr>
+              <tr><td>ロック</td><td>その日の当番者を自動作成の対象から除外し、内容を固定すること。ロックされた日は当番表作成を実行しても内容が変わりません。</td></tr>
+              <tr><td>決定</td><td>その月・年末年始シーズンの当番表を確定し、各詰員のmember.html画面に公開すること。決定後も内容の編集は可能です。</td></tr>
+              <tr><td>案（案1〜案5）</td><td>当番表作成時に複数パターン生成される割り当て候補。案1は最もルールに忠実な「標準的な割り当て」で、案2以降は標準からの違いが少ない順に並びます。</td></tr>
+              <tr><td>中8日期間</td><td>前回の当番日から数えて、原則8日間は同じ人を当番にしない、という間隔ルールの期間。</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </main>
