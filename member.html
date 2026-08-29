@@ -965,6 +965,30 @@ window.addEventListener('resize', () => {
 });
 
 window.addEventListener('DOMContentLoaded', async () => {
+  // URLにログイン番号が指定されている場合は、それを使って自動ログインする
+  // （当番表作成者が自分の当番・支障日をすぐ確認できるようにするための入口で、
+  // 通常の利用案内には出てこない）。使用後はURLから取り除き、アドレスバーや
+  // 閲覧履歴にログイン番号がそのまま残らないようにする。
+  const urlCode = new URLSearchParams(location.search).get('k');
+  if (urlCode && normalizeCode(urlCode) != null) {
+    history.replaceState(null, '', location.pathname);
+    showMsg('login-msg', '<span class="spinner" style="border-color:rgba(0,0,0,0.2);border-top-color:var(--accent-dark)"></span> 自動ログイン中...', 'info');
+    try {
+      const matches = await findMembersByCode(urlCode);
+      if (matches.length === 1) {
+        await enterAsMember(matches[0].member, matches[0].token);
+        return;
+      } else if (matches.length > 1) {
+        showPicker(matches);
+        return;
+      } else {
+        showMsg('login-msg', '', '');
+      }
+    } catch (e) {
+      showMsg('login-msg', '', '');
+    }
+  }
+
   let remembered = null;
   try { remembered = localStorage.getItem(REMEMBER_KEY); } catch (e) {}
   if (remembered && normalizeCode(remembered) != null) {
