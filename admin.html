@@ -446,11 +446,6 @@
 </head>
 <body>
 
-<button type="button" id="reload-notice" onclick="hardReloadPage()" style="font-family:inherit;text-align:left;cursor:pointer;position:fixed;top:12px;left:12px;right:12px;width:calc(100% - 24px);z-index:3000;background:#fdf6e0;border:1px solid #f0dfa0;border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;line-height:1.5;color:#6b5a1e;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-  <span>💡 このファイルを開いた場合は、一度こちらをクリックして最新の状態に更新してからお使いください。</span>
-  <span id="reload-notice-close" onclick="event.stopPropagation(); document.getElementById('reload-notice').style.display='none';" aria-label="閉じる" style="background:none;border:none;font-size:18px;line-height:1;cursor:pointer;color:#8a7a3a;flex-shrink:0;padding:0 2px;">×</span>
-</button>
-
 <div id="login-screen" style="position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:2000;">
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px 28px;width:100%;max-width:320px;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
     <div style="text-align:center;margin-bottom:20px;">
@@ -5815,14 +5810,6 @@ async function seedBasicHolidays() {
 // 使っており、ログイン画面はUI上の入り口チェックに過ぎなかった）。
 let loginChecking = false;
 let adminLoginNumberRaw = ''; // ログイン画面で入力された生の値（例："01050"）をそのまま保持しておく
-
-// 画面上部の「最新の状態に更新」ボタン：単なるlocation.reload()だと、GitHub Pages側の
-// キャッシュ都合でブラウザに残った古いファイルがそのまま再表示されてしまうことがある。
-// 末尾に毎回異なるクエリ文字列を付けて読み込み直すことで、Ctrl+Shift+Rの手動ハードリロードと
-// 同じように「今までキャッシュされたことのない新しいURL」として必ずサーバーから取得させる。
-function hardReloadPage() {
-  location.href = location.pathname + '?_hr=' + Date.now() + (location.hash || '');
-}
 async function checkLoginPassword() {
   if (loginChecking) return;
   const input = document.getElementById('login-password');
