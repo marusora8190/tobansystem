@@ -197,13 +197,13 @@
   <!-- ログイン画面 -->
   <div id="login-view" class="card">
     <div class="card-title">ログインナンバーを入力してください</div>
-    <input id="login-code" type="text" inputmode="numeric" pattern="\d*" maxlength="4" autocomplete="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;text-security:disc;" aria-label="ログインナンバー" onkeydown="if(event.key==='Enter'){event.preventDefault();doLogin();}">
+    <input id="login-code" type="text" inputmode="numeric" pattern="\d*" maxlength="4" autocomplete="off" autocapitalize="off" spellcheck="false" style="display:block;width:50%;margin:0 auto;-webkit-text-security:disc;text-security:disc;" aria-label="ログインナンバー" onkeydown="if(event.key==='Enter'){event.preventDefault();doLogin();}">
     <div class="checkbox-row">
       <input type="checkbox" id="remember-me">
       <label for="remember-me" style="margin:0">この端末を記憶する（次回から自動ログイン）</label>
     </div>
-    <div class="btn-row">
-      <button id="login-btn" class="btn btn-primary btn-block" onclick="doLogin()">ログイン</button>
+    <div class="btn-row" style="justify-content:center;">
+      <button id="login-btn" class="btn btn-primary" style="flex:0 0 auto;width:50%;" onclick="doLogin()">ログイン</button>
     </div>
     <div id="login-msg"></div>
   </div>
