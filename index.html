@@ -98,6 +98,7 @@
   .month-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
   .month-nav .month-label { font-size: 17px; font-weight: 700; color: var(--accent-dark); }
   .month-nav button { width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--border-strong); background: #fff; font-size: 16px; cursor: pointer; }
+  .month-nav .today-btn { display: block; width: auto; height: auto; border-radius: 12px; margin: 4px auto 0; padding: 2px 12px; font-size: 11px; font-weight: 500; color: var(--accent-dark); border-color: var(--border-strong); }
 
   table.cal { border-collapse: collapse; width: 100%; table-layout: fixed; }
   table.cal th { font-size: 11px; color: var(--text-muted); padding: 4px 0; text-align: center; font-weight: 500; }
@@ -108,7 +109,8 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     font-size: 14px; cursor: pointer; background: #fff; color: var(--text); position: relative; user-select: none;
   }
-  .day-cell .hol-badge { font-size: 8px; line-height: 1; margin-top: 1px; color: inherit; }
+  .day-cell .hol-badge { font-size: 8px; line-height: 1; margin-top: 1px; color: inherit; white-space: nowrap; }
+  .day-num { white-space: nowrap; }
   .day-cell.sunday-col { color: #c0392b; }
   .day-cell.saturday-col { color: var(--info); }
 
@@ -132,6 +134,16 @@
   .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; font-size: 11px; color: var(--text-muted); }
   .legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 3px; vertical-align: -2px; }
 
+  /* 「この日の当番が通算◯◯回目です」トースト（当番表タブ、自分の当番日をタップした時に表示） */
+  .duty-rank-toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+    background: var(--accent-dark); color: #fff; padding: 10px 18px; border-radius: 20px;
+    font-size: 13px; font-weight: 600; box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    opacity: 0; pointer-events: none; transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 50; max-width: 88vw; text-align: center; white-space: nowrap;
+  }
+  .duty-rank-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
   .footer-note { text-align: center; font-size: 11px; color: var(--text-hint); margin-top: 18px; line-height: 1.7; }
   .hidden { display: none !important; }
   .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
@@ -152,7 +164,10 @@
   .tab-btn.active { background: var(--accent-dark); color: #fff; border-color: var(--accent-dark); }
 
   .day-cell.roster-cell { cursor: default; gap: 1px; padding-top: 5px; }
-  .day-cell.roster-cell.my-duty { background: #fff3b0; border-color: #d4af00; font-weight: 700; }
+  /* 当番表タブは日付の数字と「休日」の文字が同じ行に並ぶため、支障日入力タブより
+     文字を小さくして横一列に収まるようにする（縦に折り返さないようにするため） */
+  .day-cell.roster-cell .hol-badge { font-size: 6px; }
+  .day-cell.roster-cell.my-duty { background: #fff3b0; border-color: #d4af00; font-weight: 700; cursor: pointer; }
   .day-cell.roster-cell.my-duty .duty-name { color: #7a5c00; }
   .day-cell .duty-name {
     font-size: 9px; font-weight: 700; color: var(--accent-dark); line-height: 1.15;
@@ -266,6 +281,7 @@
           <div>
             <div class="month-label" id="roster-month-label"></div>
             <div id="roster-month-sub-note" style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:2px"></div>
+            <button class="today-btn" onclick="goToCurrentRosterMonth()">今月</button>
           </div>
           <button onclick="shiftRosterMonth(1)" aria-label="次の月">▶</button>
         </div>
@@ -278,12 +294,14 @@
         </table>
 
         <div class="legend">
-          <span><span class="sw" style="background:#fff3b0;border:1.5px solid #d4af00"></span>ご自身の当番日</span>
+          <span><span class="sw" style="background:#fff3b0;border:1.5px solid #d4af00"></span><span id="roster-legend-label">ご自身の当番日</span></span>
         </div>
       </div>
     </div>
 
   </div>
+
+  <div id="duty-rank-toast" class="duty-rank-toast"></div>
 
 </div>
 
@@ -299,6 +317,7 @@ const DOW_JP = ['日','月','火','水','木','金','土'];
 const REMEMBER_KEY = 'toban_member_code';
 
 let holidays = {};
+let rosterDecisions = {}; // period_key ("2026-07" や "nye-2026") -> { decided_at } ※当番表作成者が「決定」した月・年末年始シーズンのみ格納される
 let currentMember = null;   // { id, member_no, name, department, phone }
 let calYear, calMonth;      // 1-12
 let rosterYear, rosterMonth; // 当番表タブ用（支障日入力タブとは独立して月を移動できる）
@@ -362,6 +381,46 @@ async function loadHolidays() {
     const { data } = await sbClient.from('holidays').select('*');
     (data || []).forEach(h => { holidays[h.date] = h.name; });
   } catch (e) { /* 祝日表示は補助情報のため失敗しても致命的ではない */ }
+}
+
+// =============================================
+// 当番表(当初)決定 — 当番表作成者が「決定」した月・年末年始シーズンのみ、
+// 下記の当番表タブで当番者名を表示する（決定前はまだ調整中のため、氏名を一切表示しない）。
+// =============================================
+function isNyeWindowDate(dateStr) {
+  const parts = dateStr.split('-');
+  const m = parseInt(parts[1], 10), d = parseInt(parts[2], 10);
+  return (m === 12 && d >= 28) || (m === 1 && d <= 4);
+}
+function nyeSeasonYearOf(dateStr) {
+  const parts = dateStr.split('-');
+  const y = parseInt(parts[0], 10), m = parseInt(parts[1], 10);
+  return m === 1 ? y - 1 : y;
+}
+function periodKeyForDutyDate(dateStr) {
+  if (isNyeWindowDate(dateStr)) return `nye-${nyeSeasonYearOf(dateStr)}`;
+  const parts = dateStr.split('-');
+  return `${parts[0]}-${parts[1]}`;
+}
+function isDutyDateDecided(dateStr) {
+  return !!rosterDecisions[periodKeyForDutyDate(dateStr)];
+}
+// 当番表作成者が「決定」ボタンを押した月・年末年始シーズンだけを rosterDecisions に
+// 記録する仕組みは、この機能を導入した2026年4月分以降にしか記録がない。そのため
+// 「決定」記録の有無だけで表示可否を決めると、2026年3月以前など過去の当番表が
+// 一切表示されなくなってしまう。すでに終わった日（今日より前の日付）は変更の
+// 心配がないため、「決定」記録が無くても表示してよいと判断する。
+function isRosterDateViewable(dateStr, todayStr) {
+  return isDutyDateDecided(dateStr) || dateStr < todayStr;
+}
+
+async function loadRosterDecisions() {
+  try {
+    const { data, error } = await sbClient.from('roster_decisions').select('*');
+    if (error) { rosterDecisions = {}; return; }
+    rosterDecisions = {};
+    (data || []).forEach(r => { rosterDecisions[r.period_key] = r; });
+  } catch (e) { rosterDecisions = {}; }
 }
 
 // =============================================
@@ -453,8 +512,11 @@ async function enterAsMember(member, token) {
   document.getElementById('badge-greeting').textContent = getGreeting();
   document.getElementById('badge-name').textContent = member.name + ' さん';
   document.getElementById('badge-dept').textContent = member.department || '';
+  const rosterLegendLabel = document.getElementById('roster-legend-label');
+  if (rosterLegendLabel) rosterLegendLabel.textContent = `${member.name}さんの当番日`;
 
   await loadHolidays();
+  await loadRosterDecisions();
   const today = new Date();
   calYear = today.getFullYear();
   calMonth = today.getMonth() + 1;
@@ -552,7 +614,7 @@ async function renderCalendar() {
 
     const checkMark = (isRegistered && !isPendingRemove && isConfirmed) ? '<span class="confirm-check">✓</span>' : '';
     const holBadge = isHol ? '<span class="hol-badge">休日</span>' : '';
-    const dayLabel = isNextMonth ? `${day.m}/${day.d}` : String(day.d);
+    const dayLabel = isNextMonth ? `${day.m}/${day.d}` : `${day.d}日`;
     html += `<td><div class="${cls}" onclick="toggleDate('${dateStr}')">${checkMark}<span class="day-num">${dayLabel}</span>${holBadge}</div></td>`;
     if ((firstDay + idx + 1) % 7 === 0 && idx < dayList.length - 1) html += '</tr><tr>';
   });
@@ -634,6 +696,7 @@ async function shiftCalMonth(delta) {
   showMsg('save-msg', '', '');
   await renderCalendar();
 }
+
 
 function clearPending() {
   pendingAdd.clear();
@@ -717,7 +780,7 @@ async function fetchRosterForRange(dayList) {
   try {
     const { data, error } = await sbClient
       .from('annual_roster')
-      .select('duty_date, notes, member_id, members(name)')
+      .select('duty_date, notes, member_id, manual_assignee, members(name)')
       .gte('duty_date', startStr)
       .lte('duty_date', endStr);
     if (!error) (data || []).forEach(r => { map[r.duty_date] = r; });
@@ -734,7 +797,8 @@ async function renderRosterCalendar() {
 
   const loadingEl = document.getElementById('roster-loading');
   loadingEl.textContent = '読み込み中...';
-  const rosterMap = await fetchRosterForRange(dayList);
+  await loadRosterDecisions();
+  const [rosterMap] = await Promise.all([fetchRosterForRange(dayList), loadMyDutyRankMap()]);
   loadingEl.textContent = '';
 
   const first = dayList[0];
@@ -749,8 +813,16 @@ async function renderRosterCalendar() {
     const isHol = !!holidays[dateStr];
     const isNextMonth = day.m !== rosterMonth;
     const entry = rosterMap[dateStr];
-    const dutyName = entry && entry.members ? entry.members.name : '';
-    const isMyDuty = !!(entry && currentMember && entry.member_id === currentMember.id);
+    // 当番表作成者がこの日を含む月・年末年始シーズンを「決定」するまでは、
+    // 割り当てが決まっていても当番者名を一切表示しない（変更の可能性があるため）。
+    // ただし、すでに終わった過去の日については「決定」記録がなくても表示する
+    // （過去の当番表を確認できるようにするため）。
+    const decided = isRosterDateViewable(dateStr, todayStr);
+    // 名簿にいない方（辞退者・退職者など）を手入力で記録した日はmembersが無いため、
+    // その場合はmanual_assigneeの氏名を表示する（当番回数の集計対象にはならないが、
+    // 当番表としては表示する）。
+    const dutyName = decided && entry ? (entry.members ? entry.members.name : (entry.manual_assignee || '')) : '';
+    const isMyDuty = !!(decided && entry && currentMember && entry.member_id === currentMember.id);
 
     let cls = 'day-cell roster-cell';
     if (dow === 0 || isHol) cls += ' sunday-col';
@@ -760,18 +832,19 @@ async function renderRosterCalendar() {
     if (isMyDuty) cls += ' my-duty';
 
     const holBadge = isHol ? '<span class="hol-badge" style="margin-top:0">休日</span>' : '';
-    const dayLabel = isNextMonth ? `${day.m}/${day.d}` : String(day.d);
+    const dayLabel = isNextMonth ? `${day.m}/${day.d}` : `${day.d}日`;
     const nameLongCls = dutyName.length >= 5 ? ' name-long' : '';
     const nameHtml = dutyName ? `<span class="duty-name${nameLongCls}">${dutyName}</span>` : '';
     const dayRowHtml = `<div style="display:flex;align-items:center;justify-content:center;gap:2px;line-height:1">
       <span class="day-num">${dayLabel}</span>${holBadge}
     </div>`;
-    html += `<td><div class="${cls}">${dayRowHtml}${nameHtml}</div></td>`;
+    html += `<td><div class="${cls}" data-date="${dateStr}">${dayRowHtml}${nameHtml}</div></td>`;
     if ((firstDay + idx + 1) % 7 === 0 && idx < dayList.length - 1) html += '</tr><tr>';
   });
   html += '</tr>';
   document.getElementById('roster-cal-body').innerHTML = html;
   fitDutyNameSizes();
+  attachDutyRankLongPress();
 }
 
 // 実際に描画された1マスの幅を測り、名前の文字サイズをその幅に合わせて自動計算する。
@@ -790,12 +863,91 @@ function fitDutyNameSizes() {
   document.querySelectorAll('#roster-cal-body .duty-name.name-long').forEach(el => {
     el.style.fontSize = longSize.toFixed(1) + 'px';
   });
+  // 日付の数字（例：「10日」）はCSS上は14px固定だったため、名前の文字サイズに対して
+  // 相対的に大きく見えすぎていた。マス目の実際の幅に応じて、名前とバランスの
+  // 取れたサイズまで縮小する（支障日入力タブの日付表示には影響しない）。
+  const dayNumSize = Math.max(10, Math.min(13, cellWidth * 0.24));
+  document.querySelectorAll('#roster-cal-body .day-num').forEach(el => {
+    el.style.fontSize = dayNumSize.toFixed(1) + 'px';
+  });
+}
+
+// =============================================
+// 「この日の当番が通算◯◯回目です」表示
+// （当番表タブで、黄色に塗られたご自身の当番日をタップすると表示する）
+//
+// 通算回数は、①duty_count_baselineの「運用前」の回数と、②これまでに「決定」
+// された全期間の実績回数、を合わせたもの（admin.html「累計当番回数」と同じ考え方）。
+// まだ「決定」されていない将来の予定（今後の年度計画などで先までannual_rosterに
+// 入っている可能性がある行）は変更されうるため、通算回数には一切含めない。
+// これは「当番表に当番者名が表示される日＝isRosterDateViewableがtrueの日」と
+// 完全に同じ条件にしてあり、ここがズレると「回数が出る月・出ない月」のような
+// 不整合が再発するため、以前の実装の反省を踏まえて特に注意している。
+// =============================================
+let myDutyRankMap = {}; // { dateStr: 通算回数 }
+
+async function loadMyDutyRankMap() {
+  myDutyRankMap = {};
+  if (!currentMember) return;
+  try {
+    const [rosterRes, baselineRes] = await Promise.all([
+      sbClient.from('annual_roster').select('duty_date').eq('member_id', currentMember.id),
+      sbClient.from('duty_count_baseline').select('baseline_count').eq('member_id', currentMember.id)
+    ]);
+    if (rosterRes.error) return;
+    const baselineCount = (!baselineRes.error && baselineRes.data && baselineRes.data[0])
+      ? (baselineRes.data[0].baseline_count || 0) : 0;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const allDates = (rosterRes.data || []).map(r => r.duty_date).sort();
+    // 当番表に名前が表示される日（＝「決定」済み、またはすでに終わった過去の日）だけを対象にする。
+    // 将来の未決定分をここに含めると、年度計画の入力状況によって通算回数が変動してしまうため除外する。
+    const viewableDates = allDates.filter(d => isRosterDateViewable(d, todayStr));
+    // 「決定」記録の無い表示対象日（＝運用前の記録や、決定記録が始まる前の過去分）の件数。
+    // baseline（運用前の回数）とこの件数がほぼ一致する設計になっているため、両方をそのまま
+    // 足すと二重計上になる。差し引き分だけをオフセットとして通算の位置に加える。
+    const undecidedViewableCount = viewableDates.filter(d => !isDutyDateDecided(d)).length;
+    const offset = baselineCount - undecidedViewableCount;
+    viewableDates.forEach((d, idx) => {
+      myDutyRankMap[d] = Math.max(1, idx + 1 + offset);
+    });
+  } catch (e) { myDutyRankMap = {}; }
+}
+
+let _dutyRankToastTimer = null;
+function showMyDutyRankToast(dateStr) {
+  const rank = myDutyRankMap[dateStr];
+  const el = document.getElementById('duty-rank-toast');
+  if (!el || !rank) return;
+  el.textContent = `この日の当番が通算${rank}回目です`;
+  el.classList.add('show');
+  clearTimeout(_dutyRankToastTimer);
+  _dutyRankToastTimer = setTimeout(() => { el.classList.remove('show'); }, 3500);
+}
+
+// ご自身の当番日（黄色のマス）だけに、タップ（クリック）で通算回数を表示する
+// 操作を付ける。タッチ端末・マウス操作のどちらでも'click'イベントで反応する。
+function attachDutyRankLongPress() {
+  document.querySelectorAll('#roster-cal-body .day-cell.roster-cell.my-duty').forEach(cell => {
+    cell.addEventListener('click', () => {
+      showMyDutyRankToast(cell.getAttribute('data-date'));
+    });
+  });
 }
 
 function shiftRosterMonth(delta) {
   rosterMonth += delta;
   if (rosterMonth < 1) { rosterMonth = 12; rosterYear--; }
   if (rosterMonth > 12) { rosterMonth = 1; rosterYear++; }
+  renderRosterCalendar();
+}
+
+// 「今月」ボタン：何ヶ月移動していても、今日の月にワンタップで戻れるようにする
+function goToCurrentRosterMonth() {
+  const today = new Date();
+  const y = today.getFullYear(), m = today.getMonth() + 1;
+  if (rosterYear === y && rosterMonth === m) return;
+  rosterYear = y;
+  rosterMonth = m;
   renderRosterCalendar();
 }
 
@@ -813,6 +965,30 @@ window.addEventListener('resize', () => {
 });
 
 window.addEventListener('DOMContentLoaded', async () => {
+  // URLにログイン番号が指定されている場合は、それを使って自動ログインする
+  // （当番表作成者が自分の当番・支障日をすぐ確認できるようにするための入口で、
+  // 通常の利用案内には出てこない）。使用後はURLから取り除き、アドレスバーや
+  // 閲覧履歴にログイン番号がそのまま残らないようにする。
+  const urlCode = new URLSearchParams(location.search).get('k');
+  if (urlCode && normalizeCode(urlCode) != null) {
+    history.replaceState(null, '', location.pathname);
+    showMsg('login-msg', '<span class="spinner" style="border-color:rgba(0,0,0,0.2);border-top-color:var(--accent-dark)"></span> 自動ログイン中...', 'info');
+    try {
+      const matches = await findMembersByCode(urlCode);
+      if (matches.length === 1) {
+        await enterAsMember(matches[0].member, matches[0].token);
+        return;
+      } else if (matches.length > 1) {
+        showPicker(matches);
+        return;
+      } else {
+        showMsg('login-msg', '', '');
+      }
+    } catch (e) {
+      showMsg('login-msg', '', '');
+    }
+  }
+
   let remembered = null;
   try { remembered = localStorage.getItem(REMEMBER_KEY); } catch (e) {}
   if (remembered && normalizeCode(remembered) != null) {
