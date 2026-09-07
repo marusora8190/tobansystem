@@ -427,6 +427,9 @@
   #page-manual .howto-flow li { font-size: 13px; color: var(--text); padding: 4px 0; line-height: 1.6; }
   #page-manual .howto-flow { margin: 0 0 8px 20px; padding: 0; }
 
+  /* カレンダー表示の「Update」ボタンの確認メッセージ：見出し行に収まるよう小さく表示する */
+  #cal-update-msg .alert { margin-bottom: 0; padding: 4px 10px; font-size: 12px; white-space: nowrap; }
+
   /* Modal */
   .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; }
   .modal-bg.open { display: flex; }
@@ -497,9 +500,13 @@
 
   <main class="main">
     <div id="page-calendar" class="page active">
-      <div id="cal-title-row" style="display:flex;align-items:center;justify-content:space-between" oncontextmenu="return handleCalTitleRightClick(event)">
+      <div id="cal-title-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px" oncontextmenu="return handleCalTitleRightClick(event)">
         <div class="section-title" style="margin-bottom:0">カレンダー表示</div>
-        <button type="button" class="btn btn-sm" id="cal-settings-toggle-btn" onclick="toggleCalSettings()">操作パネルを隠す</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div id="cal-update-msg"></div>
+          <button type="button" class="btn btn-sm" id="cal-update-btn" onclick="hardUpdateReload()" title="ページを最新の状態に読み込み直します">Update</button>
+          <button type="button" class="btn btn-sm" id="cal-settings-toggle-btn" onclick="toggleCalSettings()">操作パネルを隠す</button>
+        </div>
       </div>
       <div id="cal-settings-body" style="flex:none">
       <div class="cal-nav">
@@ -5873,12 +5880,24 @@ function doLogout() {
 // 「頭の0を取ったナンバー」＝admin.htmlのログインナンバーは "0"+本人の詰員番号 という
 // 決まった形式（例："01050"）になっているため、先頭の1文字を取り除くだけでよい。
 function handleCalTitleRightClick(event) {
-  if (event.target.closest('#cal-settings-toggle-btn')) return true; // ボタン自体は通常の右クリックのままにする
+  if (event.target.closest('#cal-settings-toggle-btn, #cal-update-btn, #cal-update-msg')) return true; // ボタン等は通常の右クリックのままにする
   event.preventDefault();
   if (!adminLoginNumberRaw) return false;
   const memberNo = adminLoginNumberRaw.slice(1);
   window.open('member.html?k=' + encodeURIComponent(memberNo), '_blank');
   return false;
+}
+
+// カレンダー表示の「Update」ボタン：GitHub Pages側のキャッシュ都合でブラウザに残った
+// 古いファイルがそのまま表示され続けることがあるため、Ctrl+Shift+Rの手動ハードリロードと
+// 同じ効果を1クリックで得られるようにしたもの。末尾に毎回異なるクエリ文字列を付けて
+// 読み込み直すことで、「今までキャッシュされたことのない新しいURL」として必ずサーバーから
+// 取得し直す。読み込み直すとログインからやり直しになるため、再ログイン後にもう一度
+// カレンダー表示に戻ってきたタイミングで「最新の状態に更新されました」と案内できるよう、
+// sessionStorageに一時的な目印を残しておく（startApp()側で読み取って表示・消去する）。
+function hardUpdateReload() {
+  try { sessionStorage.setItem('cal_update_pending', '1'); } catch (e) {}
+  location.href = location.pathname + '?_upd=' + Date.now() + (location.hash || '');
 }
 
 function unlockApp() {
@@ -5898,6 +5917,15 @@ function startApp() {
   populateRecordSelects();
   restoreSidebarState();
   initApp();
+
+  // 「Update」ボタンで読み込み直した直後、再ログインを経てここに戻ってきたタイミングで、
+  // カレンダー表示に「最新の状態に更新されました」と一度だけ案内する。
+  try {
+    if (sessionStorage.getItem('cal_update_pending') === '1') {
+      sessionStorage.removeItem('cal_update_pending');
+      showMsg('cal-update-msg', '最新の状態に更新されました', 'success');
+    }
+  } catch (e) {}
 }
 
 window.addEventListener('DOMContentLoaded', () => {
