@@ -5896,7 +5896,13 @@ function handleCalTitleRightClick(event) {
 // カレンダー表示に戻ってきたタイミングで「最新の状態に更新されました」と案内できるよう、
 // sessionStorageに一時的な目印を残しておく（startApp()側で読み取って表示・消去する）。
 function hardUpdateReload() {
-  try { sessionStorage.setItem('cal_update_pending', '1'); } catch (e) {}
+  try {
+    sessionStorage.setItem('cal_update_pending', '1');
+    // 押した時点のログインナンバーを一時的に保存しておき、読み込み直した直後に
+    // 自動でログインし直すことで、Updateボタンを押してもログイン画面に戻らず
+    // そのままカレンダー表示に留まれるようにする（詳細はDOMContentLoaded側参照）。
+    if (adminLoginNumberRaw) sessionStorage.setItem('admin_update_relogin', adminLoginNumberRaw);
+  } catch (e) {}
   location.href = location.pathname + '?_upd=' + Date.now() + (location.hash || '');
 }
 
@@ -5929,8 +5935,23 @@ function startApp() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  // ページを開くたびに必ずログインナンバー入力を求める（認証状態は保持しない）
-  document.getElementById('login-password').focus();
+  // ページを開くたびに必ずログインナンバー入力を求める（認証状態は保持しない）。
+  // ただし「Update」ボタンによる読み込み直しの直後だけは例外で、押す手間・
+  // ログインし直す手間を省くため、押す直前のログインナンバーで自動的に
+  // ログインし直す（hardUpdateReload()側で一時的に保存した値を、ここで
+  // 読み取って即座に消去することで、Update以外の通常の再読み込みでは
+  // 必ずログイン画面に戻る従来どおりの挙動を維持する）。
+  let pendingRelogin = '';
+  try {
+    pendingRelogin = sessionStorage.getItem('admin_update_relogin') || '';
+    sessionStorage.removeItem('admin_update_relogin');
+  } catch (e) {}
+  if (pendingRelogin) {
+    document.getElementById('login-password').value = pendingRelogin;
+    checkLoginPassword();
+  } else {
+    document.getElementById('login-password').focus();
+  }
 });
 </script>
 </body>
