@@ -501,10 +501,12 @@
   <main class="main">
     <div id="page-calendar" class="page active">
       <div id="cal-title-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px" oncontextmenu="return handleCalTitleRightClick(event)">
-        <div class="section-title" style="margin-bottom:0">カレンダー表示</div>
-        <div style="display:flex;align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div class="section-title" style="margin-bottom:0">カレンダー表示</div>
+          <button type="button" class="btn" id="cal-update-btn" onclick="hardUpdateReload()" title="ページを最新の状態に読み込み直します" style="background:#d32f2f;border-color:#d32f2f;color:#fff;font-weight:700;font-size:24px;padding:10px 20px">Update</button>
           <div id="cal-update-msg"></div>
-          <button type="button" class="btn btn-sm" id="cal-update-btn" onclick="hardUpdateReload()" title="ページを最新の状態に読み込み直します">Update</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
           <button type="button" class="btn btn-sm" id="cal-settings-toggle-btn" onclick="toggleCalSettings()">操作パネルを隠す</button>
         </div>
       </div>
