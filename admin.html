@@ -711,7 +711,7 @@
           <p style="color:var(--text-hint);font-size:13px">メンバーと対象月を選択するとカレンダーが表示されます。</p>
         </div>
         <div class="btn-row">
-          <button class="btn btn-primary" onclick="addUnavailableBulk()">選択した日をまとめて登録</button>
+          <button class="btn btn-primary" onclick="addUnavailableBulk()">選択した日を支障日としてまとめて登録</button>
           <button class="btn" onclick="addUnavailableInverse()" title="空いている日だけをカレンダーで選んでから押すと、それ以外の日をまとめて支障日として登録できます">選んだ日以外をすべて支障日として登録</button>
           <button class="btn" onclick="clearUnavailSelection()">選択をリセット</button>
           <button class="btn btn-danger" onclick="clearRegisteredForMonth()">この月の登録済み支障日を全削除</button>
@@ -1213,7 +1213,7 @@
             <p>支障日の追加：</p>
             <ol>
               <li>「支障日を追加」欄でメンバーと対象月を選ぶと、その月のカレンダーが表示されます。</li>
-              <li>支障日にしたい日付をクリックして選択し（複数選択可）、「選択した日をまとめて登録」で登録します。</li>
+              <li>支障日にしたい日付をクリックして選択し（複数選択可）、「選択した日を支障日としてまとめて登録」で登録します。</li>
               <li>「この月の登録済み支障日を全削除」で、その月の登録済み支障日をまとめて削除できます。</li>
             </ol>
             <div class="howto-note">支障日が多く、逆に「空いている日」の方が少ない方の場合は、カレンダーで空いている日（支障日にしない日）だけをクリックして選び、「選んだ日以外をすべて支障日として登録」ボタンを押すと、それ以外の日をまとめて支障日として登録できます。登録前に対象件数の確認メッセージが表示されます。</div>
