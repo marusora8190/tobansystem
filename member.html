@@ -395,10 +395,25 @@ function updateInputModeUI() {
       ? '当番に入れる日（空いている日）をタップして選択してください。選択した日以外の、この月のすべての日が支障日として申請されます。準備ができたら下のボタンを押してください。'
       : '当番に入れない日をタップして選択し、下の「支障日を申請する」ボタンを押してください。すでに登録済みの日をタップすると、取り消し（削除）を予約できます。';
   }
-  const saveBtn = document.getElementById('save-btn');
-  if (saveBtn) saveBtn.textContent = isAvail ? '選んだ日以外を支障日として申請する' : '支障日を申請する';
+  updateSaveButtonLabel();
   const legendAvailFree = document.getElementById('legend-avail-free');
   if (legendAvailFree) legendAvailFree.classList.toggle('hidden', !isAvail);
+}
+
+// 申請ボタンの文言は、選択中の内容によって切り替える。
+// 追加登録（pendingAdd）が0件で、既存の登録済み支障日の取り消し（pendingRemove、
+// カレンダー上は二重線表示）だけが選ばれている場合は、「支障日入力」「可能日入力」
+// どちらのモードでも「その取り消し（＝支障日→可能日への変更）」であることが
+// はっきり伝わる専用の文言に変える。
+function updateSaveButtonLabel() {
+  const saveBtn = document.getElementById('save-btn');
+  if (!saveBtn) return;
+  const isAvail = inputMode === 'available';
+  if (pendingRemove.size > 0 && pendingAdd.size === 0) {
+    saveBtn.textContent = '二重線の日を支障日から可能日に申請する';
+  } else {
+    saveBtn.textContent = isAvail ? '選んだ日以外を支障日として申請する' : '支障日を申請する';
+  }
 }
 
 function pad2(n) { return String(n).padStart(2, '0'); }
@@ -779,6 +794,7 @@ function toggleDate(dateStr) {
 function updateSaveButtonState() {
   const total = pendingAdd.size + pendingRemove.size;
   document.getElementById('save-btn').disabled = total === 0;
+  updateSaveButtonLabel();
 }
 
 async function shiftCalMonth(delta) {
@@ -833,9 +849,14 @@ async function saveChanges() {
     showMsg('save-msg', 'この月の支障日の受付は終了しました。変更は当番表作成者にご連絡ください。', 'error');
     return;
   }
-  // 可能日入力モードは、デフォルトで月内のほぼ全日がpendingAddに入っているため、
-  // 誤って未確認のまま申請してしまわないよう、件数を示して確認する。
-  if (inputMode === 'available') {
+  // 追加登録（pendingAdd）が0件で、既存の登録済み支障日の取り消し（pendingRemove、
+  // 二重線表示）だけが選ばれている場合は、その取り消し件数を示して確認する
+  // （支障日入力／可能日入力どちらのモードでも、この場合の意味は同じ）。
+  if (pendingRemove.size > 0 && pendingAdd.size === 0) {
+    if (!confirm(`二重線が引かれた${pendingRemove.size}日を、支障日から可能日（取り消し）として申請します。よろしいですか？`)) return;
+  } else if (inputMode === 'available') {
+    // 可能日入力モードは、デフォルトで月内のほぼ全日がpendingAddに入っているため、
+    // 誤って未確認のまま申請してしまわないよう、件数を示して確認する。
     const freeCount = getCalendarDayList(calYear, calMonth).length - pendingAdd.size - (registeredDates.size - pendingRemove.size);
     if (!confirm(`選択していない${pendingAdd.size}日を支障日として申請します（選んだ${freeCount}日は空いている日として残ります）。よろしいですか？`)) return;
   }
