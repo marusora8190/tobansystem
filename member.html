@@ -801,6 +801,14 @@ async function shiftCalMonth(delta) {
 
 
 function clearPending() {
+  // 何も選択されていない状態（申請を保存した直後など）では、リセットしても
+  // 変化が無いはずなので、何もしない。可能日入力モードでこのガードが無いと、
+  // 保存直後にリセットを押した際、せっかく登録した「空いている日」の表示まで
+  // いったん「登録予定（黄）」に戻ってしまい、ボタンが誤動作したように見えてしまう。
+  if (pendingAdd.size === 0 && pendingRemove.size === 0) {
+    showMsg('save-msg', '', '');
+    return;
+  }
   pendingAdd.clear();
   pendingRemove.clear();
   // 可能日入力モードでは、空にするのではなく「まだ何もタップしていないデフォルト状態」
