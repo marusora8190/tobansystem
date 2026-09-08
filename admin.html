@@ -692,6 +692,7 @@
 
       <div class="card">
         <div class="card-title">支障日を追加（当番表作成者入力）</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.4">支障日が多く、逆に「空いている日」の方が少ない方は、下のカレンダーで空いている日だけをクリックして選び、「選んだ日以外をすべて支障日として登録」ボタンを使うと効率的です。</p>
         <div class="form-grid" style="margin-bottom:12px">
           <div class="form-group">
             <label>メンバー *</label>
@@ -711,6 +712,7 @@
         </div>
         <div class="btn-row">
           <button class="btn btn-primary" onclick="addUnavailableBulk()">選択した日をまとめて登録</button>
+          <button class="btn" onclick="addUnavailableInverse()" title="空いている日だけをカレンダーで選んでから押すと、それ以外の日をまとめて支障日として登録できます">選んだ日以外をすべて支障日として登録</button>
           <button class="btn" onclick="clearUnavailSelection()">選択をリセット</button>
           <button class="btn btn-danger" onclick="clearRegisteredForMonth()">この月の登録済み支障日を全削除</button>
         </div>
@@ -725,6 +727,7 @@
         <div class="card-title">登録済み支障日一覧（一覧表形式）</div>
         <p style="font-size:12px;color:var(--text-muted);margin-bottom:4px;line-height:1.3">
           選択された対象月の支障日が一覧表示されます。[ ✓: 登録済み（クリックで削除） ]。空欄をクリックすると支障日に登録されます。
+          氏名の横の📅ボタンを押すと、その方の支障日を「支障日登録」ページのカレンダーでまとめて登録する画面に移動できます（支障日が多く、空いている日の方が少ない方に便利です）。
         </p>
         <div style="display:flex;gap:8px;margin-bottom:4px;align-items:center">
           <label style="font-size:12px;color:var(--text-muted);font-weight:500">表示月:</label>
@@ -1213,6 +1216,7 @@
               <li>支障日にしたい日付をクリックして選択し（複数選択可）、「選択した日をまとめて登録」で登録します。</li>
               <li>「この月の登録済み支障日を全削除」で、その月の登録済み支障日をまとめて削除できます。</li>
             </ol>
+            <div class="howto-note">支障日が多く、逆に「空いている日」の方が少ない方の場合は、カレンダーで空いている日（支障日にしない日）だけをクリックして選び、「選んだ日以外をすべて支障日として登録」ボタンを押すと、それ以外の日をまとめて支障日として登録できます。登録前に対象件数の確認メッセージが表示されます。</div>
           </div>
         </details>
 
@@ -1223,6 +1227,7 @@
               <li>表示月を選ぶと、その月の一覧表（メンバー×日付）が表示されます。</li>
               <li>空欄のセルをクリックすると支障日として登録され、✓が付いたセルをクリックすると削除されます。</li>
               <li>「🖨 この一覧表を印刷」で印刷できます。</li>
+              <li>氏名の左にある📅ボタンを押すと、その方・その月を選んだ状態で「支障日登録」ページのカレンダーに移動します。支障日が多く、空いている日の方が少ない方は、移動後に空いている日だけをクリックして選び、「選んだ日以外をすべて支障日として登録」ボタンを使うと効率的に登録できます。</li>
             </ol>
             <div class="howto-note">色分け：✓＝登録済みの支障日、黄色＝当番日決定済み、赤塗りつぶし＝日祝当番の人、薄い赤＝日曜・祝日の枠、灰色＝前月の当番から中8日期間。</div>
           </div>
@@ -3799,6 +3804,68 @@ async function addUnavailableBulk() {
   isSavingUnavail = false;
 }
 
+// 支障日が多く、逆に「空いている日」の方が少ない詰員向けの登録方法。
+// カレンダーで選んだ日（＝空いている日、支障日にしない日）以外のすべての日を、
+// まとめて支障日として登録する。選択した日をそのまま登録する addUnavailableBulk() とは
+// 逆の意味を持つため、押す前に対象件数を表示して確認を求める。
+async function addUnavailableInverse() {
+  if (isSavingUnavail) return;
+  const mid = document.getElementById('u-member').value;
+  const mon = document.getElementById('u-cal-month').value;
+  if (!mid) { showMsg('unavail-msg', 'メンバーを選択してください', 'error'); return; }
+  if (!mon) { showMsg('unavail-msg', '対象月を選択してください', 'error'); return; }
+
+  const [year, month] = mon.split('-').map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const allDates = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    allDates.push(`${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
+  }
+  // 現在選択されている日＝「空いている日（支障日にしない日）」として、登録対象から除外する
+  const targetDates = allDates.filter(dt => !selectedUnavailDates.has(dt));
+
+  if (targetDates.length === 0) {
+    showMsg('unavail-msg', '登録対象がありません（月内のすべての日が選択＝空いている日になっています）', 'error');
+    return;
+  }
+
+  const memberName = members.find(m => m.id == mid)?.name || '';
+  const keepCount = selectedUnavailDates.size;
+  const confirmMsg = keepCount > 0
+    ? `${memberName} さんの ${mon} について、選択中の${keepCount}日（空いている日）以外の${targetDates.length}日を、まとめて支障日として登録します。よろしいですか？`
+    : `${memberName} さんの ${mon} は、日が1つも選択されていません。このまま進めると、月内の${targetDates.length}日すべてが支障日として登録されます。よろしいですか？`;
+  if (!confirm(confirmMsg)) return;
+
+  isSavingUnavail = true;
+  const rows = targetDates.map(date => ({
+    member_id: parseInt(mid),
+    blocked_date: date,
+    reason: null
+  }));
+
+  showMsg('unavail-msg', 'データベースに保存中...', 'info');
+  const { error } = await sbClient.from('unavailable_dates').upsert(rows, { onConflict: 'member_id,blocked_date' });
+
+  if (error) {
+    let errDetail = `<strong>保存エラーが発生しました</strong><br>メッセージ: ${error.message || 'なし'}`;
+    showMsg('unavail-msg', errDetail, 'error');
+    isSavingUnavail = false;
+    return;
+  }
+
+  showMsg('unavail-msg', `${rows.length}件の支障日を正常に登録しました（選択した${keepCount}日は除く） ✓`, 'success');
+  selectedUnavailDates.clear();
+  document.querySelectorAll('.unavail-cal td.selected').forEach(td => td.classList.remove('selected'));
+
+  document.getElementById('u-matrix-month').value = mon;
+  document.getElementById('u-summary-month').value = mon;
+
+  await loadUnavailable();
+  await loadUnavailSummary();
+  await renderUnavailCalendar();
+  isSavingUnavail = false;
+}
+
 async function loadUnavailable() {
   const mon = document.getElementById('u-matrix-month').value;
   if (!mon) return;
@@ -3888,7 +3955,7 @@ async function loadUnavailable() {
     const holCellBg = isHolDuty ? 'background:#e89090' : '';
 
     bodyHtml += `<tr>
-      <td style="white-space:nowrap;font-weight:500;text-align:left;padding-left:3px;background:var(--surface);font-size:10px">${m.name}</td>
+      <td style="white-space:nowrap;font-weight:500;text-align:left;padding-left:3px;background:var(--surface);font-size:10px"><button type="button" onclick="goToUnavailCalendarFor(${m.id}, '${mon}')" title="${m.name}さんの支障日を、カレンダーでまとめて登録する画面に移動します" style="border:none;background:none;padding:0 2px 0 0;cursor:pointer;font-size:10px;vertical-align:middle">📅</button>${m.name}</td>
       <td style="width:20px;min-width:20px;max-width:20px;text-align:center;background:var(--surface);font-size:9px;color:#2e7d32;font-weight:500">${twiceCell}</td>
       <td style="width:20px;min-width:20px;max-width:20px;text-align:center;${holCellBg}"></td>`;
     
@@ -3952,6 +4019,23 @@ function updateUnavailMatrixStickyOffsets() {
   if (w1 > 0 && w2 > 0) table.style.setProperty('--unavail-col3-left', (w1 + w2) + 'px');
 }
 window.addEventListener('resize', updateUnavailMatrixStickyOffsets);
+
+// 一覧表の氏名の横にある📅ボタン：その詰員・その月を選んだ状態で「支障日登録」ページの
+// カレンダーに移動する。支障日が多く逆に空いている日の方が少ない方は、移動後に空いている
+// 日だけをクリックして選び、「選んだ日以外をすべて支障日として登録」ボタンを使うことで、
+// この一覧表からそのままスムーズに一括登録の操作に入れる。
+async function goToUnavailCalendarFor(memberId, mon) {
+  await showPage('unavailable');
+  const memberSel = document.getElementById('u-member');
+  if (memberSel) memberSel.value = String(memberId);
+  const monInput = document.getElementById('u-cal-month');
+  if (monInput) monInput.value = mon;
+  await renderUnavailCalendar();
+  setTimeout(() => {
+    document.getElementById('unavail-cal-wrap')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 50);
+  showMsg('unavail-msg', '空いている日をクリックして選び、「選んだ日以外をすべて支障日として登録」ボタンをお使いください。', 'info');
+}
 
 async function removeMatrixRecord(id) {
   if (!confirm('この支障日を削除しますか？')) return;
