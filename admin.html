@@ -6016,6 +6016,8 @@ function startApp() {
   try {
     if (sessionStorage.getItem('cal_update_pending') === '1') {
       sessionStorage.removeItem('cal_update_pending');
+      const updateBtn = document.getElementById('cal-update-btn');
+      if (updateBtn) updateBtn.style.display = 'none';
       showMsg('cal-update-msg', '最新の状態に更新されました', 'success');
     }
   } catch (e) {}
