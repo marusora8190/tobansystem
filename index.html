@@ -234,7 +234,11 @@
         <div class="name" id="badge-name"></div>
         <div class="dept" id="badge-dept"></div>
       </div>
-      <button class="logout-link" onclick="doLogout()">🚪 ログアウト</button>
+      <div style="display:flex;flex-direction:column;align-items:stretch;gap:6px">
+        <button class="logout-link" onclick="doLogout()">🚪 ログアウト</button>
+        <button class="logout-link" id="member-update-btn" onclick="memberHardUpdateReload()" title="ページを最新の状態に読み込み直します" style="background:#d32f2f;border-color:#d32f2f;color:#fff;font-weight:700;justify-content:center">Update</button>
+        <div id="member-update-msg" style="font-size:11px;text-align:center"></div>
+      </div>
     </div>
 
     <div class="tab-bar">
@@ -244,6 +248,7 @@
         oncontextmenu="return false"
         ><span class="press-fill" id="tab-input-press-fill"></span><span id="tab-input-label">支障日入力</span></button>
       <button id="tab-btn-roster" class="tab-btn" onclick="switchTab('roster')">当番表</button>
+      <button id="tab-btn-chotome" class="tab-btn" onclick="switchTab('chotome')">祭典日・お勤め時間</button>
     </div>
 
     <div id="tab-panel-input">
@@ -313,6 +318,44 @@
       </div>
     </div>
 
+    <!-- 祭典日・お勤め時間：admin.htmlの「本部祭典日・本部お勤め時間」と同じデータを
+         詰員向けに閲覧専用で表示する（編集はadmin.html側のみ）。まず本部祭典日の一覧を
+         表示し、「次へ」ボタンで朝づとめ・夕づとめ時間の一覧に切り替わる。 -->
+    <div id="tab-panel-chotome" class="hidden">
+      <div class="card">
+        <div class="card-title" id="chotome-card-title" style="text-align:center">📌 本部祭典日</div>
+
+        <div id="chotome-view-festival">
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">本部の年間祭典日の一覧です（当番表作成者が管理しています）。</p>
+          <div id="member-festival-rows" style="font-size:13px"></div>
+          <div class="btn-row" style="margin-top:14px">
+            <button class="btn btn-primary" onclick="showChotomeSubView('times')">次へ：朝づとめ・夕づとめ時間を見る ▶</button>
+          </div>
+        </div>
+
+        <div id="chotome-view-times" class="hidden">
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">印刷①で使う、月ごとの朝づとめ・夕づとめの時刻です（前半1日〜15日・後半16日〜月末日）。</p>
+          <div style="overflow-x:auto">
+            <table style="border-collapse:collapse;width:100%;min-width:320px">
+              <thead>
+                <tr>
+                  <th style="font-size:11px;color:var(--text-muted);font-weight:500;padding:4px 2px;text-align:center">月</th>
+                  <th style="font-size:11px;color:var(--text-muted);font-weight:500;padding:4px 2px;text-align:center">朝づとめ<br><span style="font-weight:400">1〜15日</span></th>
+                  <th style="font-size:11px;color:var(--text-muted);font-weight:500;padding:4px 2px;text-align:center">夕づとめ<br><span style="font-weight:400">1〜15日</span></th>
+                  <th style="font-size:11px;color:var(--text-muted);font-weight:500;padding:4px 2px;text-align:center">朝づとめ<br><span style="font-weight:400">16〜末日</span></th>
+                  <th style="font-size:11px;color:var(--text-muted);font-weight:500;padding:4px 2px;text-align:center">夕づとめ<br><span style="font-weight:400">16〜末日</span></th>
+                </tr>
+              </thead>
+              <tbody id="member-chotome-body"></tbody>
+            </table>
+          </div>
+          <div class="btn-row" style="margin-top:14px">
+            <button class="btn" onclick="showChotomeSubView('festival')">◀ 戻る：本部祭典日を見る</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <div id="duty-rank-toast" class="duty-rank-toast"></div>
@@ -336,6 +379,7 @@ let currentMember = null;   // { id, member_no, name, department, phone }
 let calYear, calMonth;      // 1-12
 let rosterYear, rosterMonth; // 当番表タブ用（支障日入力タブとは独立して月を移動できる）
 let rosterLoadedOnce = false;
+let chotomeLoadedOnce = false;
 let registeredDates = new Set();
 let confirmedDates = new Set();   // 当番表作成者が確認済みにした支障日（registeredDatesの部分集合）
 let pendingAdd = new Set();
@@ -632,6 +676,22 @@ function doLogout() {
   showMsg('login-msg', '', '');
 }
 
+// admin.html「カレンダー表示」の赤い「Update」ボタンと同じ機能。GitHub Pages側の
+// キャッシュ都合でブラウザに残った古いファイルがそのまま表示され続けることがあるため、
+// Ctrl+Shift+Rの手動ハードリロードと同じ効果を1クリックで得られるようにしたもの。
+// 末尾に毎回異なるクエリ文字列を付けて読み込み直すことで、「今までキャッシュされた
+// ことのない新しいURL」として必ずサーバーから取得し直す。読み込み直すとログインから
+// やり直しになるため、押した時点でログインしていた詰員番号を一時的に保存しておき、
+// 読み込み直した直後に自動でログインし直すことで、ログイン画面に戻らずそのまま
+// 元の画面に留まれるようにする（詳細はDOMContentLoaded側参照）。
+function memberHardUpdateReload() {
+  try {
+    sessionStorage.setItem('member_update_pending', '1');
+    if (currentMember) sessionStorage.setItem('member_update_relogin', memberCodeStr(currentMember));
+  } catch (e) {}
+  location.href = location.pathname + '?_upd=' + Date.now() + (location.hash || '');
+}
+
 // =============================================
 // カレンダー表示
 // =============================================
@@ -898,12 +958,13 @@ async function saveChanges() {
 // タブ切り替え（支障日入力／当番表）
 // =============================================
 function switchTab(tab) {
-  const isInput = tab === 'input';
-  document.getElementById('tab-btn-input').classList.toggle('active', isInput);
-  document.getElementById('tab-btn-roster').classList.toggle('active', !isInput);
-  document.getElementById('tab-panel-input').classList.toggle('hidden', !isInput);
-  document.getElementById('tab-panel-roster').classList.toggle('hidden', isInput);
-  if (!isInput) {
+  document.getElementById('tab-btn-input').classList.toggle('active', tab === 'input');
+  document.getElementById('tab-btn-roster').classList.toggle('active', tab === 'roster');
+  document.getElementById('tab-btn-chotome').classList.toggle('active', tab === 'chotome');
+  document.getElementById('tab-panel-input').classList.toggle('hidden', tab !== 'input');
+  document.getElementById('tab-panel-roster').classList.toggle('hidden', tab !== 'roster');
+  document.getElementById('tab-panel-chotome').classList.toggle('hidden', tab !== 'chotome');
+  if (tab === 'roster') {
     // データの再取得は初回のみ。ただし文字サイズの再調整は毎回行う（画面回転などに対応するため）
     if (!rosterLoadedOnce) {
       rosterLoadedOnce = true;
@@ -911,7 +972,108 @@ function switchTab(tab) {
     } else {
       fitDutyNameSizes();
     }
+  } else if (tab === 'chotome') {
+    // データの再取得は初回のみ（admin.html側で変更があった場合は、タブを開き直すか
+    // Updateボタンでの再読み込み後に反映される）
+    if (!chotomeLoadedOnce) {
+      chotomeLoadedOnce = true;
+      loadMemberChotomeData();
+    }
   }
+}
+
+// =============================================
+// 祭典日・お勤め時間（admin.html「本部祭典日・本部お勤め時間」の閲覧専用表示）
+// admin.html側で保存された honbu_festivals / chotome_times を、詰員側では
+// 閲覧専用（編集不可）で表示する。値の変更はadmin.html側でのみ行う。
+// =============================================
+// admin.html側と同じ初期値（honbu_festivals / chotome_times のテーブルがまだ
+// 空の場合や、読み込みに失敗した場合に使う）
+const MEMBER_FESTIVAL_DEFAULTS = [
+  { name: '元旦祭', date: '1月1日', time: '午前5時' },
+  { name: '春季大祭', date: '1月26日', time: '午前10時30分' },
+  { name: '春季霊祭', date: '3月27日', time: '午前9時' },
+  { name: '教祖誕生祭', date: '4月18日', time: '午前10時' },
+  { name: '秋季霊祭', date: '9月27日', time: '午前9時' },
+  { name: '秋季大祭', date: '10月26日', time: '午前8時' },
+  { name: '月次祭', date: '毎月26日', time: '午前9時' },
+];
+const MEMBER_CHOTOME_TIMES_DEFAULTS = {
+  1:  { amFirst: '7:00', pmFirst: '5:00', amSecond: '7:00', pmSecond: '5:15' },
+  2:  { amFirst: '7:00', pmFirst: '5:30', amSecond: '6:45', pmSecond: '5:45' },
+  3:  { amFirst: '6:30', pmFirst: '6:00', amSecond: '6:15', pmSecond: '6:30' },
+  4:  { amFirst: '6:00', pmFirst: '6:30', amSecond: '5:45', pmSecond: '6:45' },
+  5:  { amFirst: '5:30', pmFirst: '7:00', amSecond: '5:15', pmSecond: '7:15' },
+  6:  { amFirst: '5:00', pmFirst: '7:30', amSecond: '5:00', pmSecond: '7:30' },
+  7:  { amFirst: '5:00', pmFirst: '7:30', amSecond: '5:15', pmSecond: '7:30' },
+  8:  { amFirst: '5:30', pmFirst: '7:15', amSecond: '5:30', pmSecond: '7:00' },
+  9:  { amFirst: '5:45', pmFirst: '6:45', amSecond: '6:00', pmSecond: '6:30' },
+  10: { amFirst: '6:00', pmFirst: '6:00', amSecond: '6:15', pmSecond: '5:45' },
+  11: { amFirst: '6:30', pmFirst: '5:30', amSecond: '6:45', pmSecond: '5:15' },
+  12: { amFirst: '7:00', pmFirst: '5:00', amSecond: '7:00', pmSecond: '5:00' },
+};
+let memberFestivalData = MEMBER_FESTIVAL_DEFAULTS.slice();
+let memberChotomeTimesData = {};
+
+async function loadMemberChotomeData() {
+  try {
+    const { data, error } = await sbClient.from('honbu_festivals').select('*').order('sort_order');
+    if (error) throw error;
+    memberFestivalData = (data && data.length) ? data.map(r => ({ name: r.name, date: r.date, time: r.time })) : MEMBER_FESTIVAL_DEFAULTS.slice();
+  } catch (e) {
+    memberFestivalData = MEMBER_FESTIVAL_DEFAULTS.slice();
+  }
+  renderMemberFestivalList();
+
+  try {
+    const { data, error } = await sbClient.from('chotome_times').select('*');
+    if (error) throw error;
+    (data || []).forEach(row => {
+      memberChotomeTimesData[row.month] = {
+        amFirst: row.am_first, pmFirst: row.pm_first,
+        amSecond: row.am_second, pmSecond: row.pm_second
+      };
+    });
+  } catch (e) { /* 読み込み失敗時は初期値を表示する */ }
+  renderMemberChotomeTable();
+}
+
+function renderMemberFestivalList() {
+  const wrap = document.getElementById('member-festival-rows');
+  if (!wrap) return;
+  wrap.innerHTML = memberFestivalData.map(f => `
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:8px 2px;border-bottom:1px solid var(--border)">
+      <span style="font-weight:600">${f.name}</span>
+      <span style="color:var(--text-muted);font-size:12px;white-space:nowrap">${f.date}</span>
+      <span style="color:var(--text-muted);font-size:12px;white-space:nowrap">${f.time}</span>
+    </div>
+  `).join('');
+}
+
+function renderMemberChotomeTable() {
+  const body = document.getElementById('member-chotome-body');
+  if (!body) return;
+  let rows = '';
+  for (let m = 1; m <= 12; m++) {
+    const t = memberChotomeTimesData[m] || MEMBER_CHOTOME_TIMES_DEFAULTS[m] || {};
+    rows += `<tr>
+      <td style="text-align:center;font-weight:600;font-size:12px;padding:4px 2px">${m}月</td>
+      <td style="text-align:center;font-size:12px;padding:4px 2px">${t.amFirst || ''}</td>
+      <td style="text-align:center;font-size:12px;padding:4px 2px">${t.pmFirst || ''}</td>
+      <td style="text-align:center;font-size:12px;padding:4px 2px">${t.amSecond || ''}</td>
+      <td style="text-align:center;font-size:12px;padding:4px 2px">${t.pmSecond || ''}</td>
+    </tr>`;
+  }
+  body.innerHTML = rows;
+}
+
+// 「祭典日・お勤め時間」タブ内の2画面（本部祭典日／朝づとめ・夕づとめ時間）を切り替える
+function showChotomeSubView(which) {
+  const isFestival = which === 'festival';
+  document.getElementById('chotome-view-festival').classList.toggle('hidden', !isFestival);
+  document.getElementById('chotome-view-times').classList.toggle('hidden', isFestival);
+  const title = document.getElementById('chotome-card-title');
+  if (title) title.textContent = isFestival ? '📌 本部祭典日' : '📌 朝づとめ・夕づとめ時間';
 }
 
 // =============================================
@@ -1110,6 +1272,40 @@ window.addEventListener('resize', () => {
 });
 
 window.addEventListener('DOMContentLoaded', async () => {
+  // 「Update」ボタンで読み込み直した直後は、ログイン画面を経由せず、押した時点で
+  // ログインしていた詰員として自動的に再ログインし、「最新の状態に更新されました」と
+  // 案内する（Updateボタン自体はその案内に置き換わって消える）。
+  let updatePending = false;
+  try { updatePending = sessionStorage.getItem('member_update_pending') === '1'; } catch (e) {}
+  if (updatePending) {
+    let reloginCode = '';
+    try {
+      reloginCode = sessionStorage.getItem('member_update_relogin') || '';
+      sessionStorage.removeItem('member_update_pending');
+      sessionStorage.removeItem('member_update_relogin');
+    } catch (e) {}
+    if (reloginCode && normalizeCode(reloginCode) != null) {
+      showMsg('login-msg', '<span class="spinner" style="border-color:rgba(0,0,0,0.2);border-top-color:var(--accent-dark)"></span> 自動ログイン中...', 'info');
+      try {
+        const matches = await findMembersByCode(reloginCode);
+        if (matches.length === 1) {
+          await enterAsMember(matches[0].member, matches[0].token);
+          const updateBtn = document.getElementById('member-update-btn');
+          if (updateBtn) updateBtn.style.display = 'none';
+          showMsg('member-update-msg', '最新の状態に更新されました', 'success');
+          return;
+        } else if (matches.length > 1) {
+          showPicker(matches);
+          return;
+        } else {
+          showMsg('login-msg', '', '');
+        }
+      } catch (e) {
+        showMsg('login-msg', '', '');
+      }
+    }
+  }
+
   // URLにログイン番号が指定されている場合は、それを使って自動ログインする
   // （当番表作成者が自分の当番・支障日をすぐ確認できるようにするための入口で、
   // 通常の利用案内には出てこない）。使用後はURLから取り除き、アドレスバーや
