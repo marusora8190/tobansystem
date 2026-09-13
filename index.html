@@ -331,10 +331,10 @@
          表示し、「次へ」ボタンで朝づとめ・夕づとめ時間の一覧に切り替わる。 -->
     <div id="tab-panel-chotome" class="hidden">
       <div class="card">
-        <div class="card-title" id="chotome-card-title" style="text-align:center">📌 本部祭典日</div>
+        <div class="card-title" id="chotome-card-title" style="text-align:center">本部祭典日</div>
 
         <div id="chotome-view-festival">
-          <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">本部の年間祭典日の一覧です（当番表作成者が管理しています）。</p>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">本部の年間祭典日の一覧です。</p>
           <div id="member-festival-rows" style="font-size:13px"></div>
           <div class="btn-row" style="margin-top:14px">
             <button class="btn btn-primary" onclick="showChotomeSubView('times')">次へ：朝づとめ・夕づとめ時間を見る ▶</button>
@@ -1081,7 +1081,7 @@ function showChotomeSubView(which) {
   document.getElementById('chotome-view-festival').classList.toggle('hidden', !isFestival);
   document.getElementById('chotome-view-times').classList.toggle('hidden', isFestival);
   const title = document.getElementById('chotome-card-title');
-  if (title) title.textContent = isFestival ? '📌 本部祭典日' : '📌 朝づとめ・夕づとめ時間';
+  if (title) title.textContent = isFestival ? '本部祭典日' : '朝づとめ・夕づとめ時間';
 }
 
 // =============================================
