@@ -457,6 +457,27 @@
   .ev-status-duty { color: #7a5c00; font-weight: 600; }
   .ev-status-none { color: var(--text-hint); }
 
+  /* 出欠管理：当日現場確認（管理者がスマホでタップして記録する） */
+  #page-events .ev-checkin-title { font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 8px; }
+  #page-events .ev-checkin-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 6px;
+  }
+  #page-events .ev-checkin-name { font-size: 14px; font-weight: 500; }
+  #page-events .ev-checkin-advance { font-size: 11px; color: var(--text-hint); margin-top: 2px; }
+  #page-events .ev-checkin-btns { display: flex; gap: 6px; flex-shrink: 0; }
+  #page-events .ev-checkin-btn {
+    padding: 10px 16px; border-radius: var(--radius); border: 1px solid var(--border-strong);
+    background: #fff; color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer;
+    font-family: inherit; min-width: 64px;
+  }
+  #page-events .ev-checkin-btn.selected.present { background: #2e7d32; border-color: #2e7d32; color: #fff; }
+  #page-events .ev-checkin-btn.selected.absent { background: #a33; border-color: #a33; color: #fff; }
+  #page-events .ev-checkin-duty-badge {
+    padding: 10px 16px; border-radius: var(--radius); background: #f5eecb; color: #7a5c00;
+    font-size: 13px; font-weight: 600;
+  }
+
   /* Modal */
   .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; }
   .modal-bg.open { display: flex; }
@@ -1050,7 +1071,16 @@
 
     <div id="page-events" class="page">
       <div class="section-title">出欠管理</div>
-      <div class="alert alert-info">詰員全員参加の行事（勤詰会・夏ご慰労・冬ご慰労、およびイレギュラーな行事）の出欠を管理します。詰員は各自のアプリで出席・欠席・当番のいずれかを回答し、ここで集計を確認できます。夏ご慰労・冬ご慰労は日付が決まっているため、その日に当番の詰員は回答なしで自動的に「当番」として扱われます。</div>
+      <div class="alert alert-info">詰員全員参加の行事（勤詰会・夏ご慰労・冬ご慰労、およびイレギュラーな行事）の出欠を管理します。詰員は各自のアプリで出席・欠席・当番のいずれかを事前に回答でき、ここで集計を確認できます。夏ご慰労・冬ご慰労は日付が決まっているため、その日に当番の詰員は回答なしで自動的に「当番」として扱われます。また、行事当日は「当日現場での出欠確認」欄で、実際にその場にいた詰員の出席・欠席を記録できます（事前の回答とは別に記録され、両方を見比べられます）。</div>
+
+      <div class="card">
+        <div class="card-title">現場確認の担当者</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">チェックを入れた詰員は、自分のスマホ（詰員用アプリ）から本日開催の行事の「出欠確認」を行えるようになります。</p>
+        <div id="ev-operator-list" style="display:flex;flex-wrap:wrap;gap:10px 18px;margin-bottom:10px">読み込み中...</div>
+        <div class="btn-row"><button class="btn btn-primary" onclick="saveCheckinOperators()">保存する</button></div>
+        <div id="ev-operator-msg" style="margin-top:8px"></div>
+      </div>
+
       <div class="tab-bar">
         <button class="tab-btn active" id="ev-tab-btn-kinshikai" onclick="switchEventTab('kinshikai')">勤詰会</button>
         <button class="tab-btn" id="ev-tab-btn-natsu_ianro" onclick="switchEventTab('natsu_ianro')">夏ご慰労</button>
@@ -1240,7 +1270,7 @@
               <tr><td>年末年始当番予定</td><td>年末年始期間（12/28〜1/4）の候補者選びと当番割り当てを行う</td></tr>
               <tr><td>年末年始当番記録</td><td>年度ごとの年末年始当番の記録と、メンバーごとの通算回数を確認する</td></tr>
               <tr><td>本部祭典日・本部お勤め時間</td><td>本部の年間祭典日と、印刷①に使う朝づとめ・夕づとめの時刻を設定する</td></tr>
-              <tr><td>出欠管理</td><td>勤詰会・夏ご慰労・冬ご慰労やイレギュラーな行事の出欠状況を確認する（当番の詰員は自動的に「当番」として集計される）</td></tr>
+              <tr><td>出欠管理</td><td>勤詰会・夏ご慰労・冬ご慰労やイレギュラーな行事の出欠状況を確認する（当番の詰員は自動的に「当番」として集計される）。当日は現場での出欠確認欄に出席・欠席を記録できる。ページ上部で、詰員用アプリから現場確認ができる担当者を選択できる</td></tr>
               <tr><td>祭典日当番者記録</td><td>本部祭典日ごとの当番回数を自動集計し、必要に応じて手入力で補正する</td></tr>
               <tr><td>システムの仕組み</td><td>GitHub・Supabase・admin.html・member.htmlのつながりを図で確認する（確認専用）</td></tr>
             </tbody>
@@ -1635,6 +1665,43 @@ let fixedEventCache = {}; // category -> { id, category, year, name, event_date 
 let eventsTabLoadedOnce = { kinshikai: false, natsu_ianro: false, fuyu_ianro: false, irregular: false };
 let irregularEvents = [];
 
+// 現場確認の担当者（is_checkin_operator）：チェックした詰員は、member.html側で
+// 本日開催の行事について、スマホから他の詰員の出欠を確認・記録できるようになる。
+function renderCheckinOperatorSelector() {
+  const el = document.getElementById('ev-operator-list');
+  if (!el) return;
+  if (!members.length) { el.innerHTML = '<span style="color:var(--text-hint);font-size:13px">詰員がいません</span>'; return; }
+  el.innerHTML = members.map(m => {
+    const noVal = (m.member_no !== null && m.member_no !== undefined && m.member_no !== '') ? String(m.member_no).padStart(4, '0') : '—';
+    return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+      <input type="checkbox" data-member-id="${m.id}" ${m.is_checkin_operator ? 'checked' : ''}>
+      ${m.name}<span style="color:var(--text-hint);font-size:11px">(${noVal})</span>
+    </label>`;
+  }).join('');
+}
+
+async function saveCheckinOperators() {
+  const boxes = document.querySelectorAll('#ev-operator-list input[type="checkbox"]');
+  const changed = [];
+  boxes.forEach(b => {
+    const id = b.getAttribute('data-member-id');
+    const m = members.find(x => String(x.id) === String(id));
+    if (m && !!m.is_checkin_operator !== b.checked) changed.push({ id, checked: b.checked });
+  });
+  if (!changed.length) { showMsg('ev-operator-msg', '変更はありません', 'success'); return; }
+  try {
+    for (const c of changed) {
+      const { error } = await sbClient.rpc('admin_update_member', { p_id: c.id, p_patch: { is_checkin_operator: c.checked } });
+      if (error) throw error;
+      const m = members.find(x => String(x.id) === String(c.id));
+      if (m) m.is_checkin_operator = c.checked;
+    }
+    showMsg('ev-operator-msg', '保存しました', 'success');
+  } catch (e) {
+    showMsg('ev-operator-msg', '保存に失敗しました: ' + e.message, 'error');
+  }
+}
+
 async function switchEventTab(tab) {
   ['kinshikai', 'natsu_ianro', 'fuyu_ianro', 'irregular'].forEach(t => {
     const btn = document.getElementById('ev-tab-btn-' + t);
@@ -1701,6 +1768,13 @@ async function saveFixedEvent(category) {
 // 「当番」は event_attendance に保存された回答ではなく、その行事の日付にannual_rosterで
 // 当番になっている詰員を都度突き合わせて自動判定する（当番割り当てが後から変わっても
 // 常に最新の状態を反映できるようにするため、保存はしない）。
+//
+// 事前の出欠回答（詰員がアプリで回答したもの）に加えて、当日現場での出欠確認
+// （管理者がスマホ等でその場にいる詰員をチェックするもの）を別枠で記録・表示する。
+// 両者は別テーブル（event_attendance / event_checkin）に分けて保存し、
+// 事前回答と当日の実際の結果を両方とも見比べられるようにしている。
+let checkinEventContext = {}; // containerId -> { eventId, eventDate }
+
 async function renderEventAttendanceSummary(eventId, eventDate, containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -1708,6 +1782,7 @@ async function renderEventAttendanceSummary(eventId, eventDate, containerId) {
     container.innerHTML = '<p style="color:var(--text-hint);font-size:13px">まだ行事が保存されていません。上で保存すると出欠状況がここに表示されます。</p>';
     return;
   }
+  checkinEventContext[containerId] = { eventId, eventDate };
   container.innerHTML = '読み込み中...';
   let onDutyMemberId = null;
   if (eventDate) {
@@ -1716,7 +1791,7 @@ async function renderEventAttendanceSummary(eventId, eventDate, containerId) {
       onDutyMemberId = data ? data.member_id : null;
     } catch (e) { /* 当番の突き合わせに失敗しても出欠表自体は表示する */ }
   }
-  let attRows = [];
+  let attRows = [], checkinRows = [];
   try {
     const { data, error } = await sbClient.from('event_attendance').select('member_id,status').eq('event_id', eventId);
     if (error) throw error;
@@ -1725,8 +1800,16 @@ async function renderEventAttendanceSummary(eventId, eventDate, containerId) {
     container.innerHTML = '<div class="alert alert-error">出欠状況の読み込みに失敗しました: ' + e.message + '</div>';
     return;
   }
+  try {
+    const { data, error } = await sbClient.from('event_checkin').select('member_id,status').eq('event_id', eventId);
+    if (error) throw error;
+    checkinRows = data || [];
+  } catch (e) { /* 現場確認の読み込みに失敗しても事前回答の表示は継続する */ }
+
   const statusByMember = {};
   attRows.forEach(r => { statusByMember[r.member_id] = r.status; });
+  const checkinByMember = {};
+  checkinRows.forEach(r => { checkinByMember[r.member_id] = r.status; });
 
   let present = 0, absent = 0, duty = 0, none = 0;
   const rows = members.map(m => {
@@ -1738,6 +1821,24 @@ async function renderEventAttendanceSummary(eventId, eventDate, containerId) {
     return `<tr><td>${m.name}</td><td class="${cls}">${label}</td></tr>`;
   }).join('');
 
+  let ciPresent = 0, ciAbsent = 0, ciDuty = 0, ciNone = 0;
+  const checkinRowsHtml = members.map(m => {
+    const advLabel = onDutyMemberId === m.id ? '当番' : (statusByMember[m.id] === 'present' ? '出席' : (statusByMember[m.id] === 'absent' ? '欠席' : '未回答'));
+    if (onDutyMemberId === m.id) {
+      ciDuty++;
+      return `<div class="ev-checkin-row"><div><div class="ev-checkin-name">${m.name}</div><div class="ev-checkin-advance">事前：${advLabel}</div></div><div class="ev-checkin-duty-badge">当番</div></div>`;
+    }
+    const ciStatus = checkinByMember[m.id];
+    if (ciStatus === 'present') ciPresent++; else if (ciStatus === 'absent') ciAbsent++; else ciNone++;
+    return `<div class="ev-checkin-row">
+      <div><div class="ev-checkin-name">${m.name}</div><div class="ev-checkin-advance">事前：${advLabel}</div></div>
+      <div class="ev-checkin-btns">
+        <button type="button" class="ev-checkin-btn present${ciStatus === 'present' ? ' selected' : ''}" onclick="setCheckin('${containerId}',${m.id},'present')">出席</button>
+        <button type="button" class="ev-checkin-btn absent${ciStatus === 'absent' ? ' selected' : ''}" onclick="setCheckin('${containerId}',${m.id},'absent')">欠席</button>
+      </div>
+    </div>`;
+  }).join('');
+
   container.innerHTML = `
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;font-size:13px">
       <span>出席: <b>${present}</b>名</span>
@@ -1747,7 +1848,31 @@ async function renderEventAttendanceSummary(eventId, eventDate, containerId) {
       <span style="color:var(--text-hint)">（全${members.length}名）</span>
     </div>
     <div class="table-wrap"><table><thead><tr><th>氏名</th><th>状況</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="ev-checkin-title">当日現場での出欠確認</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;font-size:13px">
+      <span>出席: <b>${ciPresent}</b>名</span>
+      <span>欠席: <b>${ciAbsent}</b>名</span>
+      <span>当番: <b>${ciDuty}</b>名</span>
+      <span>未確認: <b>${ciNone}</b>名</span>
+    </div>
+    <div>${checkinRowsHtml}</div>
   `;
+}
+
+// 当日現場での出欠確認（管理者がスマホ等でタップして記録する）。
+// 事前の出欠回答（event_attendance）とは別テーブル（event_checkin）に保存するため、
+// 事前回答を上書きすることなく、両方の記録を残せる。
+async function setCheckin(containerId, memberId, status) {
+  const ctx = checkinEventContext[containerId];
+  if (!ctx || !ctx.eventId) return;
+  try {
+    const { error } = await sbClient.from('event_checkin')
+      .upsert({ event_id: ctx.eventId, member_id: memberId, status, checked_at: new Date().toISOString() }, { onConflict: 'event_id,member_id' });
+    if (error) throw error;
+    await renderEventAttendanceSummary(ctx.eventId, ctx.eventDate, containerId);
+  } catch (e) {
+    alert('現場確認の記録に失敗しました: ' + e.message);
+  }
 }
 
 async function loadIrregularEvents() {
@@ -5635,6 +5760,7 @@ async function showPage(name) {
   if (name === 'festival-duty') { await loadSchedules().catch(() => {}); await loadFestivalDutyCounts(); renderFestivalDutyPage(); }
   if (name === 'events') {
     if (!members.length) await loadMembers().catch(() => {});
+    renderCheckinOperatorSelector();
     if (!eventsPageInitialized) { eventsPageInitialized = true; await switchEventTab('kinshikai'); }
   }
 }
