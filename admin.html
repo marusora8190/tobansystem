@@ -1882,19 +1882,19 @@ async function renderEventAttendanceSummary(eventId, eventDate, containerId) {
   const rows = members.map(m => {
     if (onDutyMemberId === m.id) {
       duty++;
-      return `<tr><td>${m.name}</td><td><span class="ev-checkin-duty-badge">当番</span></td><td><span class="ev-checkin-duty-badge">当番</span></td></tr>`;
+      return `<tr><td style="text-align:center">${m.name}</td><td style="text-align:center"><span class="ev-checkin-duty-badge">当番</span></td><td style="text-align:center"><span class="ev-checkin-duty-badge">当番</span></td></tr>`;
     }
     const st = statusByMember[m.id] || '';
     if (st === 'present') present++; else if (st === 'absent') absent++; else none++;
     const ciSt = checkinByMember[m.id] || '';
     if (ciSt === 'present') ciPresent++; else if (ciSt === 'absent') ciAbsent++; else ciNone++;
     return `<tr>
-      <td>${m.name}</td>
-      <td><div class="ev-checkin-btns" style="justify-content:flex-start">
+      <td style="text-align:center">${m.name}</td>
+      <td style="text-align:center"><div class="ev-checkin-btns" style="justify-content:center">
         <button type="button" class="ev-checkin-btn present${st === 'present' ? ' selected' : ''}" onclick="setAdvanceAttendance('${containerId}',${m.id},'present','${st}')">出席</button>
         <button type="button" class="ev-checkin-btn absent${st === 'absent' ? ' selected' : ''}" onclick="setAdvanceAttendance('${containerId}',${m.id},'absent','${st}')">欠席</button>
       </div></td>
-      <td><div class="ev-checkin-btns" style="justify-content:flex-start">
+      <td style="text-align:center"><div class="ev-checkin-btns" style="justify-content:center">
         <button type="button" class="ev-checkin-btn present${ciSt === 'present' ? ' selected' : ''}" onclick="setCheckin('${containerId}',${m.id},'present','${ciSt}')">出席</button>
         <button type="button" class="ev-checkin-btn absent${ciSt === 'absent' ? ' selected' : ''}" onclick="setCheckin('${containerId}',${m.id},'absent','${ciSt}')">欠席</button>
       </div></td>
@@ -1918,7 +1918,7 @@ async function renderEventAttendanceSummary(eventId, eventDate, containerId) {
       <span style="color:var(--text-hint)">（全${members.length}名）</span>
     </div>
     <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px">詰員がメールなどで事前に出欠を連絡してきた場合は、「事前連絡」欄から管理者が代わりに入力できます。「当日出欠」欄は、行事当日に実際にいた詰員を記録する欄です。どちらも、選択済みのボタンをもう一度押すと未選択の状態に戻せます。</p>
-    <div class="table-wrap"><table><thead><tr><th>氏名</th><th>事前連絡</th><th>当日出欠</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="table-wrap"><table><thead><tr><th style="text-align:center">氏名</th><th style="text-align:center">事前連絡</th><th style="text-align:center">当日出欠</th></tr></thead><tbody>${rows}</tbody></table></div>
   `;
 }
 
