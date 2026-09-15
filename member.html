@@ -183,6 +183,9 @@
     padding: 10px 16px; border-radius: var(--radius); background: #fff3b0; color: #7a5c00;
     font-size: 13px; font-weight: 600;
   }
+  /* 出欠回答モーダルの下部に追加表示される「現場確認」欄（is_checkin_operatorの詰員のみ） */
+  .mchk-section { border-top: 2px solid var(--border); margin-top: 14px; padding-top: 12px; }
+  .mchk-section-title { font-size: 13px; font-weight: 700; color: var(--accent-dark); margin-bottom: 2px; }
 
   .footer-note { text-align: center; font-size: 11px; color: var(--text-hint); margin-top: 18px; line-height: 1.7; }
   .hidden { display: none !important; }
@@ -289,7 +292,6 @@
         ><span class="press-fill" id="tab-input-press-fill"></span><span id="tab-input-label">支障日入力</span></button>
       <button id="tab-btn-roster" class="tab-btn" onclick="switchTab('roster')">当番表</button>
       <button id="tab-btn-chotome" class="tab-btn" onclick="switchTab('chotome')" style="font-size:12px;line-height:1.4">本部祭典日<br>本部お勤め時間</button>
-      <button id="tab-btn-checkin" class="tab-btn hidden" onclick="switchTab('checkin')">出欠確認</button>
     </div>
 
     <div id="tab-panel-input">
@@ -394,16 +396,6 @@
             <button class="btn" onclick="showChotomeSubView('festival')">◀ 戻る：本部祭典日を見る</button>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- 出欠確認：現場確認の担当者に選ばれた詰員だけに表示される（is_checkin_operator）。
-         本日開催の行事について、詰員全員の出欠を現場で確認・記録できる。 -->
-    <div id="tab-panel-checkin" class="hidden">
-      <div class="card">
-        <div class="card-title">本日の出欠確認</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">本日開催の行事について、その場にいる詰員の出席・欠席を記録できます（事前の回答とは別に記録されます）。</p>
-        <div id="checkin-tab-body">読み込み中...</div>
       </div>
     </div>
 
@@ -709,9 +701,6 @@ async function enterAsMember(member, token) {
   document.getElementById('badge-dept').textContent = member.department || '';
   const rosterLegendLabel = document.getElementById('roster-legend-label');
   if (rosterLegendLabel) rosterLegendLabel.textContent = `${member.name}さんの当番日`;
-
-  const checkinBtn = document.getElementById('tab-btn-checkin');
-  if (checkinBtn) checkinBtn.classList.toggle('hidden', !member.is_checkin_operator);
 
   await loadHolidays();
   await loadRosterDecisions();
@@ -1026,13 +1015,9 @@ function switchTab(tab) {
   document.getElementById('tab-btn-input').classList.toggle('active', tab === 'input');
   document.getElementById('tab-btn-roster').classList.toggle('active', tab === 'roster');
   document.getElementById('tab-btn-chotome').classList.toggle('active', tab === 'chotome');
-  const checkinBtn = document.getElementById('tab-btn-checkin');
-  if (checkinBtn) checkinBtn.classList.toggle('active', tab === 'checkin');
   document.getElementById('tab-panel-input').classList.toggle('hidden', tab !== 'input');
   document.getElementById('tab-panel-roster').classList.toggle('hidden', tab !== 'roster');
   document.getElementById('tab-panel-chotome').classList.toggle('hidden', tab !== 'chotome');
-  const checkinPanel = document.getElementById('tab-panel-checkin');
-  if (checkinPanel) checkinPanel.classList.toggle('hidden', tab !== 'checkin');
   if (tab === 'roster') {
     // データの再取得は初回のみ。ただし文字サイズの再調整は毎回行う（画面回転などに対応するため）
     if (!rosterLoadedOnce) {
@@ -1048,9 +1033,6 @@ function switchTab(tab) {
       chotomeLoadedOnce = true;
       loadMemberChotomeData();
     }
-  } else if (tab === 'checkin') {
-    // 現場確認は当日の状況が変わり得るため、開くたびに読み込み直す
-    loadCheckinTabData();
   }
 }
 
@@ -1355,44 +1337,50 @@ async function openAttendanceModal() {
     const { data: events, error } = await sbClient.from('events').select('*').eq('is_open', true).order('event_date', { ascending: true, nullsFirst: false });
     if (error) throw error;
     attendanceEventsCache = events || [];
+    let personalHtml;
     if (!attendanceEventsCache.length) {
-      body.innerHTML = '<p style="font-size:13px;color:var(--text-hint)">現在、回答が必要な行事はありません。</p>';
-      return;
-    }
+      personalHtml = '<p style="font-size:13px;color:var(--text-hint)">現在、回答が必要な行事はありません。</p>';
+    } else {
+      const { data: myAtt } = await sbClient.from('event_attendance').select('event_id,status').eq('member_id', currentMember.id);
+      const myStatusByEvent = {};
+      (myAtt || []).forEach(r => { myStatusByEvent[r.event_id] = r.status; });
 
-    const { data: myAtt } = await sbClient.from('event_attendance').select('event_id,status').eq('member_id', currentMember.id);
-    const myStatusByEvent = {};
-    (myAtt || []).forEach(r => { myStatusByEvent[r.event_id] = r.status; });
+      // 各行事の日付について、この詰員が当番かどうかを突き合わせる
+      // （当番の日は出欠を回答してもらう必要がなく、自動的に「当番」扱いになる）
+      const dutyFlags = await Promise.all(attendanceEventsCache.map(async ev => {
+        if (!ev.event_date) return false;
+        try {
+          const { data } = await sbClient.from('annual_roster').select('member_id').eq('duty_date', ev.event_date).maybeSingle();
+          return !!(data && data.member_id === currentMember.id);
+        } catch (e) { return false; }
+      }));
 
-    // 各行事の日付について、この詰員が当番かどうかを突き合わせる
-    // （当番の日は出欠を回答してもらう必要がなく、自動的に「当番」扱いになる）
-    const dutyFlags = await Promise.all(attendanceEventsCache.map(async ev => {
-      if (!ev.event_date) return false;
-      try {
-        const { data } = await sbClient.from('annual_roster').select('member_id').eq('duty_date', ev.event_date).maybeSingle();
-        return !!(data && data.member_id === currentMember.id);
-      } catch (e) { return false; }
-    }));
-
-    body.innerHTML = attendanceEventsCache.map((ev, idx) => {
-      const dateLabel = ev.event_date || '日付未定';
-      if (dutyFlags[idx]) {
+      personalHtml = attendanceEventsCache.map((ev, idx) => {
+        const dateLabel = ev.event_date || '日付未定';
+        if (dutyFlags[idx]) {
+          return `<div class="attendance-event-card">
+            <div class="attendance-event-title">${ev.name}</div>
+            <div class="attendance-event-date">${dateLabel}</div>
+            <div class="attendance-duty-note">この日は当番のため、自動的に「当番」として扱われます。回答は不要です。</div>
+          </div>`;
+        }
+        const status = myStatusByEvent[ev.id];
         return `<div class="attendance-event-card">
           <div class="attendance-event-title">${ev.name}</div>
           <div class="attendance-event-date">${dateLabel}</div>
-          <div class="attendance-duty-note">この日は当番のため、自動的に「当番」として扱われます。回答は不要です。</div>
+          <div class="attendance-choice-row">
+            <button class="attendance-choice-btn ${status === 'present' ? 'selected present' : ''}" onclick="answerAttendance(${ev.id},'present')">出席</button>
+            <button class="attendance-choice-btn ${status === 'absent' ? 'selected absent' : ''}" onclick="answerAttendance(${ev.id},'absent')">欠席</button>
+          </div>
         </div>`;
-      }
-      const status = myStatusByEvent[ev.id];
-      return `<div class="attendance-event-card">
-        <div class="attendance-event-title">${ev.name}</div>
-        <div class="attendance-event-date">${dateLabel}</div>
-        <div class="attendance-choice-row">
-          <button class="attendance-choice-btn ${status === 'present' ? 'selected present' : ''}" onclick="answerAttendance(${ev.id},'present')">出席</button>
-          <button class="attendance-choice-btn ${status === 'absent' ? 'selected absent' : ''}" onclick="answerAttendance(${ev.id},'absent')">欠席</button>
-        </div>
-      </div>`;
-    }).join('');
+      }).join('');
+    }
+
+    // 現場確認の担当者（is_checkin_operator）に選ばれた詰員だけ、同じモーダルの下部に
+    // 本日開催の行事について詰員全員の出欠を確認・記録できる欄を追加で表示する。
+    const checkinHtml = currentMember.is_checkin_operator ? await renderOperatorCheckinSection() : '';
+
+    body.innerHTML = personalHtml + checkinHtml;
   } catch (e) {
     body.innerHTML = '<div style="color:var(--danger);font-size:13px">読み込みに失敗しました</div>';
   }
@@ -1416,29 +1404,33 @@ function closeAttendanceModal() {
 }
 
 // =============================================
-// 出欠確認（現場確認の担当者専用タブ）：admin.htmlの「出欠管理」ページと同じ考え方で、
-// 本日開催の行事について、詰員全員の出欠を現場で確認・記録する。
+// 出欠確認（現場確認の担当者専用）：is_checkin_operator の詰員だけ、名前タップで
+// 開く出欠回答モーダルの下部に、この欄が追加で表示される。admin.htmlの「出欠管理」
+// ページと同じ考え方で、本日開催の行事について詰員全員の出欠を現場で確認・記録する。
 // 事前の出欠回答（event_attendance）とは別テーブル（event_checkin）に保存するため、
 // 事前回答を上書きせず、両方の記録を残せる。
 // =============================================
-async function loadCheckinTabData() {
-  const el = document.getElementById('checkin-tab-body');
-  if (!el || !currentMember) return;
-  el.innerHTML = '読み込み中...';
+async function renderOperatorCheckinSection() {
   try {
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(today.getDate())}`;
     const { data: events, error } = await sbClient.from('events').select('*').eq('is_open', true).eq('event_date', todayStr);
     if (error) throw error;
     const todaysEvents = events || [];
+    let inner;
     if (!todaysEvents.length) {
-      el.innerHTML = '<p style="font-size:13px;color:var(--text-hint)">本日開催の行事はありません。</p>';
-      return;
+      inner = '<p style="font-size:13px;color:var(--text-hint)">本日開催の行事はありません。</p>';
+    } else {
+      if (!allMembersCache.length) await loadAllMembersCache();
+      inner = (await Promise.all(todaysEvents.map(ev => renderCheckinEventCard(ev)))).join('');
     }
-    if (!allMembersCache.length) await loadAllMembersCache();
-    el.innerHTML = (await Promise.all(todaysEvents.map(ev => renderCheckinEventCard(ev)))).join('');
+    return `<div class="mchk-section">
+      <div class="mchk-section-title">本日の出欠確認（現場確認）</div>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px">その場にいる詰員の出席・欠席を記録できます（事前の回答とは別に記録されます）。</p>
+      ${inner}
+    </div>`;
   } catch (e) {
-    el.innerHTML = '<div style="color:var(--danger);font-size:13px">読み込みに失敗しました</div>';
+    return '<div class="mchk-section"><div style="color:var(--danger);font-size:12px">出欠確認の読み込みに失敗しました</div></div>';
   }
 }
 
@@ -1496,7 +1488,7 @@ async function setMemberCheckin(eventId, memberId, status) {
     const { error } = await sbClient.from('event_checkin')
       .upsert({ event_id: eventId, member_id: memberId, status, checked_at: new Date().toISOString() }, { onConflict: 'event_id,member_id' });
     if (error) throw error;
-    await loadCheckinTabData();
+    await openAttendanceModal(); // 選択状態を反映するため、モーダル全体を再読み込みする
   } catch (e) {
     alert('記録に失敗しました');
   }
