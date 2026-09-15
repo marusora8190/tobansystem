@@ -1327,6 +1327,8 @@ function handleNameTouchStart(e) {
   nameTouchStartTime = Date.now();
 }
 function handleNameTouchEnd(e) {
+  // 現場確認担当者（is_checkin_operator）以外のスマホでは、この操作では何も起きないようにする
+  if (!currentMember || !currentMember.is_checkin_operator) return;
   const t = e.changedTouches && e.changedTouches[0];
   const dx = t ? Math.abs(t.clientX - nameTouchStartX) : 0;
   const dy = t ? Math.abs(t.clientY - nameTouchStartY) : 0;
@@ -1422,7 +1424,7 @@ function closeAttendanceModal() {
 // =============================================
 // 出欠確認（現場確認の担当者専用）：is_checkin_operator の詰員だけ、名前タップで
 // 開く出欠回答モーダルの下部に、この欄が追加で表示される。admin.htmlの「出欠管理」
-// ページと同じ考え方で、前もって登録されている行事（勤詰会・夏ご慰労・冬ご慰労・
+// ページと同じ考え方で、前もって登録されている行事（勤詰会・詰員慰労(歳暮)・詰員慰労(中元)・
 // イレギュラー）ごとに、その行事名をタイトルとして、詰員27名の出欠を現場で確認・
 // 記録する（「本日開催」かどうかでは絞り込まず、開催予定の行事はすべて対象にする）。
 // 事前の出欠回答（event_attendance）とは別テーブル（event_checkin）に保存するため、

@@ -439,11 +439,11 @@
   #cal-update-msg .alert { margin-bottom: 0; padding: 4px 10px; font-size: 12px; white-space: nowrap; }
 
   /* 出欠管理（page-events） */
-  #page-events .tab-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+  #page-events .tab-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
   #page-events .tab-btn {
     padding: 8px 16px; border-radius: var(--radius); border: 1px solid var(--border-strong);
     background: #fff; color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer;
-    font-family: inherit;
+    font-family: inherit; white-space: nowrap; flex-shrink: 0;
   }
   #page-events .tab-btn.active { background: var(--accent-dark); border-color: var(--accent-dark); color: #fff; }
   /* イレギュラータブは名前を管理者が自由に書き換えられるよう、ボタンではなく
@@ -1067,7 +1067,7 @@
 
     <div id="page-events" class="page">
       <div class="section-title">出欠管理</div>
-      <div class="alert alert-info">詰員全員参加の行事（勤詰会・夏ご慰労・冬ご慰労など）の出欠を管理します。出欠状況の表には、詰員1名につき1行で「事前連絡」（詰員が各自のアプリで回答、またはメールなどで受けた回答を管理者が代わりに入力）と「当日出欠」（行事当日、実際にその場にいた詰員を管理者が記録）の2つの欄が並びます。どちらの欄も1個のボタンで記録し、押すたびに「〇（出席）→✖（欠席）→－（未回答）→当番→〇」の順で表記が切り替わります。夏ご慰労・冬ご慰労は日付が決まっているため、その日に annual_roster 上で当番の詰員は、押さなくても最初から自動的に「当番」として扱われます（それ以外の詰員を手動で「当番」にすることもできます）。同じ行事を次の機会にも使い回す場合は、「クリア」ボタンで前回分の出欠表を消去できます。</div>
+      <div class="alert alert-info">詰員全員参加の行事（勤詰会・詰員慰労(歳暮)・詰員慰労(中元)など）の出欠を管理します。出欠状況の表には、詰員1名につき1行で「事前連絡」（詰員が各自のアプリで回答、またはメールなどで受けた回答を管理者が代わりに入力）と「当日出欠」（行事当日、実際にその場にいた詰員を管理者が記録）の2つの欄が並びます。どちらの欄も1個のボタンで記録し、押すたびに「〇（出席）→✖（欠席）→－（未回答）→当番→〇」の順で表記が切り替わります。詰員慰労(歳暮)・詰員慰労(中元)は日付が決まっているため、その日に annual_roster 上で当番の詰員は、押さなくても最初から自動的に「当番」として扱われます（それ以外の詰員を手動で「当番」にすることもできます）。同じ行事を次の機会にも使い回す場合は、「クリア」ボタンで前回分の出欠表を消去できます。</div>
 
       <div class="card">
         <div class="card-title">現場確認の担当者</div>
@@ -1079,8 +1079,8 @@
 
       <div class="tab-bar">
         <button class="tab-btn active" id="ev-tab-btn-kinshikai" onclick="switchEventTab('kinshikai')">勤詰会</button>
-        <button class="tab-btn" id="ev-tab-btn-natsu_ianro" onclick="switchEventTab('natsu_ianro')">夏ご慰労</button>
-        <button class="tab-btn" id="ev-tab-btn-fuyu_ianro" onclick="switchEventTab('fuyu_ianro')">冬ご慰労</button>
+        <button class="tab-btn" id="ev-tab-btn-natsu_ianro" onclick="switchEventTab('natsu_ianro')">詰員慰労(歳暮)</button>
+        <button class="tab-btn" id="ev-tab-btn-fuyu_ianro" onclick="switchEventTab('fuyu_ianro')">詰員慰労(中元)</button>
         <input type="text" class="tab-btn tab-btn-editable" id="ev-tab-btn-irregular" value="" placeholder="行事名を入力"
           onclick="switchEventTab('irregular')" onfocus="switchEventTab('irregular')"
           onchange="saveIrregularTabLabel(this.value)" title="クリックして名前を入力できます">
@@ -1107,7 +1107,7 @@
 
       <div id="ev-panel-natsu_ianro" class="ev-panel hidden">
         <div class="card">
-          <div class="card-title">夏ご慰労</div>
+          <div class="card-title">詰員慰労(歳暮)</div>
           <div class="form-grid">
             <div class="form-group"><label>年</label><input id="ev-natsu_ianro-year" type="number"></div>
             <div class="form-group"><label>日付</label><input id="ev-natsu_ianro-date" type="date"></div>
@@ -1126,7 +1126,7 @@
 
       <div id="ev-panel-fuyu_ianro" class="ev-panel hidden">
         <div class="card">
-          <div class="card-title">冬ご慰労</div>
+          <div class="card-title">詰員慰労(中元)</div>
           <div class="form-grid">
             <div class="form-group"><label>年</label><input id="ev-fuyu_ianro-year" type="number"></div>
             <div class="form-group"><label>日付</label><input id="ev-fuyu_ianro-date" type="date"></div>
@@ -1669,7 +1669,7 @@ let allMembersLoaded = false;
 // 出欠管理（page-events）
 // =============================================
 let eventsPageInitialized = false;
-const EVENT_CATEGORY_NAMES = { kinshikai: '勤詰会', natsu_ianro: '夏ご慰労', fuyu_ianro: '冬ご慰労' };
+const EVENT_CATEGORY_NAMES = { kinshikai: '勤詰会', natsu_ianro: '詰員慰労(歳暮)', fuyu_ianro: '詰員慰労(中元)' };
 const EVENT_FIXED_DEFAULT_MD = { natsu_ianro: '06-26', fuyu_ianro: '12-26' }; // 勤詰会は日付未定がデフォルト
 let fixedEventCache = {}; // category -> { id, category, year, name, event_date } | null
 let eventsTabLoadedOnce = { kinshikai: false, natsu_ianro: false, fuyu_ianro: false, irregular: false };
@@ -1979,7 +1979,7 @@ async function setCheckin(containerId, memberId, status) {
 }
 
 // その行事の出欠表（事前連絡・当日出欠の両方）をまとめて消去する。
-// 同じ行事（勤詰会・夏ご慰労・冬ご慰労）を翌年以降も使い回すため、
+// 同じ行事（勤詰会・詰員慰労(歳暮)・詰員慰労(中元)）を翌年以降も使い回すため、
 // 前回分の回答が残ったままにならないようにするためのボタン。
 async function clearEventAttendanceTable(containerId) {
   const ctx = checkinEventContext[containerId];
