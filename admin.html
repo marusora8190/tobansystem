@@ -1091,9 +1091,9 @@
         <button class="tab-btn active" id="ev-tab-btn-kinshikai" onclick="switchEventTab('kinshikai')">勤詰会</button>
         <button class="tab-btn" id="ev-tab-btn-natsu_ianro" onclick="switchEventTab('natsu_ianro')">夏ご慰労</button>
         <button class="tab-btn" id="ev-tab-btn-fuyu_ianro" onclick="switchEventTab('fuyu_ianro')">冬ご慰労</button>
-        <input type="text" class="tab-btn tab-btn-editable" id="ev-tab-btn-irregular" value="イレギュラー"
+        <input type="text" class="tab-btn tab-btn-editable" id="ev-tab-btn-irregular" value="" placeholder="タブ名を入力"
           onclick="switchEventTab('irregular')" onfocus="switchEventTab('irregular')"
-          onchange="saveIrregularTabLabel(this.value)" title="クリックして名前を変更できます">
+          onchange="saveIrregularTabLabel(this.value)" title="クリックして名前を入力できます">
       </div>
 
       <div id="ev-panel-kinshikai" class="ev-panel">
@@ -1674,8 +1674,8 @@ let eventsTabLoadedOnce = { kinshikai: false, natsu_ianro: false, fuyu_ianro: fa
 let irregularEvents = [];
 let irregularTabLabelLoaded = false;
 
-// 「イレギュラー」タブの名前は固定文字ではなく、管理者が自由に書き換えられる
-// （app_settingsテーブルに保存し、次に開いたときも同じ名前が表示される）。
+// 「イレギュラー」タブの名前は固定文字ではなく空欄になっており、管理者が自由に
+// 手入力できる（app_settingsテーブルに保存し、次に開いたときも同じ名前が表示される）。
 async function loadIrregularTabLabel() {
   if (irregularTabLabelLoaded) return;
   irregularTabLabelLoaded = true;
@@ -1685,16 +1685,12 @@ async function loadIrregularTabLabel() {
     const { data, error } = await sbClient.from('app_settings').select('value').eq('key', 'events_irregular_tab_label').maybeSingle();
     if (error) throw error;
     if (data && data.value) input.value = data.value;
-  } catch (e) { /* 読み込みに失敗しても、既定の「イレギュラー」のまま表示を続ける */ }
+  } catch (e) { /* 読み込みに失敗しても、空欄のまま表示を続ける */ }
 }
 
 async function saveIrregularTabLabel(value) {
   const trimmed = (value || '').trim();
   const input = document.getElementById('ev-tab-btn-irregular');
-  if (!trimmed) {
-    if (input) input.value = 'イレギュラー';
-    return;
-  }
   try {
     const { error } = await sbClient.from('app_settings').upsert({ key: 'events_irregular_tab_label', value: trimmed }, { onConflict: 'key' });
     if (error) throw error;
