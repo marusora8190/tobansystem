@@ -166,22 +166,23 @@
   .attendance-event-date { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
 
   /* 出欠確認タブ（現場確認の担当者専用）：詰員全員分の出欠を、氏名・当日出欠を
-     1行にまとめた小さめの表で一覧表示する（27名分並ぶため、行の高さは最小限にしている） */
+     1行にまとめた表で一覧表示する。スマホでの誤タップ（隣の詰員のボタンを押してしまう）
+     を防ぐため、行の高さ・ボタンは指で押しやすい大きさを優先している。 */
   .mchk-list { margin-top: 6px; overflow-x: auto; }
-  .mchk-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .mchk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .mchk-table th {
-    text-align: center; font-size: 10px; font-weight: 600; color: var(--text-hint);
-    padding: 2px 4px; border-bottom: 1px solid var(--border); white-space: nowrap;
+    text-align: center; font-size: 11px; font-weight: 600; color: var(--text-hint);
+    padding: 6px 4px; border-bottom: 1px solid var(--border); white-space: nowrap;
   }
-  .mchk-table td { padding: 2px 4px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .mchk-table td { padding: 10px 4px; border-bottom: 1px solid var(--border); vertical-align: middle; }
   .mchk-name { font-weight: 500; white-space: nowrap; }
-  /* 当日出欠：「出」「欠」「当番」の3つのボタンで記録する。押すと色が付き、
+  /* 当日出欠：「出席」「欠席」の2つのボタンで記録する。押すと色が付き、
      同じボタンをもう一度押すと色が消えて未確認の状態に戻る */
-  .mchk-btn-group { display: flex; gap: 3px; justify-content: center; }
+  .mchk-btn-group { display: flex; gap: 6px; justify-content: center; }
   .mchk-btn3 {
-    min-width: 24px; padding: 1px 6px; border-radius: var(--radius);
+    min-width: 52px; padding: 8px 10px; border-radius: var(--radius);
     border: 1px solid var(--border-strong); background: #fff; color: var(--text-hint);
-    font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; line-height: 1.6;
+    font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; line-height: 1.4;
   }
   .mchk-btn3.present.active { background: #2e7d32; border-color: #2e7d32; color: #fff; }
   .mchk-btn3.absent.active { background: #a33; border-color: #a33; color: #fff; }
@@ -412,7 +413,6 @@
   <div class="attendance-modal-bg" id="attendance-modal-bg">
     <div class="attendance-modal">
       <h3>行事の出欠確認</h3>
-      <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">現場確認の担当者は、開催が決まっている行事の出欠を記録できます。</div>
       <div id="attendance-modal-body">読み込み中...</div>
       <div class="btn-row">
         <button class="btn btn-block" onclick="closeAttendanceModal()">閉じる</button>
@@ -1386,7 +1386,6 @@ async function renderOperatorCheckinSection(events) {
     }
     return `<div class="mchk-section">
       <div class="mchk-section-title">出欠確認（現場確認）</div>
-      <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px">行事ごとに、詰員27名の出席・欠席を記録できます（事前の回答とは別に記録されます）。</p>
       ${inner}
     </div>`;
   } catch (e) {
@@ -1437,8 +1436,8 @@ async function renderCheckinEventCard(ev) {
     return `<tr>
       <td class="mchk-name">${m.name}</td>
       <td><div class="mchk-btn-group">
-        <button type="button" class="mchk-btn3 present ${dispCiStatus === 'present' ? 'active' : ''}" onclick="setMemberCheckin(${ev.id},${m.id},'${realCiStatus === 'present' ? '' : 'present'}')">出</button>
-        <button type="button" class="mchk-btn3 absent ${dispCiStatus === 'absent' ? 'active' : ''}" onclick="setMemberCheckin(${ev.id},${m.id},'${realCiStatus === 'absent' ? '' : 'absent'}')">欠</button>
+        <button type="button" class="mchk-btn3 present ${dispCiStatus === 'present' ? 'active' : ''}" onclick="setMemberCheckin(${ev.id},${m.id},'${realCiStatus === 'present' ? '' : 'present'}')">出席</button>
+        <button type="button" class="mchk-btn3 absent ${dispCiStatus === 'absent' ? 'active' : ''}" onclick="setMemberCheckin(${ev.id},${m.id},'${realCiStatus === 'absent' ? '' : 'absent'}')">欠席</button>
       </div></td>
     </tr>`;
   }).join('');
