@@ -155,6 +155,20 @@
   }
   .duty-rank-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+  /* 行事の出欠回答モーダル（会員バッジの名前部分：PC=右クリック／スマホ=タップで開く隠し機能） */
+  .attendance-modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; padding: 16px; }
+  .attendance-modal-bg.open { display: flex; }
+  .attendance-modal { background: var(--surface); border-radius: var(--radius-lg); padding: 20px; width: 420px; max-width: 100%; max-height: 85vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+  .attendance-modal h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; color: var(--accent-dark); }
+  .attendance-event-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-top: 12px; }
+  .attendance-event-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+  .attendance-event-date { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+  .attendance-choice-row { display: flex; gap: 8px; }
+  .attendance-choice-btn { flex: 1; padding: 8px; border-radius: var(--radius); border: 1px solid var(--border-strong); background: #fff; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .attendance-choice-btn.selected.present { background: #e3f2d6; border-color: #7cb342; color: #33691e; }
+  .attendance-choice-btn.selected.absent { background: var(--danger-light); border-color: var(--danger); color: #a33; }
+  .attendance-duty-note { font-size: 12px; color: #7a5c00; font-weight: 600; background: #fff3b0; border-radius: var(--radius); padding: 8px; }
+
   .footer-note { text-align: center; font-size: 11px; color: var(--text-hint); margin-top: 18px; line-height: 1.7; }
   .hidden { display: none !important; }
   .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
@@ -239,7 +253,10 @@
     <div class="member-badge">
       <div>
         <div class="greeting" id="badge-greeting"></div>
-        <div class="name" id="badge-name"></div>
+        <div class="name" id="badge-name"
+          oncontextmenu="openAttendanceModal(); return false;"
+          ontouchstart="handleNameTouchStart(event)" ontouchend="handleNameTouchEnd(event)"
+        ></div>
         <div class="dept" id="badge-dept"></div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:stretch;gap:4px">
@@ -367,6 +384,17 @@
   </div>
 
   <div id="duty-rank-toast" class="duty-rank-toast"></div>
+
+  <div class="attendance-modal-bg" id="attendance-modal-bg">
+    <div class="attendance-modal">
+      <h3>行事の出欠回答</h3>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">開催が決まっている行事について、出欠を回答できます。</div>
+      <div id="attendance-modal-body">読み込み中...</div>
+      <div class="btn-row">
+        <button class="btn btn-block" onclick="closeAttendanceModal()">閉じる</button>
+      </div>
+    </div>
+  </div>
 
 </div>
 
@@ -1253,6 +1281,102 @@ function attachDutyRankLongPress() {
       showMyDutyRankToast(cell.getAttribute('data-date'));
     });
   });
+}
+
+// =============================================
+// 行事の出欠回答（隠し機能）：会員バッジの名前部分（例：「青木年朗 さん」）専用の操作。
+// PC＝右クリック、スマホ＝タップで出欠回答モーダルを開く。
+// 「支障日入力」ボタンの3秒長押し（可能日入力モード切替）とは完全に独立した別の操作。
+// =============================================
+let nameTouchStartX = 0, nameTouchStartY = 0, nameTouchStartTime = 0;
+function handleNameTouchStart(e) {
+  const t = e.touches && e.touches[0];
+  nameTouchStartX = t ? t.clientX : 0;
+  nameTouchStartY = t ? t.clientY : 0;
+  nameTouchStartTime = Date.now();
+}
+function handleNameTouchEnd(e) {
+  const t = e.changedTouches && e.changedTouches[0];
+  const dx = t ? Math.abs(t.clientX - nameTouchStartX) : 0;
+  const dy = t ? Math.abs(t.clientY - nameTouchStartY) : 0;
+  const dt = Date.now() - nameTouchStartTime;
+  // スクロール操作などと区別するため、ほぼ動かさずに短時間で指を離した場合だけ反応させる
+  if (dx < 10 && dy < 10 && dt < 800) {
+    e.preventDefault();
+    openAttendanceModal();
+  }
+}
+
+let attendanceEventsCache = [];
+
+async function openAttendanceModal() {
+  const bg = document.getElementById('attendance-modal-bg');
+  const body = document.getElementById('attendance-modal-body');
+  if (!bg || !body || !currentMember) return;
+  bg.classList.add('open');
+  body.innerHTML = '読み込み中...';
+  try {
+    const { data: events, error } = await sbClient.from('events').select('*').eq('is_open', true).order('event_date', { ascending: true, nullsFirst: false });
+    if (error) throw error;
+    attendanceEventsCache = events || [];
+    if (!attendanceEventsCache.length) {
+      body.innerHTML = '<p style="font-size:13px;color:var(--text-hint)">現在、回答が必要な行事はありません。</p>';
+      return;
+    }
+
+    const { data: myAtt } = await sbClient.from('event_attendance').select('event_id,status').eq('member_id', currentMember.id);
+    const myStatusByEvent = {};
+    (myAtt || []).forEach(r => { myStatusByEvent[r.event_id] = r.status; });
+
+    // 各行事の日付について、この詰員が当番かどうかを突き合わせる
+    // （当番の日は出欠を回答してもらう必要がなく、自動的に「当番」扱いになる）
+    const dutyFlags = await Promise.all(attendanceEventsCache.map(async ev => {
+      if (!ev.event_date) return false;
+      try {
+        const { data } = await sbClient.from('annual_roster').select('member_id').eq('duty_date', ev.event_date).maybeSingle();
+        return !!(data && data.member_id === currentMember.id);
+      } catch (e) { return false; }
+    }));
+
+    body.innerHTML = attendanceEventsCache.map((ev, idx) => {
+      const dateLabel = ev.event_date || '日付未定';
+      if (dutyFlags[idx]) {
+        return `<div class="attendance-event-card">
+          <div class="attendance-event-title">${ev.name}</div>
+          <div class="attendance-event-date">${dateLabel}</div>
+          <div class="attendance-duty-note">この日は当番のため、自動的に「当番」として扱われます。回答は不要です。</div>
+        </div>`;
+      }
+      const status = myStatusByEvent[ev.id];
+      return `<div class="attendance-event-card">
+        <div class="attendance-event-title">${ev.name}</div>
+        <div class="attendance-event-date">${dateLabel}</div>
+        <div class="attendance-choice-row">
+          <button class="attendance-choice-btn ${status === 'present' ? 'selected present' : ''}" onclick="answerAttendance(${ev.id},'present')">出席</button>
+          <button class="attendance-choice-btn ${status === 'absent' ? 'selected absent' : ''}" onclick="answerAttendance(${ev.id},'absent')">欠席</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    body.innerHTML = '<div style="color:var(--danger);font-size:13px">読み込みに失敗しました</div>';
+  }
+}
+
+async function answerAttendance(eventId, status) {
+  try {
+    const { error } = await sbClient.from('event_attendance')
+      .upsert({ event_id: eventId, member_id: currentMember.id, status }, { onConflict: 'event_id,member_id' });
+    if (error) throw error;
+    await openAttendanceModal(); // 選択状態を反映するため再読み込み
+  } catch (e) {
+    const body = document.getElementById('attendance-modal-body');
+    if (body) body.insertAdjacentHTML('afterbegin', `<div style="color:var(--danger);font-size:12px;margin-bottom:8px">回答の保存に失敗しました</div>`);
+  }
+}
+
+function closeAttendanceModal() {
+  const bg = document.getElementById('attendance-modal-bg');
+  if (bg) bg.classList.remove('open');
 }
 
 function shiftRosterMonth(delta) {

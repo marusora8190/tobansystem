@@ -438,6 +438,25 @@
   /* カレンダー表示の「Update」ボタンの確認メッセージ：見出し行に収まるよう小さく表示する */
   #cal-update-msg .alert { margin-bottom: 0; padding: 4px 10px; font-size: 12px; white-space: nowrap; }
 
+  /* 出欠管理（page-events） */
+  #page-events .tab-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+  #page-events .tab-btn {
+    padding: 8px 16px; border-radius: var(--radius); border: 1px solid var(--border-strong);
+    background: #fff; color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer;
+    font-family: inherit;
+  }
+  #page-events .tab-btn.active { background: var(--accent-dark); border-color: var(--accent-dark); color: #fff; }
+  #page-events .hidden { display: none; }
+  #page-events .ev-list-item {
+    display: flex; align-items: center; justify-content: space-between;
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 8px; cursor: pointer;
+  }
+  #page-events .ev-list-item:hover { background: var(--accent-light); }
+  .ev-status-present { color: #2e7d32; font-weight: 600; }
+  .ev-status-absent { color: #a33; font-weight: 600; }
+  .ev-status-duty { color: #7a5c00; font-weight: 600; }
+  .ev-status-none { color: var(--text-hint); }
+
   /* Modal */
   .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; }
   .modal-bg.open { display: flex; }
@@ -502,6 +521,7 @@
     <div class="sidebar-item" onclick="showPage('nye-duty')">年末年始当番予定</div>
     <div class="sidebar-item" onclick="showPage('nye-duty-record')">年末年始当番記録</div>
     <div class="sidebar-item" onclick="showPage('chotome')">本部祭典日・本部お勤め時間</div>
+    <div class="sidebar-item" onclick="showPage('events')">出欠管理</div>
     <div class="sidebar-item" onclick="showPage('festival-duty')">祭典日当番者記録</div>
     <div class="sidebar-item" onclick="showPage('system-guide')">システムの仕組み</div>
   </nav>
@@ -1028,6 +1048,85 @@
       </div>
     </div>
 
+    <div id="page-events" class="page">
+      <div class="section-title">出欠管理</div>
+      <div class="alert alert-info">詰員全員参加の行事（勤詰会・夏ご慰労・冬ご慰労、およびイレギュラーな行事）の出欠を管理します。詰員は各自のアプリで出席・欠席・当番のいずれかを回答し、ここで集計を確認できます。夏ご慰労・冬ご慰労は日付が決まっているため、その日に当番の詰員は回答なしで自動的に「当番」として扱われます。</div>
+      <div class="tab-bar">
+        <button class="tab-btn active" id="ev-tab-btn-kinshikai" onclick="switchEventTab('kinshikai')">勤詰会</button>
+        <button class="tab-btn" id="ev-tab-btn-natsu_ianro" onclick="switchEventTab('natsu_ianro')">夏ご慰労</button>
+        <button class="tab-btn" id="ev-tab-btn-fuyu_ianro" onclick="switchEventTab('fuyu_ianro')">冬ご慰労</button>
+        <button class="tab-btn" id="ev-tab-btn-irregular" onclick="switchEventTab('irregular')">イレギュラー</button>
+      </div>
+
+      <div id="ev-panel-kinshikai" class="ev-panel">
+        <div class="card">
+          <div class="card-title">勤詰会</div>
+          <div class="form-grid">
+            <div class="form-group"><label>年</label><input id="ev-kinshikai-year" type="number"></div>
+            <div class="form-group"><label>日付（未定の場合は空欄のままで構いません）</label><input id="ev-kinshikai-date" type="date"></div>
+          </div>
+          <div class="btn-row"><button class="btn btn-primary" onclick="saveFixedEvent('kinshikai')">保存する</button></div>
+          <div id="ev-kinshikai-msg" style="margin-top:8px"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">出欠状況</div>
+          <div id="ev-kinshikai-summary">読み込み中...</div>
+        </div>
+      </div>
+
+      <div id="ev-panel-natsu_ianro" class="ev-panel hidden">
+        <div class="card">
+          <div class="card-title">夏ご慰労</div>
+          <div class="form-grid">
+            <div class="form-group"><label>年</label><input id="ev-natsu_ianro-year" type="number"></div>
+            <div class="form-group"><label>日付</label><input id="ev-natsu_ianro-date" type="date"></div>
+          </div>
+          <div class="btn-row"><button class="btn btn-primary" onclick="saveFixedEvent('natsu_ianro')">保存する</button></div>
+          <div id="ev-natsu_ianro-msg" style="margin-top:8px"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">出欠状況</div>
+          <div id="ev-natsu_ianro-summary">読み込み中...</div>
+        </div>
+      </div>
+
+      <div id="ev-panel-fuyu_ianro" class="ev-panel hidden">
+        <div class="card">
+          <div class="card-title">冬ご慰労</div>
+          <div class="form-grid">
+            <div class="form-group"><label>年</label><input id="ev-fuyu_ianro-year" type="number"></div>
+            <div class="form-group"><label>日付</label><input id="ev-fuyu_ianro-date" type="date"></div>
+          </div>
+          <div class="btn-row"><button class="btn btn-primary" onclick="saveFixedEvent('fuyu_ianro')">保存する</button></div>
+          <div id="ev-fuyu_ianro-msg" style="margin-top:8px"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">出欠状況</div>
+          <div id="ev-fuyu_ianro-summary">読み込み中...</div>
+        </div>
+      </div>
+
+      <div id="ev-panel-irregular" class="ev-panel hidden">
+        <div class="card">
+          <div class="card-title">新しいイレギュラーな行事を追加</div>
+          <div class="form-grid">
+            <div class="form-group"><label>行事名 *</label><input id="ev-irregular-name" placeholder="例：〇〇会"></div>
+            <div class="form-group"><label>日付</label><input id="ev-irregular-date" type="date"></div>
+          </div>
+          <div class="btn-row"><button class="btn btn-primary" onclick="createIrregularEvent()">追加する</button></div>
+          <div id="ev-irregular-add-msg" style="margin-top:8px"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">イレギュラーな行事一覧</div>
+          <div id="ev-irregular-list">読み込み中...</div>
+        </div>
+        <div class="card hidden" id="ev-irregular-summary-card">
+          <div class="card-title" id="ev-irregular-summary-title">出欠状況</div>
+          <div id="ev-irregular-summary"></div>
+        </div>
+      </div>
+    </div>
+
     <div id="page-festival-duty" class="page">
       <div class="section-title">祭典日当番者記録</div>
       <div class="alert alert-info">元旦祭・月次祭など、本部祭典日ごとの当番回数です。カレンダー表示に記録されている当番（その日の当番者＝その祭典の当番者）から自動的に数え上げています。カレンダーの記録だけでは足りない分がある場合は、手入力で追加分を補正できます。退職された方の記録は、ここには表示されなくなります。</div>
@@ -1141,6 +1240,7 @@
               <tr><td>年末年始当番予定</td><td>年末年始期間（12/28〜1/4）の候補者選びと当番割り当てを行う</td></tr>
               <tr><td>年末年始当番記録</td><td>年度ごとの年末年始当番の記録と、メンバーごとの通算回数を確認する</td></tr>
               <tr><td>本部祭典日・本部お勤め時間</td><td>本部の年間祭典日と、印刷①に使う朝づとめ・夕づとめの時刻を設定する</td></tr>
+              <tr><td>出欠管理</td><td>勤詰会・夏ご慰労・冬ご慰労やイレギュラーな行事の出欠状況を確認する（当番の詰員は自動的に「当番」として集計される）</td></tr>
               <tr><td>祭典日当番者記録</td><td>本部祭典日ごとの当番回数を自動集計し、必要に応じて手入力で補正する</td></tr>
               <tr><td>システムの仕組み</td><td>GitHub・Supabase・admin.html・member.htmlのつながりを図で確認する（確認専用）</td></tr>
             </tbody>
@@ -1524,6 +1624,180 @@ let scheduleProposals = []; // 「当番表を作成」で生成された複数�
 let selectedUnavailDates = new Set();
 let allMembersById = {};
 let allMembersLoaded = false;
+
+// =============================================
+// 出欠管理（page-events）
+// =============================================
+let eventsPageInitialized = false;
+const EVENT_CATEGORY_NAMES = { kinshikai: '勤詰会', natsu_ianro: '夏ご慰労', fuyu_ianro: '冬ご慰労' };
+const EVENT_FIXED_DEFAULT_MD = { natsu_ianro: '06-26', fuyu_ianro: '12-26' }; // 勤詰会は日付未定がデフォルト
+let fixedEventCache = {}; // category -> { id, category, year, name, event_date } | null
+let eventsTabLoadedOnce = { kinshikai: false, natsu_ianro: false, fuyu_ianro: false, irregular: false };
+let irregularEvents = [];
+
+async function switchEventTab(tab) {
+  ['kinshikai', 'natsu_ianro', 'fuyu_ianro', 'irregular'].forEach(t => {
+    const btn = document.getElementById('ev-tab-btn-' + t);
+    const panel = document.getElementById('ev-panel-' + t);
+    if (btn) btn.classList.toggle('active', t === tab);
+    if (panel) panel.classList.toggle('hidden', t !== tab);
+  });
+  if (!eventsTabLoadedOnce[tab]) {
+    eventsTabLoadedOnce[tab] = true;
+    if (tab === 'irregular') await loadIrregularEvents();
+    else await loadFixedEventTab(tab);
+  }
+}
+
+async function loadFixedEventTab(category) {
+  const year = new Date().getFullYear();
+  const yearEl = document.getElementById('ev-' + category + '-year');
+  const dateEl = document.getElementById('ev-' + category + '-date');
+  if (yearEl) yearEl.value = year;
+  let ev = null;
+  try {
+    const { data, error } = await sbClient.from('events').select('*').eq('category', category).eq('year', year).maybeSingle();
+    if (error) throw error;
+    ev = data || null;
+  } catch (e) {
+    console.warn('[events]', e.message);
+  }
+  fixedEventCache[category] = ev;
+  if (dateEl) {
+    if (ev && ev.event_date) dateEl.value = ev.event_date;
+    else if (EVENT_FIXED_DEFAULT_MD[category]) dateEl.value = year + '-' + EVENT_FIXED_DEFAULT_MD[category];
+    else dateEl.value = '';
+  }
+  await renderEventAttendanceSummary(ev ? ev.id : null, ev ? ev.event_date : null, 'ev-' + category + '-summary');
+}
+
+async function saveFixedEvent(category) {
+  const msgId = 'ev-' + category + '-msg';
+  const year = parseInt(document.getElementById('ev-' + category + '-year').value, 10);
+  const dateVal = document.getElementById('ev-' + category + '-date').value || null;
+  const name = EVENT_CATEGORY_NAMES[category];
+  if (!year) { showMsg(msgId, '年を入力してください', 'error'); return; }
+  try {
+    const existing = fixedEventCache[category];
+    let eventId;
+    if (existing && existing.id) {
+      const { error } = await sbClient.from('events').update({ event_date: dateVal, name }).eq('id', existing.id);
+      if (error) throw error;
+      eventId = existing.id;
+    } else {
+      const { data, error } = await sbClient.from('events').insert({ category, year, name, event_date: dateVal }).select().single();
+      if (error) throw error;
+      eventId = data.id;
+    }
+    fixedEventCache[category] = { id: eventId, category, year, name, event_date: dateVal };
+    showMsg(msgId, '保存しました', 'success');
+    await renderEventAttendanceSummary(eventId, dateVal, 'ev-' + category + '-summary');
+  } catch (e) {
+    showMsg(msgId, '保存に失敗しました: ' + e.message, 'error');
+  }
+}
+
+// 行事ごとの出欠状況（出席・欠席・当番・未回答）を集計して表示する。
+// 「当番」は event_attendance に保存された回答ではなく、その行事の日付にannual_rosterで
+// 当番になっている詰員を都度突き合わせて自動判定する（当番割り当てが後から変わっても
+// 常に最新の状態を反映できるようにするため、保存はしない）。
+async function renderEventAttendanceSummary(eventId, eventDate, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  if (!eventId) {
+    container.innerHTML = '<p style="color:var(--text-hint);font-size:13px">まだ行事が保存されていません。上で保存すると出欠状況がここに表示されます。</p>';
+    return;
+  }
+  container.innerHTML = '読み込み中...';
+  let onDutyMemberId = null;
+  if (eventDate) {
+    try {
+      const { data } = await sbClient.from('annual_roster').select('member_id').eq('duty_date', eventDate).maybeSingle();
+      onDutyMemberId = data ? data.member_id : null;
+    } catch (e) { /* 当番の突き合わせに失敗しても出欠表自体は表示する */ }
+  }
+  let attRows = [];
+  try {
+    const { data, error } = await sbClient.from('event_attendance').select('member_id,status').eq('event_id', eventId);
+    if (error) throw error;
+    attRows = data || [];
+  } catch (e) {
+    container.innerHTML = '<div class="alert alert-error">出欠状況の読み込みに失敗しました: ' + e.message + '</div>';
+    return;
+  }
+  const statusByMember = {};
+  attRows.forEach(r => { statusByMember[r.member_id] = r.status; });
+
+  let present = 0, absent = 0, duty = 0, none = 0;
+  const rows = members.map(m => {
+    let label, cls;
+    if (onDutyMemberId === m.id) { label = '当番'; cls = 'ev-status-duty'; duty++; }
+    else if (statusByMember[m.id] === 'present') { label = '出席'; cls = 'ev-status-present'; present++; }
+    else if (statusByMember[m.id] === 'absent') { label = '欠席'; cls = 'ev-status-absent'; absent++; }
+    else { label = '未回答'; cls = 'ev-status-none'; none++; }
+    return `<tr><td>${m.name}</td><td class="${cls}">${label}</td></tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;font-size:13px">
+      <span>出席: <b>${present}</b>名</span>
+      <span>欠席: <b>${absent}</b>名</span>
+      <span>当番: <b>${duty}</b>名</span>
+      <span>未回答: <b>${none}</b>名</span>
+      <span style="color:var(--text-hint)">（全${members.length}名）</span>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>氏名</th><th>状況</th></tr></thead><tbody>${rows}</tbody></table></div>
+  `;
+}
+
+async function loadIrregularEvents() {
+  const listEl = document.getElementById('ev-irregular-list');
+  if (!listEl) return;
+  listEl.innerHTML = '読み込み中...';
+  try {
+    const { data, error } = await sbClient.from('events').select('*').eq('category', 'irregular').order('event_date', { ascending: false, nullsFirst: false });
+    if (error) throw error;
+    irregularEvents = data || [];
+    if (!irregularEvents.length) {
+      listEl.innerHTML = '<p style="color:var(--text-hint);font-size:13px">まだ登録されたイレギュラーな行事はありません。</p>';
+      return;
+    }
+    listEl.innerHTML = irregularEvents.map(ev => `
+      <div class="ev-list-item" onclick="showIrregularEventSummary(${ev.id})">
+        <span>${ev.name}${ev.event_date ? '（' + ev.event_date + '）' : '（日付未定）'}</span>
+        <span style="color:var(--text-hint);font-size:12px">▶</span>
+      </div>
+    `).join('');
+  } catch (e) {
+    listEl.innerHTML = '<div class="alert alert-error">読み込みに失敗しました: ' + e.message + '</div>';
+  }
+}
+
+async function createIrregularEvent() {
+  const msgId = 'ev-irregular-add-msg';
+  const name = document.getElementById('ev-irregular-name').value.trim();
+  const dateVal = document.getElementById('ev-irregular-date').value || null;
+  if (!name) { showMsg(msgId, '行事名を入力してください', 'error'); return; }
+  const year = dateVal ? parseInt(dateVal.slice(0, 4), 10) : new Date().getFullYear();
+  try {
+    const { error } = await sbClient.from('events').insert({ category: 'irregular', year, name, event_date: dateVal });
+    if (error) throw error;
+    document.getElementById('ev-irregular-name').value = '';
+    document.getElementById('ev-irregular-date').value = '';
+    showMsg(msgId, '追加しました', 'success');
+    await loadIrregularEvents();
+  } catch (e) {
+    showMsg(msgId, '追加に失敗しました: ' + e.message, 'error');
+  }
+}
+
+async function showIrregularEventSummary(id) {
+  const ev = irregularEvents.find(e => e.id === id);
+  if (!ev) return;
+  document.getElementById('ev-irregular-summary-card').classList.remove('hidden');
+  document.getElementById('ev-irregular-summary-title').textContent = `出欠状況：${ev.name}${ev.event_date ? '（' + ev.event_date + '）' : '（日付未定）'}`;
+  await renderEventAttendanceSummary(ev.id, ev.event_date, 'ev-irregular-summary');
+}
 
 const DOW_JP = ['日','月','火','水','木','金','土'];
 
@@ -5359,6 +5633,10 @@ async function showPage(name) {
   if (name === 'nye-duty-record') { await renderNyeDutyRecordPage(); }
   if (name === 'chotome') { renderChotomeTable(); await loadFestivals(); renderFestivalList(); }
   if (name === 'festival-duty') { await loadSchedules().catch(() => {}); await loadFestivalDutyCounts(); renderFestivalDutyPage(); }
+  if (name === 'events') {
+    if (!members.length) await loadMembers().catch(() => {});
+    if (!eventsPageInitialized) { eventsPageInitialized = true; await switchEventTab('kinshikai'); }
+  }
 }
 
 
