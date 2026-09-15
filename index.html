@@ -185,7 +185,6 @@
   }
   .mchk-btn3.present.active { background: #2e7d32; border-color: #2e7d32; color: #fff; }
   .mchk-btn3.absent.active { background: #a33; border-color: #a33; color: #fff; }
-  .mchk-btn3.duty.active { background: #fff3b0; border-color: #d9c88a; color: #7a5c00; }
   .mchk-duty-badge {
     display: inline-block; padding: 1px 8px; border-radius: var(--radius); background: #fff3b0;
     color: #7a5c00; font-size: 10px; font-weight: 600;
@@ -1429,8 +1428,10 @@ async function renderCheckinEventCard(ev) {
     // 当日出欠がまだ未記録で、事前連絡（管理者ファイルで記録された事前回答）が「欠席」の
     // 詰員は、担当者の入力の手間を減らすため「欠」を自動的に表示しておく。
     // ボタンの選択・解除の判定自体は実際の記録（realCiStatus）だけを見て行うため、
-    // この自動表示のボタンを押せば通常どおり記録として確定させたり、
-    // 「出」「当番」を押して上書きしたりできる。
+    // この自動表示のボタンを押せば通常どおり記録として確定させたり、「出」を押して
+    // 上書きしたりできる。
+    // 「当番」は1つの行事につき1名だけ（annual_rosterで決まっている人だけ）なので、
+    // ここでは選ばせず、上のバッジ表示だけで扱う（当番の詰員を手動で増やせないようにする）。
     const realCiStatus = checkinByMember[m.id] || '';
     const dispCiStatus = realCiStatus || (attByMember[m.id] === 'absent' ? 'absent' : '');
     return `<tr>
@@ -1438,7 +1439,6 @@ async function renderCheckinEventCard(ev) {
       <td><div class="mchk-btn-group">
         <button type="button" class="mchk-btn3 present ${dispCiStatus === 'present' ? 'active' : ''}" onclick="setMemberCheckin(${ev.id},${m.id},'${realCiStatus === 'present' ? '' : 'present'}')">出</button>
         <button type="button" class="mchk-btn3 absent ${dispCiStatus === 'absent' ? 'active' : ''}" onclick="setMemberCheckin(${ev.id},${m.id},'${realCiStatus === 'absent' ? '' : 'absent'}')">欠</button>
-        <button type="button" class="mchk-btn3 duty ${dispCiStatus === 'duty' ? 'active' : ''}" onclick="setMemberCheckin(${ev.id},${m.id},'${realCiStatus === 'duty' ? '' : 'duty'}')">当番</button>
       </div></td>
     </tr>`;
   }).join('');
@@ -1453,7 +1453,7 @@ async function renderCheckinEventCard(ev) {
   </div>`;
 }
 
-// statusは呼び出し側（mchkCycleNext）ですでに次の状態が計算済みで渡される。
+// statusは呼び出し側（各ボタンのonclick）ですでに次の状態が計算済みで渡される。
 // 空文字（''）が渡された場合は、記録を削除して未確認に戻す。
 async function setMemberCheckin(eventId, memberId, status) {
   try {
