@@ -1240,10 +1240,15 @@ function showMyDutyRankToast(dateStr) {
 }
 
 // ご自身の当番日（黄色のマス）だけに、タップ（クリック）で通算回数を表示する
-// 操作を付ける。タッチ端末・マウス操作のどちらでも'click'イベントで反応する。
+// 操作を付ける。タッチ端末は'click'イベントで反応する。
+// PC（マウス操作）では、クリックしなくてもカーソルを乗せる（ホバーする）だけで
+// スマホの「軽くタッチ」と同じ感覚で表示されるよう、'mouseenter'でも反応させる。
 function attachDutyRankLongPress() {
   document.querySelectorAll('#roster-cal-body .day-cell.roster-cell.my-duty').forEach(cell => {
     cell.addEventListener('click', () => {
+      showMyDutyRankToast(cell.getAttribute('data-date'));
+    });
+    cell.addEventListener('mouseenter', () => {
       showMyDutyRankToast(cell.getAttribute('data-date'));
     });
   });
