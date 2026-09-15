@@ -160,10 +160,11 @@
   .attendance-modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; padding: 16px; }
   .attendance-modal-bg.open { display: flex; }
   .attendance-modal { background: var(--surface); border-radius: var(--radius-lg); padding: 20px; width: 420px; max-width: 100%; max-height: 85vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
-  .attendance-modal h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; color: var(--accent-dark); }
   .attendance-event-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-top: 12px; }
   .attendance-event-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
   .attendance-event-date { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+  .mchk-card-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; }
+  .mchk-present-count { font-size: 12px; font-weight: 700; color: var(--accent-dark); white-space: nowrap; margin-bottom: 8px; }
 
   /* 出欠確認タブ（現場確認の担当者専用）：詰員全員分の出欠を、氏名・当日出欠を
      1行にまとめた表で一覧表示する。スマホでの誤タップ（隣の詰員のボタンを押してしまう）
@@ -190,9 +191,6 @@
     display: inline-block; padding: 1px 8px; border-radius: var(--radius); background: #fff3b0;
     color: #7a5c00; font-size: 10px; font-weight: 600;
   }
-  /* 出欠回答モーダルの下部に追加表示される「現場確認」欄（is_checkin_operatorの詰員のみ） */
-  .mchk-section { border-top: 2px solid var(--border); margin-top: 14px; padding-top: 12px; }
-  .mchk-section-title { font-size: 13px; font-weight: 700; color: var(--accent-dark); margin-bottom: 2px; }
 
   .footer-note { text-align: center; font-size: 11px; color: var(--text-hint); margin-top: 18px; line-height: 1.7; }
   .hidden { display: none !important; }
@@ -384,7 +382,7 @@
         </div>
 
         <div id="chotome-view-times" class="hidden">
-          <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">月ごとの朝づとめ・夕づとめの時刻です（前半1日〜15日・後半16日〜月末日）。</p>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">前半1日〜15日・後半16日〜月末日</p>
           <div style="overflow-x:auto">
             <table style="border-collapse:collapse;width:100%;min-width:320px">
               <thead>
@@ -412,7 +410,6 @@
 
   <div class="attendance-modal-bg" id="attendance-modal-bg">
     <div class="attendance-modal">
-      <h3>行事の出欠確認</h3>
       <div id="attendance-modal-body">読み込み中...</div>
       <div class="btn-row">
         <button class="btn btn-block" onclick="closeAttendanceModal()">閉じる</button>
@@ -1385,7 +1382,6 @@ async function renderOperatorCheckinSection(events) {
       inner = (await Promise.all(targetEvents.map(ev => renderCheckinEventCard(ev)))).join('');
     }
     return `<div class="mchk-section">
-      <div class="mchk-section-title">出欠確認（現場確認）</div>
       ${inner}
     </div>`;
   } catch (e) {
@@ -1420,8 +1416,11 @@ async function renderCheckinEventCard(ev) {
     (data || []).forEach(r => { checkinByMember[r.member_id] = r.status; });
   } catch (e) { /* 現場確認の初期状態が読めなくても続行する */ }
 
+  // 当日出欠で「出席」と記録されている詰員数（当番の詰員も、その場にいるため出席者に含める）
+  let presentCount = 0;
   const rows = allMembersCache.map(m => {
     if (onDutyMemberId === m.id) {
+      presentCount++;
       return `<tr><td class="mchk-name">${m.name}</td><td style="text-align:center"><span class="mchk-duty-badge">当番</span></td></tr>`;
     }
     // 当日出欠がまだ未記録で、事前連絡（管理者ファイルで記録された事前回答）が「欠席」の
@@ -1433,6 +1432,7 @@ async function renderCheckinEventCard(ev) {
     // ここでは選ばせず、上のバッジ表示だけで扱う（当番の詰員を手動で増やせないようにする）。
     const realCiStatus = checkinByMember[m.id] || '';
     const dispCiStatus = realCiStatus || (attByMember[m.id] === 'absent' ? 'absent' : '');
+    if (dispCiStatus === 'present') presentCount++;
     return `<tr>
       <td class="mchk-name">${m.name}</td>
       <td><div class="mchk-btn-group">
@@ -1443,8 +1443,13 @@ async function renderCheckinEventCard(ev) {
   }).join('');
 
   return `<div class="attendance-event-card">
-    <div class="attendance-event-title">${ev.name}</div>
-    <div class="attendance-event-date">${ev.event_date || '日付未定'}</div>
+    <div class="mchk-card-header">
+      <div>
+        <div class="attendance-event-title">${ev.name}</div>
+        <div class="attendance-event-date">${ev.event_date || '日付未定'}</div>
+      </div>
+      <div class="mchk-present-count">出席者：${presentCount}名</div>
+    </div>
     <div class="mchk-list"><table class="mchk-table">
       <thead><tr><th>氏名</th><th>当日出欠</th></tr></thead>
       <tbody>${rows}</tbody>
