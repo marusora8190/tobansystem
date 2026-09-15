@@ -169,19 +169,32 @@
   .attendance-choice-btn.selected.absent { background: var(--danger-light); border-color: var(--danger); color: #a33; }
   .attendance-duty-note { font-size: 12px; color: #7a5c00; font-weight: 600; background: #fff3b0; border-radius: var(--radius); padding: 8px; }
 
-  /* 出欠確認タブ（現場確認の担当者専用）：詰員全員分の出欠を一覧でチェックする */
-  .mchk-list { margin-top: 8px; }
-  .mchk-row {
-    display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 6px;
+  /* 出欠確認タブ（現場確認の担当者専用）：詰員全員分の出欠を、氏名・事前連絡・当日出欠を
+     1行にまとめた小さめの表で一覧表示する（27名分並ぶため、行の高さは最小限にしている） */
+  .mchk-list { margin-top: 6px; overflow-x: auto; }
+  .mchk-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .mchk-table th {
+    text-align: center; font-size: 10px; font-weight: 600; color: var(--text-hint);
+    padding: 2px 4px; border-bottom: 1px solid var(--border); white-space: nowrap;
   }
-  .mchk-name { font-size: 14px; font-weight: 500; }
-  .mchk-advance { font-size: 11px; color: var(--text-hint); margin-top: 2px; }
-  .mchk-btns { display: flex; gap: 6px; flex-shrink: 0; }
-  .mchk-btns .attendance-choice-btn { padding: 10px 16px; min-width: 64px; flex: none; }
+  .mchk-table td { padding: 2px 4px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .mchk-name { font-weight: 500; white-space: nowrap; }
+  .mchk-status { text-align: center; white-space: nowrap; color: var(--text-hint); }
+  .mchk-status.present { color: #2e7d32; font-weight: 600; }
+  .mchk-status.absent { color: #a33; font-weight: 600; }
+  .mchk-status.duty { color: #7a5c00; font-weight: 600; }
+  /* 当日出欠：押すたびに「〇→✖→－→当番」と表記が切り替わる1個のボタンで記録する */
+  .mchk-btn {
+    display: block; margin: 0 auto; min-width: 34px; padding: 1px 8px; border-radius: var(--radius);
+    border: 1px solid var(--border-strong); background: #fff; color: var(--text-hint);
+    font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; line-height: 1.6;
+  }
+  .mchk-btn.present { background: #2e7d32; border-color: #2e7d32; color: #fff; }
+  .mchk-btn.absent { background: #a33; border-color: #a33; color: #fff; }
+  .mchk-btn.duty { background: #fff3b0; border-color: #d9c88a; color: #7a5c00; }
   .mchk-duty-badge {
-    padding: 10px 16px; border-radius: var(--radius); background: #fff3b0; color: #7a5c00;
-    font-size: 13px; font-weight: 600;
+    display: inline-block; padding: 1px 8px; border-radius: var(--radius); background: #fff3b0;
+    color: #7a5c00; font-size: 10px; font-weight: 600;
   }
   /* 出欠回答モーダルの下部に追加表示される「現場確認」欄（is_checkin_operatorの詰員のみ） */
   .mchk-section { border-top: 2px solid var(--border); margin-top: 14px; padding-top: 12px; }
@@ -1336,7 +1349,10 @@ async function openAttendanceModal() {
   try {
     const { data: events, error } = await sbClient.from('events').select('*').eq('is_open', true).order('event_date', { ascending: true, nullsFirst: false });
     if (error) throw error;
-    attendanceEventsCache = events || [];
+    // 日付が決まっている行事のうち、すでに終わったもの（今日より前の日付）は
+    // 回答・現場確認の対象外として一覧から除外する（日付未定の行事は引き続き表示する）
+    const todayStr = new Date().toISOString().slice(0, 10);
+    attendanceEventsCache = (events || []).filter(ev => !ev.event_date || ev.event_date >= todayStr);
     let personalHtml;
     if (!attendanceEventsCache.length) {
       personalHtml = '<p style="font-size:13px;color:var(--text-hint)">現在、回答が必要な行事はありません。</p>';
@@ -1460,31 +1476,50 @@ async function renderCheckinEventCard(ev) {
   } catch (e) { /* 現場確認の初期状態が読めなくても続行する */ }
 
   const rows = allMembersCache.map(m => {
-    const advLabel = onDutyMemberId === m.id ? '当番' : (attByMember[m.id] === 'present' ? '出席' : (attByMember[m.id] === 'absent' ? '欠席' : '未回答'));
     if (onDutyMemberId === m.id) {
-      return `<div class="mchk-row"><div><div class="mchk-name">${m.name}</div><div class="mchk-advance">事前：${advLabel}</div></div><div class="mchk-duty-badge">当番</div></div>`;
+      return `<tr><td class="mchk-name">${m.name}</td><td colspan="2" style="text-align:center"><span class="mchk-duty-badge">当番</span></td></tr>`;
     }
-    const ciStatus = checkinByMember[m.id];
-    return `<div class="mchk-row">
-      <div><div class="mchk-name">${m.name}</div><div class="mchk-advance">事前：${advLabel}</div></div>
-      <div class="mchk-btns">
-        <button type="button" class="attendance-choice-btn ${ciStatus === 'present' ? 'selected present' : ''}" onclick="setMemberCheckin(${ev.id},${m.id},'present','${ciStatus || ''}')">出席</button>
-        <button type="button" class="attendance-choice-btn ${ciStatus === 'absent' ? 'selected absent' : ''}" onclick="setMemberCheckin(${ev.id},${m.id},'absent','${ciStatus || ''}')">欠席</button>
-      </div>
-    </div>`;
+    const advStatus = attByMember[m.id];
+    const advLabel = advStatus === 'present' ? '出席' : (advStatus === 'absent' ? '欠席' : (advStatus === 'duty' ? '当番' : '未回答'));
+    const advCls = advStatus === 'present' ? 'present' : (advStatus === 'absent' ? 'absent' : (advStatus === 'duty' ? 'duty' : ''));
+    const ciStatus = checkinByMember[m.id] || '';
+    return `<tr>
+      <td class="mchk-name">${m.name}</td>
+      <td class="mchk-status ${advCls}">${advLabel}</td>
+      <td><button type="button" class="mchk-btn ${ciStatus || 'none'}" onclick="setMemberCheckin(${ev.id},${m.id},'${mchkCycleNext(ciStatus)}')" title="押すたびに 出席→欠席→未確認→当番→出席 と切り替わります">${mchkCycleLabel(ciStatus)}</button></td>
+    </tr>`;
   }).join('');
 
   return `<div class="attendance-event-card">
     <div class="attendance-event-title">${ev.name}</div>
     <div class="attendance-event-date">${ev.event_date || '日付未定'}</div>
-    <div class="mchk-list">${rows}</div>
+    <div class="mchk-list"><table class="mchk-table">
+      <thead><tr><th>氏名</th><th>事前連絡</th><th>当日出欠</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
   </div>`;
 }
 
-async function setMemberCheckin(eventId, memberId, status, currentStatus) {
+// 当日出欠の1個のボタンを押すたびに「出席 → 欠席 → 未確認 → 当番 → 出席」の順で
+// 表記が切り替わる（4状態の巡回）。記号は 〇＝出席、✖＝欠席、－＝未確認、当番＝当番。
+function mchkCycleLabel(status) {
+  if (status === 'present') return '〇';
+  if (status === 'absent') return '✖';
+  if (status === 'duty') return '当番';
+  return '－';
+}
+function mchkCycleNext(status) {
+  if (status === 'present') return 'absent';
+  if (status === 'absent') return '';
+  if (status === 'duty') return 'present';
+  return 'duty';
+}
+
+// statusは呼び出し側（mchkCycleNext）ですでに次の状態が計算済みで渡される。
+// 空文字（''）が渡された場合は、記録を削除して未確認に戻す。
+async function setMemberCheckin(eventId, memberId, status) {
   try {
-    if (currentStatus === status) {
-      // すでに選択されているボタンをもう一度押した場合は、未選択（未確認）の状態に戻す
+    if (!status) {
       const { error } = await sbClient.from('event_checkin').delete().eq('event_id', eventId).eq('member_id', memberId);
       if (error) throw error;
     } else {

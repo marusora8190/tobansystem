@@ -459,18 +459,18 @@
   }
   #page-events .ev-list-item:hover { background: var(--accent-light); }
 
-  /* 出欠管理：事前連絡・当日出欠（どちらも表内のボタンで記録する。
-     選択済みのボタンをもう一度押すと未選択の状態に戻る） */
-  #page-events .ev-checkin-btns { display: flex; gap: 6px; flex-shrink: 0; }
-  #page-events .ev-checkin-btn {
-    padding: 10px 16px; border-radius: var(--radius); border: 1px solid var(--border-strong);
-    background: #fff; color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer;
-    font-family: inherit; min-width: 64px;
+  /* 出欠管理：事前連絡・当日出欠は、押すたびに「〇→✖→－→当番」と表記が切り替わる
+     1個のボタンで記録する（annual_rosterによる自動判定の当番はバッジ表示のみ） */
+  #page-events .ev-cycle-btn {
+    min-width: 40px; padding: 3px 10px; border-radius: var(--radius); border: 1px solid var(--border-strong);
+    background: #fff; color: var(--text-hint); font-size: 13px; font-weight: 700; cursor: pointer;
+    font-family: inherit; line-height: 1.6;
   }
-  #page-events .ev-checkin-btn.selected.present { background: #2e7d32; border-color: #2e7d32; color: #fff; }
-  #page-events .ev-checkin-btn.selected.absent { background: #a33; border-color: #a33; color: #fff; }
+  #page-events .ev-cycle-btn.present { background: #2e7d32; border-color: #2e7d32; color: #fff; }
+  #page-events .ev-cycle-btn.absent { background: #a33; border-color: #a33; color: #fff; }
+  #page-events .ev-cycle-btn.duty { background: #f5eecb; border-color: #d9c88a; color: #7a5c00; }
   #page-events .ev-checkin-duty-badge {
-    padding: 10px 16px; border-radius: var(--radius); background: #f5eecb; color: #7a5c00;
+    padding: 3px 10px; border-radius: var(--radius); background: #f5eecb; color: #7a5c00;
     font-size: 13px; font-weight: 600;
   }
 
@@ -1067,7 +1067,7 @@
 
     <div id="page-events" class="page">
       <div class="section-title">出欠管理</div>
-      <div class="alert alert-info">詰員全員参加の行事（勤詰会・夏ご慰労・冬ご慰労など）の出欠を管理します。出欠状況の表には、詰員1名につき1行で「事前連絡」（詰員が各自のアプリで回答、またはメールなどで受けた回答を管理者が代わりに入力）と「当日出欠」（行事当日、実際にその場にいた詰員を管理者が記録）の2つの欄が並びます。どちらの欄も、選択済みのボタンをもう一度押すと未選択の状態に戻せます。夏ご慰労・冬ご慰労は日付が決まっているため、その日に当番の詰員はどちらの欄も回答不要で自動的に「当番」として扱われます。同じ行事を次の機会にも使い回す場合は、「クリア」ボタンで前回分の出欠表を消去できます。</div>
+      <div class="alert alert-info">詰員全員参加の行事（勤詰会・夏ご慰労・冬ご慰労など）の出欠を管理します。出欠状況の表には、詰員1名につき1行で「事前連絡」（詰員が各自のアプリで回答、またはメールなどで受けた回答を管理者が代わりに入力）と「当日出欠」（行事当日、実際にその場にいた詰員を管理者が記録）の2つの欄が並びます。どちらの欄も1個のボタンで記録し、押すたびに「〇（出席）→✖（欠席）→－（未回答）→当番→〇」の順で表記が切り替わります。夏ご慰労・冬ご慰労は日付が決まっているため、その日に annual_roster 上で当番の詰員は、押さなくても最初から自動的に「当番」として扱われます（それ以外の詰員を手動で「当番」にすることもできます）。同じ行事を次の機会にも使い回す場合は、「クリア」ボタンで前回分の出欠表を消去できます。</div>
 
       <div class="card">
         <div class="card-title">現場確認の担当者</div>
@@ -1081,7 +1081,7 @@
         <button class="tab-btn active" id="ev-tab-btn-kinshikai" onclick="switchEventTab('kinshikai')">勤詰会</button>
         <button class="tab-btn" id="ev-tab-btn-natsu_ianro" onclick="switchEventTab('natsu_ianro')">夏ご慰労</button>
         <button class="tab-btn" id="ev-tab-btn-fuyu_ianro" onclick="switchEventTab('fuyu_ianro')">冬ご慰労</button>
-        <input type="text" class="tab-btn tab-btn-editable" id="ev-tab-btn-irregular" value="" placeholder="タブ名を入力"
+        <input type="text" class="tab-btn tab-btn-editable" id="ev-tab-btn-irregular" value="" placeholder="行事名を入力"
           onclick="switchEventTab('irregular')" onfocus="switchEventTab('irregular')"
           onchange="saveIrregularTabLabel(this.value)" title="クリックして名前を入力できます">
       </div>
@@ -1280,7 +1280,7 @@
               <tr><td>年末年始当番予定</td><td>年末年始期間（12/28〜1/4）の候補者選びと当番割り当てを行う</td></tr>
               <tr><td>年末年始当番記録</td><td>年度ごとの年末年始当番の記録と、メンバーごとの通算回数を確認する</td></tr>
               <tr><td>本部祭典日・本部お勤め時間</td><td>本部の年間祭典日と、印刷①に使う朝づとめ・夕づとめの時刻を設定する</td></tr>
-              <tr><td>出欠管理</td><td>各行事の出欠状況を確認する（当番の詰員は自動的に「当番」として集計される）。出欠状況の表は詰員1名につき1行で、「事前連絡」（詰員がメールなどで事前に連絡してきた場合、管理者が代わりに出席・欠席を入力できる）と「当日出欠」（行事当日に実際にいた詰員を記録する）の2つの欄がある。どちらの欄も、選択済みのボタンをもう一度押すと未選択の状態に戻せる。行事名の横の「クリア」ボタンで、その行事の出欠表をまとめて消去できる（勤詰会など毎回使い回す行事で、前回分をリセットしたいときに使う）。ページ上部で、詰員用アプリから現場確認ができる担当者を選択できる</td></tr>
+              <tr><td>出欠管理</td><td>各行事の出欠状況を確認する（annual_rosterで自動判定された当番の詰員は自動的に「当番」として集計される）。出欠状況の表は詰員1名につき1行で、「事前連絡」（詰員がメールなどで事前に連絡してきた場合、管理者が代わりに入力できる）と「当日出欠」（行事当日に実際にいた詰員を記録する）の2つの欄がある。どちらの欄も1個のボタンで記録し、押すたびに「〇（出席）→✖（欠席）→－（未回答）→当番→〇」の順で表記が切り替わる（手動で「当番」にすることもできる）。行事名の横の「クリア」ボタンで、その行事の出欠表をまとめて消去できる（勤詰会など毎回使い回す行事で、前回分をリセットしたいときに使う）。ページ上部で、詰員用アプリから現場確認ができる担当者を選択できる</td></tr>
               <tr><td>祭典日当番者記録</td><td>本部祭典日ごとの当番回数を自動集計し、必要に応じて手入力で補正する</td></tr>
               <tr><td>システムの仕組み</td><td>GitHub・Supabase・admin.html・member.htmlのつながりを図で確認する（確認専用）</td></tr>
             </tbody>
@@ -1876,28 +1876,24 @@ async function renderEventAttendanceSummary(eventId, eventDate, containerId) {
 
   // 「事前連絡」（詰員がアプリで回答、またはメール等で受けた回答を管理者が代理入力）と
   // 「当日出欠」（管理者が当日現場で確認して記録）を、1名につき1行にまとめて表示する。
-  // どちらの欄も、選択済みのボタンをもう一度押すと未選択（未回答／未確認）の状態に戻せる。
-  let present = 0, absent = 0, duty = 0, none = 0;
-  let ciPresent = 0, ciAbsent = 0, ciNone = 0;
+  // どちらの欄も、ボタンを押すたびに「〇（出席）→✖（欠席）→－（未回答／未確認）→当番→〇」
+  // の順で表記が切り替わる1個のボタンで記録する。annual_rosterで自動判定された当番の
+  // 詰員は、押さなくても最初から「当番」（固定・クリック不要）として表示される。
+  let present = 0, absent = 0, advDuty = 0, none = 0;
+  let ciPresent = 0, ciAbsent = 0, ciDuty = 0, ciNone = 0;
   const rows = members.map(m => {
     if (onDutyMemberId === m.id) {
-      duty++;
+      advDuty++; ciDuty++;
       return `<tr><td style="text-align:center">${m.name}</td><td style="text-align:center"><span class="ev-checkin-duty-badge">当番</span></td><td style="text-align:center"><span class="ev-checkin-duty-badge">当番</span></td></tr>`;
     }
     const st = statusByMember[m.id] || '';
-    if (st === 'present') present++; else if (st === 'absent') absent++; else none++;
+    if (st === 'present') present++; else if (st === 'absent') absent++; else if (st === 'duty') advDuty++; else none++;
     const ciSt = checkinByMember[m.id] || '';
-    if (ciSt === 'present') ciPresent++; else if (ciSt === 'absent') ciAbsent++; else ciNone++;
+    if (ciSt === 'present') ciPresent++; else if (ciSt === 'absent') ciAbsent++; else if (ciSt === 'duty') ciDuty++; else ciNone++;
     return `<tr>
       <td style="text-align:center">${m.name}</td>
-      <td style="text-align:center"><div class="ev-checkin-btns" style="justify-content:center">
-        <button type="button" class="ev-checkin-btn present${st === 'present' ? ' selected' : ''}" onclick="setAdvanceAttendance('${containerId}',${m.id},'present','${st}')">出席</button>
-        <button type="button" class="ev-checkin-btn absent${st === 'absent' ? ' selected' : ''}" onclick="setAdvanceAttendance('${containerId}',${m.id},'absent','${st}')">欠席</button>
-      </div></td>
-      <td style="text-align:center"><div class="ev-checkin-btns" style="justify-content:center">
-        <button type="button" class="ev-checkin-btn present${ciSt === 'present' ? ' selected' : ''}" onclick="setCheckin('${containerId}',${m.id},'present','${ciSt}')">出席</button>
-        <button type="button" class="ev-checkin-btn absent${ciSt === 'absent' ? ' selected' : ''}" onclick="setCheckin('${containerId}',${m.id},'absent','${ciSt}')">欠席</button>
-      </div></td>
+      <td style="text-align:center"><button type="button" class="ev-cycle-btn ${st || 'none'}" onclick="setAdvanceAttendance('${containerId}',${m.id},'${evCycleNext(st)}')" title="押すたびに 出席→欠席→未回答→当番→出席 と切り替わります">${evCycleLabel(st)}</button></td>
+      <td style="text-align:center"><button type="button" class="ev-cycle-btn ${ciSt || 'none'}" onclick="setCheckin('${containerId}',${m.id},'${evCycleNext(ciSt)}')" title="押すたびに 出席→欠席→未確認→当番→出席 と切り替わります">${evCycleLabel(ciSt)}</button></td>
     </tr>`;
   }).join('');
 
@@ -1906,30 +1902,46 @@ async function renderEventAttendanceSummary(eventId, eventDate, containerId) {
       <span style="font-weight:600">事前連絡：</span>
       <span>出席: <b>${present}</b>名</span>
       <span>欠席: <b>${absent}</b>名</span>
-      <span>当番: <b>${duty}</b>名</span>
+      <span>当番: <b>${advDuty}</b>名</span>
       <span>未回答: <b>${none}</b>名</span>
     </div>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;font-size:13px">
       <span style="font-weight:600">当日出欠：</span>
       <span>出席: <b>${ciPresent}</b>名</span>
       <span>欠席: <b>${ciAbsent}</b>名</span>
-      <span>当番: <b>${duty}</b>名</span>
+      <span>当番: <b>${ciDuty}</b>名</span>
       <span>未確認: <b>${ciNone}</b>名</span>
       <span style="color:var(--text-hint)">（全${members.length}名）</span>
     </div>
-    <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px">詰員がメールなどで事前に出欠を連絡してきた場合は、「事前連絡」欄から管理者が代わりに入力できます。「当日出欠」欄は、行事当日に実際にいた詰員を記録する欄です。どちらも、選択済みのボタンをもう一度押すと未選択の状態に戻せます。</p>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px">詰員がメールなどで事前に出欠を連絡してきた場合は、「事前連絡」欄から管理者が代わりに入力できます。「当日出欠」欄は、行事当日に実際にいた詰員を記録する欄です。どちらも、ボタンを押すたびに「〇（出席）→✖（欠席）→－（未回答）→当番→〇」と表記が切り替わります（annual_rosterで自動判定された当番は、押さなくても最初から「当番」と表示されます）。</p>
     <div class="table-wrap"><table><thead><tr><th style="text-align:center">氏名</th><th style="text-align:center">事前連絡</th><th style="text-align:center">当日出欠</th></tr></thead><tbody>${rows}</tbody></table></div>
   `;
 }
 
+// 出欠状況の1個のボタンを押すたびに「出席 → 欠席 → 未回答／未確認 → 当番 → 出席」の
+// 順で表記が切り替わる（4状態の巡回）。記号は 〇＝出席、✖＝欠席、－＝未回答／未確認、当番＝当番。
+function evCycleLabel(status) {
+  if (status === 'present') return '〇';
+  if (status === 'absent') return '✖';
+  if (status === 'duty') return '当番';
+  return '－';
+}
+function evCycleNext(status) {
+  if (status === 'present') return 'absent';
+  if (status === 'absent') return '';
+  if (status === 'duty') return 'present';
+  return 'duty';
+}
+
 // 事前の出欠回答（詰員がアプリで回答したもの、またはメール等で受けた回答を管理者が
 // 代理入力したもの）。同じevent_attendanceテーブルに保存されるため区別なく扱われる。
-// すでに選択されているボタンをもう一度押した場合は、その回答を削除して未回答に戻す。
-async function setAdvanceAttendance(containerId, memberId, status, currentStatus) {
+// statusは呼び出し側（evCycleNext）ですでに次の状態が計算済みで渡される。
+// 空文字（''）が渡された場合は、記録を削除して未回答に戻す。
+async function setAdvanceAttendance(containerId, memberId, status) {
   const ctx = checkinEventContext[containerId];
   if (!ctx || !ctx.eventId) return;
   try {
-    if (currentStatus === status) {
+    if (!status) {
       const { error } = await sbClient.from('event_attendance').delete().eq('event_id', ctx.eventId).eq('member_id', memberId);
       if (error) throw error;
     } else {
@@ -1946,12 +1958,13 @@ async function setAdvanceAttendance(containerId, memberId, status, currentStatus
 // 当日現場での出欠確認（管理者がスマホ等でタップして記録する）。
 // 事前の出欠回答（event_attendance）とは別テーブル（event_checkin）に保存するため、
 // 事前回答を上書きすることなく、両方の記録を残せる。
-// すでに選択されているボタンをもう一度押した場合は、その記録を削除して未確認に戻す。
-async function setCheckin(containerId, memberId, status, currentStatus) {
+// statusは呼び出し側（evCycleNext）ですでに次の状態が計算済みで渡される。
+// 空文字（''）が渡された場合は、記録を削除して未確認に戻す。
+async function setCheckin(containerId, memberId, status) {
   const ctx = checkinEventContext[containerId];
   if (!ctx || !ctx.eventId) return;
   try {
-    if (currentStatus === status) {
+    if (!status) {
       const { error } = await sbClient.from('event_checkin').delete().eq('event_id', ctx.eventId).eq('member_id', memberId);
       if (error) throw error;
     } else {
