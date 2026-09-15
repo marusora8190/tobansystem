@@ -564,6 +564,7 @@
         <button class="btn btn-sm" onclick="goToCurrentMonth()">今月</button>
         <input type="month" id="cal-jump-month" style="width:140px" onchange="jumpToCalMonth(this.value)" title="年月を指定して移動（運用前の古いデータの確認などに）">
         <button class="btn btn-sm" onclick="exportCSV()">CSV出力</button>
+        <button class="btn btn-sm" id="cal-export-history-btn" onclick="exportAllHistoryExcel()" title="当番が決まっている全ての日（過去〜現在まで、annual_rosterに記録されている全期間）の、日付・曜日・当番者（ID・氏名・部署・電話）を1つのExcelファイルにまとめて書き出します">📊 全期間の当番記録をExcel出力</button>
         <button class="btn btn-sm" onclick="printCalendar()">🖨 印刷①</button>
         <button class="btn btn-sm" onclick="openImportModal()">📥 運用前データを読み込む</button>
         <button class="btn btn-sm" onclick="lockAllAssignedInMonth()" title="表示中の月で、当番者が決まっている日をまとめてロックします">🔒 表示中の当番者を一括ロック</button>
@@ -5681,6 +5682,59 @@ function exportCSV() {
   a.href = URL.createObjectURL(blob);
   a.download = `当番表_${calYear}${String(month).padStart(2, '0')}.csv`;
   a.click();
+}
+
+// annual_rosterに記録されている、当番が決まっている全ての日（過去〜現在までの全期間）を
+// 対象に、日付・曜日・当番者（ID・氏名・部署・電話）を1つのExcelファイルにまとめて書き出す。
+// 名簿にない・すでに退職した方（manual_assignee）の場合は氏名のみ表示し、ID・部署・電話は空欄にする。
+// 当番者が決まっていない日（is_holidayのみの記録など）は対象外とする。
+const DOW_JP_FULL = ['日', '月', '火', '水', '木', '金', '土'];
+async function exportAllHistoryExcel() {
+  const btn = document.getElementById('cal-export-history-btn');
+  const originalLabel = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '書き出し中...'; }
+  try {
+    // 退職者を含む全メンバー情報（allMembersById）が必要なため、未読み込みなら先に読み込む
+    if (!allMembersLoaded) await loadMembers();
+    const rows = await fetchAllRows('annual_roster');
+    const withAssignee = rows.filter(r => r.member_id || r.manual_assignee);
+    withAssignee.sort((a, b) => (a.duty_date < b.duty_date ? -1 : a.duty_date > b.duty_date ? 1 : 0));
+
+    if (!withAssignee.length) {
+      alert('書き出せる当番記録がありません。');
+      return;
+    }
+
+    const aoa = [['年', '月', '日', '曜日', 'ID', '氏名', '部署', '電話', '備考']];
+    withAssignee.forEach(r => {
+      const d = new Date(r.duty_date + 'T00:00:00');
+      const mInfo = r.member_id ? allMembersById[r.member_id] : null;
+      let note = r.notes || '';
+      if (r.is_holiday) note = note ? `日祝 / ${note}` : '日祝';
+      aoa.push([
+        d.getFullYear(),
+        d.getMonth() + 1,
+        d.getDate(),
+        DOW_JP_FULL[d.getDay()] + '曜日',
+        mInfo ? (mInfo.staff_id ?? '') : '',
+        mInfo ? mInfo.name : (r.manual_assignee || ''),
+        mInfo ? (mInfo.department || '') : '',
+        mInfo ? (mInfo.phone || mInfo.phone_mobile || mInfo.phone_ext || '') : '',
+        note
+      ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{ wch: 6 }, { wch: 4 }, { wch: 4 }, { wch: 6 }, { wch: 6 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 20 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '当番記録');
+    const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    XLSX.writeFile(wb, `当番記録_全期間_${stamp}.xlsx`);
+  } catch (e) {
+    alert('書き出しに失敗しました: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
+  }
 }
 /* ===================== 印刷機能 ===================== */
 const PRINT_ROOT_STYLE = `
