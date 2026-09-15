@@ -1673,9 +1673,9 @@ function renderCheckinOperatorSelector() {
   if (!members.length) { el.innerHTML = '<span style="color:var(--text-hint);font-size:13px">詰員がいません</span>'; return; }
   el.innerHTML = members.map(m => {
     const noVal = (m.member_no !== null && m.member_no !== undefined && m.member_no !== '') ? String(m.member_no).padStart(4, '0') : '—';
-    return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+    return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;white-space:nowrap;flex-shrink:0">
       <input type="checkbox" data-member-id="${m.id}" ${m.is_checkin_operator ? 'checked' : ''}>
-      ${m.name}<span style="color:var(--text-hint);font-size:11px">(${noVal})</span>
+      <span style="white-space:nowrap">${m.name}</span><span style="color:var(--text-hint);font-size:11px;white-space:nowrap">(${noVal})</span>
     </label>`;
   }).join('');
 }
