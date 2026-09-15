@@ -278,6 +278,7 @@
         <div class="dept" id="badge-dept"></div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:stretch;gap:4px">
+        <button class="logout-link hidden" id="badge-checkin-btn" onclick="openAttendanceModal()" style="background:var(--info);border-color:var(--info);color:#fff;font-weight:700;justify-content:center">📋 出欠確認</button>
         <button class="logout-link" onclick="doLogout()">🚪 ログアウト</button>
         <button class="logout-link" id="member-update-btn" onclick="memberHardUpdateReload()" title="ページを最新の状態に読み込み直します" style="background:#d32f2f;border-color:#d32f2f;color:#fff;font-weight:700;justify-content:center">Update</button>
         <div id="member-update-msg" style="font-size:11px;text-align:center;line-height:1.2"></div>
@@ -701,6 +702,11 @@ async function enterAsMember(member, token) {
   document.getElementById('badge-dept').textContent = member.department || '';
   const rosterLegendLabel = document.getElementById('roster-legend-label');
   if (rosterLegendLabel) rosterLegendLabel.textContent = `${member.name}さんの当番日`;
+
+  // 現場確認の担当者（is_checkin_operator）に選ばれた詰員だけ、全員の出欠確認（名簿）を
+  // 開くための専用ボタンを表示する。それ以外の詰員には表示されない。
+  const checkinBtn = document.getElementById('badge-checkin-btn');
+  if (checkinBtn) checkinBtn.classList.toggle('hidden', !member.is_checkin_operator);
 
   await loadHolidays();
   await loadRosterDecisions();
@@ -1378,7 +1384,7 @@ async function openAttendanceModal() {
 
     // 現場確認の担当者（is_checkin_operator）に選ばれた詰員だけ、同じモーダルの下部に
     // 本日開催の行事について詰員全員の出欠を確認・記録できる欄を追加で表示する。
-    const checkinHtml = currentMember.is_checkin_operator ? await renderOperatorCheckinSection() : '';
+    const checkinHtml = currentMember.is_checkin_operator ? await renderOperatorCheckinSection(attendanceEventsCache) : '';
 
     body.innerHTML = personalHtml + checkinHtml;
   } catch (e) {
@@ -1406,27 +1412,25 @@ function closeAttendanceModal() {
 // =============================================
 // 出欠確認（現場確認の担当者専用）：is_checkin_operator の詰員だけ、名前タップで
 // 開く出欠回答モーダルの下部に、この欄が追加で表示される。admin.htmlの「出欠管理」
-// ページと同じ考え方で、本日開催の行事について詰員全員の出欠を現場で確認・記録する。
+// ページと同じ考え方で、前もって登録されている行事（勤詰会・夏ご慰労・冬ご慰労・
+// イレギュラー）ごとに、その行事名をタイトルとして、詰員27名の出欠を現場で確認・
+// 記録する（「本日開催」かどうかでは絞り込まず、開催予定の行事はすべて対象にする）。
 // 事前の出欠回答（event_attendance）とは別テーブル（event_checkin）に保存するため、
 // 事前回答を上書きせず、両方の記録を残せる。
 // =============================================
-async function renderOperatorCheckinSection() {
+async function renderOperatorCheckinSection(events) {
   try {
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(today.getDate())}`;
-    const { data: events, error } = await sbClient.from('events').select('*').eq('is_open', true).eq('event_date', todayStr);
-    if (error) throw error;
-    const todaysEvents = events || [];
+    const targetEvents = events || [];
     let inner;
-    if (!todaysEvents.length) {
-      inner = '<p style="font-size:13px;color:var(--text-hint)">本日開催の行事はありません。</p>';
+    if (!targetEvents.length) {
+      inner = '<p style="font-size:13px;color:var(--text-hint)">現在、確認できる行事はありません。</p>';
     } else {
       if (!allMembersCache.length) await loadAllMembersCache();
-      inner = (await Promise.all(todaysEvents.map(ev => renderCheckinEventCard(ev)))).join('');
+      inner = (await Promise.all(targetEvents.map(ev => renderCheckinEventCard(ev)))).join('');
     }
     return `<div class="mchk-section">
-      <div class="mchk-section-title">本日の出欠確認（現場確認）</div>
-      <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px">その場にいる詰員の出席・欠席を記録できます（事前の回答とは別に記録されます）。</p>
+      <div class="mchk-section-title">出欠確認（現場確認）</div>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px">行事ごとに、詰員27名の出席・欠席を記録できます（事前の回答とは別に記録されます）。</p>
       ${inner}
     </div>`;
   } catch (e) {
@@ -1478,7 +1482,7 @@ async function renderCheckinEventCard(ev) {
 
   return `<div class="attendance-event-card">
     <div class="attendance-event-title">${ev.name}</div>
-    <div class="attendance-event-date">${ev.event_date}</div>
+    <div class="attendance-event-date">${ev.event_date || '日付未定'}</div>
     <div class="mchk-list">${rows}</div>
   </div>`;
 }
