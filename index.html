@@ -278,7 +278,6 @@
         <div class="dept" id="badge-dept"></div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:stretch;gap:4px">
-        <button class="logout-link hidden" id="badge-checkin-btn" onclick="openAttendanceModal()" style="background:var(--info);border-color:var(--info);color:#fff;font-weight:700;justify-content:center">📋 出欠確認</button>
         <button class="logout-link" onclick="doLogout()">🚪 ログアウト</button>
         <button class="logout-link" id="member-update-btn" onclick="memberHardUpdateReload()" title="ページを最新の状態に読み込み直します" style="background:#d32f2f;border-color:#d32f2f;color:#fff;font-weight:700;justify-content:center">Update</button>
         <div id="member-update-msg" style="font-size:11px;text-align:center;line-height:1.2"></div>
@@ -702,11 +701,6 @@ async function enterAsMember(member, token) {
   document.getElementById('badge-dept').textContent = member.department || '';
   const rosterLegendLabel = document.getElementById('roster-legend-label');
   if (rosterLegendLabel) rosterLegendLabel.textContent = `${member.name}さんの当番日`;
-
-  // 現場確認の担当者（is_checkin_operator）に選ばれた詰員だけ、全員の出欠確認（名簿）を
-  // 開くための専用ボタンを表示する。それ以外の詰員には表示されない。
-  const checkinBtn = document.getElementById('badge-checkin-btn');
-  if (checkinBtn) checkinBtn.classList.toggle('hidden', !member.is_checkin_operator);
 
   await loadHolidays();
   await loadRosterDecisions();
@@ -1474,8 +1468,8 @@ async function renderCheckinEventCard(ev) {
     return `<div class="mchk-row">
       <div><div class="mchk-name">${m.name}</div><div class="mchk-advance">事前：${advLabel}</div></div>
       <div class="mchk-btns">
-        <button type="button" class="attendance-choice-btn ${ciStatus === 'present' ? 'selected present' : ''}" onclick="setMemberCheckin(${ev.id},${m.id},'present')">出席</button>
-        <button type="button" class="attendance-choice-btn ${ciStatus === 'absent' ? 'selected absent' : ''}" onclick="setMemberCheckin(${ev.id},${m.id},'absent')">欠席</button>
+        <button type="button" class="attendance-choice-btn ${ciStatus === 'present' ? 'selected present' : ''}" onclick="setMemberCheckin(${ev.id},${m.id},'present','${ciStatus || ''}')">出席</button>
+        <button type="button" class="attendance-choice-btn ${ciStatus === 'absent' ? 'selected absent' : ''}" onclick="setMemberCheckin(${ev.id},${m.id},'absent','${ciStatus || ''}')">欠席</button>
       </div>
     </div>`;
   }).join('');
@@ -1487,11 +1481,17 @@ async function renderCheckinEventCard(ev) {
   </div>`;
 }
 
-async function setMemberCheckin(eventId, memberId, status) {
+async function setMemberCheckin(eventId, memberId, status, currentStatus) {
   try {
-    const { error } = await sbClient.from('event_checkin')
-      .upsert({ event_id: eventId, member_id: memberId, status, checked_at: new Date().toISOString() }, { onConflict: 'event_id,member_id' });
-    if (error) throw error;
+    if (currentStatus === status) {
+      // すでに選択されているボタンをもう一度押した場合は、未選択（未確認）の状態に戻す
+      const { error } = await sbClient.from('event_checkin').delete().eq('event_id', eventId).eq('member_id', memberId);
+      if (error) throw error;
+    } else {
+      const { error } = await sbClient.from('event_checkin')
+        .upsert({ event_id: eventId, member_id: memberId, status, checked_at: new Date().toISOString() }, { onConflict: 'event_id,member_id' });
+      if (error) throw error;
+    }
     await openAttendanceModal(); // 選択状態を反映するため、モーダル全体を再読み込みする
   } catch (e) {
     alert('記録に失敗しました');
