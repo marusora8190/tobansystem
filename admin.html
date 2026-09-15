@@ -549,7 +549,7 @@
       <div id="cal-title-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px" oncontextmenu="return handleCalTitleRightClick(event)">
         <div style="display:flex;align-items:center;gap:14px">
           <div class="section-title" style="margin-bottom:0">カレンダー表示</div>
-          <button type="button" class="btn" id="cal-update-btn" onclick="hardUpdateReload()" title="ページを最新の状態に読み込み直します" style="background:#d32f2f;border-color:#d32f2f;color:#fff;font-weight:700;font-size:24px;padding:10px 20px">Update</button>
+          <button type="button" class="btn" id="cal-update-btn" onclick="hardUpdateReload()" title="ページを最新の状態に読み込み直します" style="background:#d32f2f;border-color:#d32f2f;color:#fff;font-weight:700;font-size:12px;padding:5px 10px">Update</button>
           <div id="cal-update-msg"></div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
@@ -1109,8 +1109,7 @@
       <div id="ev-panel-natsu_ianro" class="ev-panel hidden">
         <div class="card">
           <div class="card-title">詰員慰労(中元)</div>
-          <div class="form-grid">
-            <div class="form-group"><label>年</label><input id="ev-natsu_ianro-year" type="number"></div>
+          <div class="form-grid" style="max-width:50%">
             <div class="form-group"><label>日付</label><input id="ev-natsu_ianro-date" type="date"></div>
           </div>
           <div class="btn-row">
@@ -1128,8 +1127,7 @@
       <div id="ev-panel-fuyu_ianro" class="ev-panel hidden">
         <div class="card">
           <div class="card-title">詰員慰労(歳暮)</div>
-          <div class="form-grid">
-            <div class="form-group"><label>年</label><input id="ev-fuyu_ianro-year" type="number"></div>
+          <div class="form-grid" style="max-width:50%">
             <div class="form-group"><label>日付</label><input id="ev-fuyu_ianro-date" type="date"></div>
           </div>
           <div class="btn-row">
@@ -1803,7 +1801,8 @@ async function loadFixedEventTab(category) {
 
 async function saveFixedEvent(category) {
   const msgId = 'ev-' + category + '-msg';
-  const year = parseInt(document.getElementById('ev-' + category + '-year').value, 10);
+  const yearEl = document.getElementById('ev-' + category + '-year');
+  const year = yearEl ? parseInt(yearEl.value, 10) : new Date().getFullYear();
   const dateVal = document.getElementById('ev-' + category + '-date').value || null;
   const name = EVENT_CATEGORY_NAMES[category];
   if (!year) { showMsg(msgId, '年を入力してください', 'error'); return; }
@@ -1885,14 +1884,14 @@ async function renderEventAttendanceSummary(eventId, eventDate, containerId) {
   const rows = members.map(m => {
     if (onDutyMemberId === m.id) {
       advDuty++; ciDuty++;
-      return `<tr><td style="text-align:center">${m.name}</td><td style="text-align:center"><span class="ev-checkin-duty-badge">当番</span></td><td style="text-align:center"><span class="ev-checkin-duty-badge">当番</span></td></tr>`;
+      return `<tr><td style="text-align:left">${m.name}</td><td style="text-align:center"><span class="ev-checkin-duty-badge">当番</span></td><td style="text-align:center"><span class="ev-checkin-duty-badge">当番</span></td></tr>`;
     }
     const st = statusByMember[m.id] || '';
     if (st === 'present') present++; else if (st === 'absent') absent++; else if (st === 'duty') advDuty++; else none++;
     const ciSt = checkinByMember[m.id] || '';
     if (ciSt === 'present') ciPresent++; else if (ciSt === 'absent') ciAbsent++; else if (ciSt === 'duty') ciDuty++; else ciNone++;
     return `<tr>
-      <td style="text-align:center">${m.name}</td>
+      <td style="text-align:left">${m.name}</td>
       <td style="text-align:center"><div class="ev-btn-group">
         <button type="button" class="ev-btn2 present ${st === 'present' ? 'active' : ''}" onclick="setAdvanceAttendance('${containerId}',${m.id},'${st === 'present' ? '' : 'present'}')">出席</button>
         <button type="button" class="ev-btn2 absent ${st === 'absent' ? 'active' : ''}" onclick="setAdvanceAttendance('${containerId}',${m.id},'${st === 'absent' ? '' : 'absent'}')">欠席</button>
@@ -1921,7 +1920,7 @@ async function renderEventAttendanceSummary(eventId, eventDate, containerId) {
       <span style="color:var(--text-hint)">（全${members.length}名）</span>
     </div>
     <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px">詰員がメールなどで事前に出欠を連絡してきた場合は、「事前連絡」欄から管理者が代わりに入力できます。「当日出欠」欄は、行事当日に実際にいた詰員を記録する欄です。どちらも「出席」「欠席」ボタンで記録し、同じボタンをもう一度押すと未回答／未確認に戻ります（annual_rosterで自動判定された当番は、押さなくても最初から「当番」と表示されます）。</p>
-    <div class="table-wrap"><table><thead><tr><th style="text-align:center">氏名</th><th style="text-align:center">事前連絡</th><th style="text-align:center">当日出欠</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="table-wrap"><table><thead><tr><th style="text-align:left">氏名</th><th style="text-align:center">事前連絡</th><th style="text-align:center">当日出欠</th></tr></thead><tbody>${rows}</tbody></table></div>
   `;
 }
 

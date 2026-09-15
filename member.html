@@ -248,8 +248,8 @@
 
 <div class="wrap">
 
-  <!-- ログイン画面 -->
-  <div id="login-view" class="card">
+  <!-- ログイン画面（admin.htmlのログイン画面とカードの大きさを揃えている） -->
+  <div id="login-view" class="card" style="max-width:320px;margin:24px auto 0;padding:32px 28px;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
     <div class="card-title">ログインナンバーを入力してください</div>
     <input id="login-code" type="text" inputmode="numeric" pattern="\d*" maxlength="4" autocomplete="off" autocapitalize="off" spellcheck="false" style="display:block;width:50%;margin:0 auto;-webkit-text-security:disc;text-security:disc;" aria-label="ログインナンバー" onkeydown="if(event.key==='Enter'){event.preventDefault();doLogin();}">
     <div class="checkbox-row">
@@ -277,7 +277,7 @@
       <div>
         <div class="greeting" id="badge-greeting"></div>
         <div class="name" id="badge-name"
-          oncontextmenu="openAttendanceModal(); return false;"
+          oncontextmenu="return handleNameRightClick(event)"
           ontouchstart="handleNameTouchStart(event)" ontouchend="handleNameTouchEnd(event)"
         ></div>
         <div class="dept" id="badge-dept"></div>
@@ -1310,6 +1310,13 @@ function attachDutyRankLongPress() {
 // 現場確認の担当者（is_checkin_operator）以外は、スマホでタップしても何も起きない。
 // 「支障日入力」ボタンの3秒長押し（可能日入力モード切替）とは完全に独立した別の操作。
 // =============================================
+function handleNameRightClick(e) {
+  // 現場確認担当者（is_checkin_operator）以外のPCでは、右クリックしても何も起きないようにする
+  if (!currentMember || !currentMember.is_checkin_operator) return false;
+  openAttendanceModal();
+  return false;
+}
+
 let nameTouchStartX = 0, nameTouchStartY = 0, nameTouchStartTime = 0;
 function handleNameTouchStart(e) {
   const t = e.touches && e.touches[0];
