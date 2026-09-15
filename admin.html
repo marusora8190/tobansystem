@@ -1096,6 +1096,7 @@
           <div class="btn-row">
             <button class="btn btn-primary" onclick="saveFixedEvent('kinshikai')">保存する</button>
             <button class="btn btn-danger btn-sm" onclick="clearEventAttendanceTable('ev-kinshikai-summary')" title="この行事の出欠表（事前連絡・当日出欠のすべての回答）を消去します">クリア（出欠表を消去）</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteFixedEvent('kinshikai')" title="保存した日付・出欠表を含め、この行事の保存内容をすべて削除し、未保存の状態に戻します">保存した行事を削除</button>
           </div>
           <div id="ev-kinshikai-msg" style="margin-top:8px"></div>
         </div>
@@ -1114,6 +1115,7 @@
           <div class="btn-row">
             <button class="btn btn-primary" onclick="saveFixedEvent('natsu_ianro')">保存する</button>
             <button class="btn btn-danger btn-sm" onclick="clearEventAttendanceTable('ev-natsu_ianro-summary')" title="この行事の出欠表（事前連絡・当日出欠のすべての回答）を消去します">クリア（出欠表を消去）</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteFixedEvent('natsu_ianro')" title="保存した日付・出欠表を含め、この行事の保存内容をすべて削除し、未保存の状態に戻します">保存した行事を削除</button>
           </div>
           <div id="ev-natsu_ianro-msg" style="margin-top:8px"></div>
         </div>
@@ -1132,6 +1134,7 @@
           <div class="btn-row">
             <button class="btn btn-primary" onclick="saveFixedEvent('fuyu_ianro')">保存する</button>
             <button class="btn btn-danger btn-sm" onclick="clearEventAttendanceTable('ev-fuyu_ianro-summary')" title="この行事の出欠表（事前連絡・当日出欠のすべての回答）を消去します">クリア（出欠表を消去）</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteFixedEvent('fuyu_ianro')" title="保存した日付・出欠表を含め、この行事の保存内容をすべて削除し、未保存の状態に戻します">保存した行事を削除</button>
           </div>
           <div id="ev-fuyu_ianro-msg" style="margin-top:8px"></div>
         </div>
@@ -1823,6 +1826,25 @@ async function saveFixedEvent(category) {
     await renderEventAttendanceSummary(eventId, dateVal, 'ev-' + category + '-summary');
   } catch (e) {
     showMsg(msgId, '保存に失敗しました: ' + e.message, 'error');
+  }
+}
+
+// 保存済みの行事（日付）を削除し、未保存の状態に戻す。
+// events を削除すると、紐づく event_attendance・event_checkin（出欠表のデータ）も
+// 外部キーのON DELETE CASCADEにより自動的に削除される。
+async function deleteFixedEvent(category) {
+  const msgId = 'ev-' + category + '-msg';
+  const existing = fixedEventCache[category];
+  if (!existing || !existing.id) { showMsg(msgId, 'まだ行事が保存されていません。', 'error'); return; }
+  if (!confirm('保存した行事（日付・出欠表のデータをすべて含む）を削除し、未保存の状態に戻します。よろしいですか？\n（この操作は取り消せません）')) return;
+  try {
+    const { error } = await sbClient.from('events').delete().eq('id', existing.id);
+    if (error) throw error;
+    fixedEventCache[category] = null;
+    showMsg(msgId, '削除しました', 'success');
+    await loadFixedEventTab(category);
+  } catch (e) {
+    showMsg(msgId, '削除に失敗しました: ' + e.message, 'error');
   }
 }
 
