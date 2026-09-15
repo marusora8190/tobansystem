@@ -1340,12 +1340,17 @@ function handleNameTouchEnd(e) {
 
 let attendanceEventsCache = [];
 
-async function openAttendanceModal() {
+// silent=true のときは、出欠ボタンを押した直後の再読み込みのように「すでに開いていて
+// 中身も表示済みの状態からの更新」であることを示す。この場合は一瞬「読み込み中...」に
+// 差し替えてから最新の内容に置き換える、という表示のちらつき（お知らせ画面のような一瞬の
+// 切り替わり）が起きないよう、読み込み中の表示を挟まずに、取得できた最新の内容へ
+// そのまま静かに置き換える。
+async function openAttendanceModal(silent) {
   const bg = document.getElementById('attendance-modal-bg');
   const body = document.getElementById('attendance-modal-body');
   if (!bg || !body || !currentMember) return;
   bg.classList.add('open');
-  body.innerHTML = '読み込み中...';
+  if (!silent) body.innerHTML = '読み込み中...';
   try {
     const { data: events, error } = await sbClient.from('events').select('*').eq('is_open', true).order('event_date', { ascending: true, nullsFirst: false });
     if (error) throw error;
@@ -1360,7 +1365,8 @@ async function openAttendanceModal() {
 
     body.innerHTML = checkinHtml;
   } catch (e) {
-    body.innerHTML = '<div style="color:var(--danger);font-size:13px">読み込みに失敗しました</div>';
+    if (silent) alert('最新の状態の読み込みに失敗しました');
+    else body.innerHTML = '<div style="color:var(--danger);font-size:13px">読み込みに失敗しました</div>';
   }
 }
 
@@ -1476,7 +1482,7 @@ async function setMemberCheckin(eventId, memberId, status) {
         .upsert({ event_id: eventId, member_id: memberId, status, checked_at: new Date().toISOString() }, { onConflict: 'event_id,member_id' });
       if (error) throw error;
     }
-    await openAttendanceModal(); // 選択状態を反映するため、モーダル全体を再読み込みする
+    await openAttendanceModal(true); // 選択状態を反映するため再読み込み（「読み込み中」表示は挟まず静かに更新する）
   } catch (e) {
     alert('記録に失敗しました');
   }
