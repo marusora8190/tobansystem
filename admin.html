@@ -458,19 +458,9 @@
     border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 8px; cursor: pointer;
   }
   #page-events .ev-list-item:hover { background: var(--accent-light); }
-  .ev-status-present { color: #2e7d32; font-weight: 600; }
-  .ev-status-absent { color: #a33; font-weight: 600; }
-  .ev-status-duty { color: #7a5c00; font-weight: 600; }
-  .ev-status-none { color: var(--text-hint); }
 
-  /* 出欠管理：当日現場確認（管理者がスマホでタップして記録する） */
-  #page-events .ev-checkin-title { font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 8px; }
-  #page-events .ev-checkin-row {
-    display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 6px;
-  }
-  #page-events .ev-checkin-name { font-size: 14px; font-weight: 500; }
-  #page-events .ev-checkin-advance { font-size: 11px; color: var(--text-hint); margin-top: 2px; }
+  /* 出欠管理：事前連絡・当日出欠（どちらも表内のボタンで記録する。
+     選択済みのボタンをもう一度押すと未選択の状態に戻る） */
   #page-events .ev-checkin-btns { display: flex; gap: 6px; flex-shrink: 0; }
   #page-events .ev-checkin-btn {
     padding: 10px 16px; border-radius: var(--radius); border: 1px solid var(--border-strong);
@@ -1077,7 +1067,7 @@
 
     <div id="page-events" class="page">
       <div class="section-title">出欠管理</div>
-      <div class="alert alert-info">詰員全員参加の行事（勤詰会・夏ご慰労・冬ご慰労など）の出欠を管理します。詰員は各自のアプリで出席・欠席・当番のいずれかを事前に回答でき、ここで集計を確認できます。夏ご慰労・冬ご慰労は日付が決まっているため、その日に当番の詰員は回答なしで自動的に「当番」として扱われます。また、行事当日は「当日現場での出欠確認」欄で、実際にその場にいた詰員の出席・欠席を記録できます（事前の回答とは別に記録され、両方を見比べられます）。</div>
+      <div class="alert alert-info">詰員全員参加の行事（勤詰会・夏ご慰労・冬ご慰労など）の出欠を管理します。出欠状況の表には、詰員1名につき1行で「事前連絡」（詰員が各自のアプリで回答、またはメールなどで受けた回答を管理者が代わりに入力）と「当日出欠」（行事当日、実際にその場にいた詰員を管理者が記録）の2つの欄が並びます。どちらの欄も、選択済みのボタンをもう一度押すと未選択の状態に戻せます。夏ご慰労・冬ご慰労は日付が決まっているため、その日に当番の詰員はどちらの欄も回答不要で自動的に「当番」として扱われます。同じ行事を次の機会にも使い回す場合は、「クリア」ボタンで前回分の出欠表を消去できます。</div>
 
       <div class="card">
         <div class="card-title">現場確認の担当者</div>
@@ -1103,11 +1093,14 @@
             <div class="form-group"><label>年</label><input id="ev-kinshikai-year" type="number"></div>
             <div class="form-group"><label>日付（未定の場合は空欄のままで構いません）</label><input id="ev-kinshikai-date" type="date"></div>
           </div>
-          <div class="btn-row"><button class="btn btn-primary" onclick="saveFixedEvent('kinshikai')">保存する</button></div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="saveFixedEvent('kinshikai')">保存する</button>
+            <button class="btn btn-danger btn-sm" onclick="clearEventAttendanceTable('ev-kinshikai-summary')" title="この行事の出欠表（事前連絡・当日出欠のすべての回答）を消去します">クリア（出欠表を消去）</button>
+          </div>
           <div id="ev-kinshikai-msg" style="margin-top:8px"></div>
         </div>
         <div class="card">
-          <div class="card-title">出欠状況</div>
+          <div class="card-title" id="ev-kinshikai-summary-title">出欠状況</div>
           <div id="ev-kinshikai-summary">読み込み中...</div>
         </div>
       </div>
@@ -1119,11 +1112,14 @@
             <div class="form-group"><label>年</label><input id="ev-natsu_ianro-year" type="number"></div>
             <div class="form-group"><label>日付</label><input id="ev-natsu_ianro-date" type="date"></div>
           </div>
-          <div class="btn-row"><button class="btn btn-primary" onclick="saveFixedEvent('natsu_ianro')">保存する</button></div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="saveFixedEvent('natsu_ianro')">保存する</button>
+            <button class="btn btn-danger btn-sm" onclick="clearEventAttendanceTable('ev-natsu_ianro-summary')" title="この行事の出欠表（事前連絡・当日出欠のすべての回答）を消去します">クリア（出欠表を消去）</button>
+          </div>
           <div id="ev-natsu_ianro-msg" style="margin-top:8px"></div>
         </div>
         <div class="card">
-          <div class="card-title">出欠状況</div>
+          <div class="card-title" id="ev-natsu_ianro-summary-title">出欠状況</div>
           <div id="ev-natsu_ianro-summary">読み込み中...</div>
         </div>
       </div>
@@ -1135,11 +1131,14 @@
             <div class="form-group"><label>年</label><input id="ev-fuyu_ianro-year" type="number"></div>
             <div class="form-group"><label>日付</label><input id="ev-fuyu_ianro-date" type="date"></div>
           </div>
-          <div class="btn-row"><button class="btn btn-primary" onclick="saveFixedEvent('fuyu_ianro')">保存する</button></div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="saveFixedEvent('fuyu_ianro')">保存する</button>
+            <button class="btn btn-danger btn-sm" onclick="clearEventAttendanceTable('ev-fuyu_ianro-summary')" title="この行事の出欠表（事前連絡・当日出欠のすべての回答）を消去します">クリア（出欠表を消去）</button>
+          </div>
           <div id="ev-fuyu_ianro-msg" style="margin-top:8px"></div>
         </div>
         <div class="card">
-          <div class="card-title">出欠状況</div>
+          <div class="card-title" id="ev-fuyu_ianro-summary-title">出欠状況</div>
           <div id="ev-fuyu_ianro-summary">読み込み中...</div>
         </div>
       </div>
@@ -1160,6 +1159,9 @@
         </div>
         <div class="card hidden" id="ev-irregular-summary-card">
           <div class="card-title" id="ev-irregular-summary-title">出欠状況</div>
+          <div class="btn-row" style="margin-bottom:10px">
+            <button class="btn btn-danger btn-sm" onclick="clearEventAttendanceTable('ev-irregular-summary')" title="この行事の出欠表（事前連絡・当日出欠のすべての回答）を消去します">クリア（出欠表を消去）</button>
+          </div>
           <div id="ev-irregular-summary"></div>
         </div>
       </div>
@@ -1278,7 +1280,7 @@
               <tr><td>年末年始当番予定</td><td>年末年始期間（12/28〜1/4）の候補者選びと当番割り当てを行う</td></tr>
               <tr><td>年末年始当番記録</td><td>年度ごとの年末年始当番の記録と、メンバーごとの通算回数を確認する</td></tr>
               <tr><td>本部祭典日・本部お勤め時間</td><td>本部の年間祭典日と、印刷①に使う朝づとめ・夕づとめの時刻を設定する</td></tr>
-              <tr><td>出欠管理</td><td>勤詰会・夏ご慰労・冬ご慰労やイレギュラーな行事の出欠状況を確認する（当番の詰員は自動的に「当番」として集計される）。当日は現場での出欠確認欄に出席・欠席を記録できる。ページ上部で、詰員用アプリから現場確認ができる担当者を選択できる</td></tr>
+              <tr><td>出欠管理</td><td>各行事の出欠状況を確認する（当番の詰員は自動的に「当番」として集計される）。出欠状況の表は詰員1名につき1行で、「事前連絡」（詰員がメールなどで事前に連絡してきた場合、管理者が代わりに出席・欠席を入力できる）と「当日出欠」（行事当日に実際にいた詰員を記録する）の2つの欄がある。どちらの欄も、選択済みのボタンをもう一度押すと未選択の状態に戻せる。行事名の横の「クリア」ボタンで、その行事の出欠表をまとめて消去できる（勤詰会など毎回使い回す行事で、前回分をリセットしたいときに使う）。ページ上部で、詰員用アプリから現場確認ができる担当者を選択できる</td></tr>
               <tr><td>祭典日当番者記録</td><td>本部祭典日ごとの当番回数を自動集計し、必要に応じて手入力で補正する</td></tr>
               <tr><td>システムの仕組み</td><td>GitHub・Supabase・admin.html・member.htmlのつながりを図で確認する（確認専用）</td></tr>
             </tbody>
@@ -1715,6 +1717,20 @@ function renderCheckinOperatorSelector() {
   }).join('');
 }
 
+// 詰員名簿（membersテーブル）が追加・編集・削除で更新されたときに、出欠管理ページの
+// 名簿表示（現場確認の担当者選択チェックボックス、各行事の出欠状況テーブル）を、
+// ページを開いたまま最新の内容に自動で更新する。loadMembers()（詰員の追加・削除時）と
+// updateMemberField()（詰員情報の編集時）の両方から呼び出す。
+function refreshEventsPageMemberViews() {
+  renderCheckinOperatorSelector();
+  Object.keys(checkinEventContext).forEach(containerId => {
+    const ctx = checkinEventContext[containerId];
+    if (ctx && ctx.eventId) {
+      renderEventAttendanceSummary(ctx.eventId, ctx.eventDate, containerId).catch(() => {});
+    }
+  });
+}
+
 async function saveCheckinOperators() {
   const boxes = document.querySelectorAll('#ev-operator-list input[type="checkbox"]');
   const changed = [];
@@ -1751,6 +1767,16 @@ async function switchEventTab(tab) {
   }
 }
 
+// 出欠状況カードの見出しに、行事名を「出欠状況」の文字より前に表示する
+// （例：「勤詰会の出欠状況（2026-08-15）」）。
+function updateEventSummaryTitle(category, ev) {
+  const titleEl = document.getElementById('ev-' + category + '-summary-title');
+  if (!titleEl) return;
+  const name = EVENT_CATEGORY_NAMES[category] || category;
+  if (!ev) { titleEl.textContent = '出欠状況'; return; }
+  titleEl.textContent = `${name}の出欠状況${ev.event_date ? '（' + ev.event_date + '）' : '（日付未定）'}`;
+}
+
 async function loadFixedEventTab(category) {
   const year = new Date().getFullYear();
   const yearEl = document.getElementById('ev-' + category + '-year');
@@ -1770,6 +1796,7 @@ async function loadFixedEventTab(category) {
     else if (EVENT_FIXED_DEFAULT_MD[category]) dateEl.value = year + '-' + EVENT_FIXED_DEFAULT_MD[category];
     else dateEl.value = '';
   }
+  updateEventSummaryTitle(category, ev);
   await renderEventAttendanceSummary(ev ? ev.id : null, ev ? ev.event_date : null, 'ev-' + category + '-summary');
 }
 
@@ -1793,6 +1820,7 @@ async function saveFixedEvent(category) {
     }
     fixedEventCache[category] = { id: eventId, category, year, name, event_date: dateVal };
     showMsg(msgId, '保存しました', 'success');
+    updateEventSummaryTitle(category, fixedEventCache[category]);
     await renderEventAttendanceSummary(eventId, dateVal, 'ev-' + category + '-summary');
   } catch (e) {
     showMsg(msgId, '保存に失敗しました: ' + e.message, 'error');
@@ -1846,67 +1874,112 @@ async function renderEventAttendanceSummary(eventId, eventDate, containerId) {
   const checkinByMember = {};
   checkinRows.forEach(r => { checkinByMember[r.member_id] = r.status; });
 
+  // 「事前連絡」（詰員がアプリで回答、またはメール等で受けた回答を管理者が代理入力）と
+  // 「当日出欠」（管理者が当日現場で確認して記録）を、1名につき1行にまとめて表示する。
+  // どちらの欄も、選択済みのボタンをもう一度押すと未選択（未回答／未確認）の状態に戻せる。
   let present = 0, absent = 0, duty = 0, none = 0;
+  let ciPresent = 0, ciAbsent = 0, ciNone = 0;
   const rows = members.map(m => {
-    let label, cls;
-    if (onDutyMemberId === m.id) { label = '当番'; cls = 'ev-status-duty'; duty++; }
-    else if (statusByMember[m.id] === 'present') { label = '出席'; cls = 'ev-status-present'; present++; }
-    else if (statusByMember[m.id] === 'absent') { label = '欠席'; cls = 'ev-status-absent'; absent++; }
-    else { label = '未回答'; cls = 'ev-status-none'; none++; }
-    return `<tr><td>${m.name}</td><td class="${cls}">${label}</td></tr>`;
-  }).join('');
-
-  let ciPresent = 0, ciAbsent = 0, ciDuty = 0, ciNone = 0;
-  const checkinRowsHtml = members.map(m => {
-    const advLabel = onDutyMemberId === m.id ? '当番' : (statusByMember[m.id] === 'present' ? '出席' : (statusByMember[m.id] === 'absent' ? '欠席' : '未回答'));
     if (onDutyMemberId === m.id) {
-      ciDuty++;
-      return `<div class="ev-checkin-row"><div><div class="ev-checkin-name">${m.name}</div><div class="ev-checkin-advance">事前：${advLabel}</div></div><div class="ev-checkin-duty-badge">当番</div></div>`;
+      duty++;
+      return `<tr><td>${m.name}</td><td><span class="ev-checkin-duty-badge">当番</span></td><td><span class="ev-checkin-duty-badge">当番</span></td></tr>`;
     }
-    const ciStatus = checkinByMember[m.id];
-    if (ciStatus === 'present') ciPresent++; else if (ciStatus === 'absent') ciAbsent++; else ciNone++;
-    return `<div class="ev-checkin-row">
-      <div><div class="ev-checkin-name">${m.name}</div><div class="ev-checkin-advance">事前：${advLabel}</div></div>
-      <div class="ev-checkin-btns">
-        <button type="button" class="ev-checkin-btn present${ciStatus === 'present' ? ' selected' : ''}" onclick="setCheckin('${containerId}',${m.id},'present')">出席</button>
-        <button type="button" class="ev-checkin-btn absent${ciStatus === 'absent' ? ' selected' : ''}" onclick="setCheckin('${containerId}',${m.id},'absent')">欠席</button>
-      </div>
-    </div>`;
+    const st = statusByMember[m.id] || '';
+    if (st === 'present') present++; else if (st === 'absent') absent++; else none++;
+    const ciSt = checkinByMember[m.id] || '';
+    if (ciSt === 'present') ciPresent++; else if (ciSt === 'absent') ciAbsent++; else ciNone++;
+    return `<tr>
+      <td>${m.name}</td>
+      <td><div class="ev-checkin-btns" style="justify-content:flex-start">
+        <button type="button" class="ev-checkin-btn present${st === 'present' ? ' selected' : ''}" onclick="setAdvanceAttendance('${containerId}',${m.id},'present','${st}')">出席</button>
+        <button type="button" class="ev-checkin-btn absent${st === 'absent' ? ' selected' : ''}" onclick="setAdvanceAttendance('${containerId}',${m.id},'absent','${st}')">欠席</button>
+      </div></td>
+      <td><div class="ev-checkin-btns" style="justify-content:flex-start">
+        <button type="button" class="ev-checkin-btn present${ciSt === 'present' ? ' selected' : ''}" onclick="setCheckin('${containerId}',${m.id},'present','${ciSt}')">出席</button>
+        <button type="button" class="ev-checkin-btn absent${ciSt === 'absent' ? ' selected' : ''}" onclick="setCheckin('${containerId}',${m.id},'absent','${ciSt}')">欠席</button>
+      </div></td>
+    </tr>`;
   }).join('');
 
   container.innerHTML = `
-    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;font-size:13px">
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:2px;font-size:13px">
+      <span style="font-weight:600">事前連絡：</span>
       <span>出席: <b>${present}</b>名</span>
       <span>欠席: <b>${absent}</b>名</span>
       <span>当番: <b>${duty}</b>名</span>
       <span>未回答: <b>${none}</b>名</span>
-      <span style="color:var(--text-hint)">（全${members.length}名）</span>
     </div>
-    <div class="table-wrap"><table><thead><tr><th>氏名</th><th>状況</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <div class="ev-checkin-title">当日現場での出欠確認</div>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;font-size:13px">
+      <span style="font-weight:600">当日出欠：</span>
       <span>出席: <b>${ciPresent}</b>名</span>
       <span>欠席: <b>${ciAbsent}</b>名</span>
-      <span>当番: <b>${ciDuty}</b>名</span>
+      <span>当番: <b>${duty}</b>名</span>
       <span>未確認: <b>${ciNone}</b>名</span>
+      <span style="color:var(--text-hint)">（全${members.length}名）</span>
     </div>
-    <div>${checkinRowsHtml}</div>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px">詰員がメールなどで事前に出欠を連絡してきた場合は、「事前連絡」欄から管理者が代わりに入力できます。「当日出欠」欄は、行事当日に実際にいた詰員を記録する欄です。どちらも、選択済みのボタンをもう一度押すと未選択の状態に戻せます。</p>
+    <div class="table-wrap"><table><thead><tr><th>氏名</th><th>事前連絡</th><th>当日出欠</th></tr></thead><tbody>${rows}</tbody></table></div>
   `;
+}
+
+// 事前の出欠回答（詰員がアプリで回答したもの、またはメール等で受けた回答を管理者が
+// 代理入力したもの）。同じevent_attendanceテーブルに保存されるため区別なく扱われる。
+// すでに選択されているボタンをもう一度押した場合は、その回答を削除して未回答に戻す。
+async function setAdvanceAttendance(containerId, memberId, status, currentStatus) {
+  const ctx = checkinEventContext[containerId];
+  if (!ctx || !ctx.eventId) return;
+  try {
+    if (currentStatus === status) {
+      const { error } = await sbClient.from('event_attendance').delete().eq('event_id', ctx.eventId).eq('member_id', memberId);
+      if (error) throw error;
+    } else {
+      const { error } = await sbClient.from('event_attendance')
+        .upsert({ event_id: ctx.eventId, member_id: memberId, status }, { onConflict: 'event_id,member_id' });
+      if (error) throw error;
+    }
+    await renderEventAttendanceSummary(ctx.eventId, ctx.eventDate, containerId);
+  } catch (e) {
+    alert('回答の入力に失敗しました: ' + e.message);
+  }
 }
 
 // 当日現場での出欠確認（管理者がスマホ等でタップして記録する）。
 // 事前の出欠回答（event_attendance）とは別テーブル（event_checkin）に保存するため、
 // 事前回答を上書きすることなく、両方の記録を残せる。
-async function setCheckin(containerId, memberId, status) {
+// すでに選択されているボタンをもう一度押した場合は、その記録を削除して未確認に戻す。
+async function setCheckin(containerId, memberId, status, currentStatus) {
   const ctx = checkinEventContext[containerId];
   if (!ctx || !ctx.eventId) return;
   try {
-    const { error } = await sbClient.from('event_checkin')
-      .upsert({ event_id: ctx.eventId, member_id: memberId, status, checked_at: new Date().toISOString() }, { onConflict: 'event_id,member_id' });
-    if (error) throw error;
+    if (currentStatus === status) {
+      const { error } = await sbClient.from('event_checkin').delete().eq('event_id', ctx.eventId).eq('member_id', memberId);
+      if (error) throw error;
+    } else {
+      const { error } = await sbClient.from('event_checkin')
+        .upsert({ event_id: ctx.eventId, member_id: memberId, status, checked_at: new Date().toISOString() }, { onConflict: 'event_id,member_id' });
+      if (error) throw error;
+    }
     await renderEventAttendanceSummary(ctx.eventId, ctx.eventDate, containerId);
   } catch (e) {
     alert('現場確認の記録に失敗しました: ' + e.message);
+  }
+}
+
+// その行事の出欠表（事前連絡・当日出欠の両方）をまとめて消去する。
+// 同じ行事（勤詰会・夏ご慰労・冬ご慰労）を翌年以降も使い回すため、
+// 前回分の回答が残ったままにならないようにするためのボタン。
+async function clearEventAttendanceTable(containerId) {
+  const ctx = checkinEventContext[containerId];
+  if (!ctx || !ctx.eventId) { alert('まだ行事が保存されていません。'); return; }
+  if (!confirm('この行事の出欠表（事前連絡・当日出欠のすべての回答）を消去します。よろしいですか？\n（この操作は取り消せません）')) return;
+  try {
+    const { error: e1 } = await sbClient.from('event_attendance').delete().eq('event_id', ctx.eventId);
+    if (e1) throw e1;
+    const { error: e2 } = await sbClient.from('event_checkin').delete().eq('event_id', ctx.eventId);
+    if (e2) throw e2;
+    await renderEventAttendanceSummary(ctx.eventId, ctx.eventDate, containerId);
+  } catch (e) {
+    alert('出欠表の消去に失敗しました: ' + e.message);
   }
 }
 
@@ -1955,7 +2028,7 @@ async function showIrregularEventSummary(id) {
   const ev = irregularEvents.find(e => e.id === id);
   if (!ev) return;
   document.getElementById('ev-irregular-summary-card').classList.remove('hidden');
-  document.getElementById('ev-irregular-summary-title').textContent = `出欠状況：${ev.name}${ev.event_date ? '（' + ev.event_date + '）' : '（日付未定）'}`;
+  document.getElementById('ev-irregular-summary-title').textContent = `${ev.name}の出欠状況${ev.event_date ? '（' + ev.event_date + '）' : '（日付未定）'}`;
   await renderEventAttendanceSummary(ev.id, ev.event_date, 'ev-irregular-summary');
 }
 
@@ -2067,6 +2140,7 @@ async function loadMembers() {
   members.sort((a, b) => (parseInt(a.staff_id) || 9999) - (parseInt(b.staff_id) || 9999));
   renderMembersTable();
   prefillNextMemberIds();
+  refreshEventsPageMemberViews();
   return members;
 }
 
@@ -2738,6 +2812,7 @@ async function updateMemberField(id, field, value) {
     const m = members.find(x => x.id == id);
     if (m) m[field] = val;
     showMsg('member-msg', '更新しました', 'success');
+    refreshEventsPageMemberViews();
   } catch(e) {
     showMsg('member-msg', '更新失敗: ' + e.message, 'error');
     await loadMembers();
