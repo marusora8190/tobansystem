@@ -1050,7 +1050,7 @@ function renderMemberFestivalList() {
   const wrap = document.getElementById('member-festival-rows');
   if (!wrap) return;
   wrap.innerHTML = memberFestivalData.map(f => `
-    <div style="display:grid;grid-template-columns:1fr 4.5em 5.5em;align-items:baseline;gap:8px;padding:8px 2px;border-bottom:1px solid var(--border)">
+    <div style="display:grid;grid-template-columns:1fr 7.5em 5.5em;align-items:baseline;gap:8px;padding:8px 2px;border-bottom:1px solid var(--border)">
       <span style="font-weight:600">${f.name}</span>
       <span style="color:var(--text-muted);font-size:12px;white-space:nowrap;text-align:right">${f.date}</span>
       <span style="color:var(--text-muted);font-size:12px;white-space:nowrap;text-align:right">${f.time}</span>
