@@ -1086,7 +1086,13 @@
         <button class="tab-btn" id="ev-tab-btn-fuyu_ianro" onclick="switchEventTab('fuyu_ianro')">詰員慰労(歳暮)</button>
         <input type="text" class="tab-btn tab-btn-editable" id="ev-tab-btn-irregular" value="" placeholder="行事名を入力"
           onclick="switchEventTab('irregular')" onfocus="switchEventTab('irregular')"
-          onchange="saveIrregularTabLabel(this.value)" title="クリックして名前を入力できます">
+          onchange="saveIrregularTabLabel(this.value, '')" title="クリックして名前を入力できます">
+        <input type="text" class="tab-btn tab-btn-editable" id="ev-tab-btn-irregular2" value="" placeholder="行事名を入力"
+          onclick="switchEventTab('irregular2')" onfocus="switchEventTab('irregular2')"
+          onchange="saveIrregularTabLabel(this.value, '2')" title="クリックして名前を入力できます">
+        <input type="text" class="tab-btn tab-btn-editable" id="ev-tab-btn-irregular3" value="" placeholder="行事名を入力"
+          onclick="switchEventTab('irregular3')" onfocus="switchEventTab('irregular3')"
+          onchange="saveIrregularTabLabel(this.value, '3')" title="クリックして名前を入力できます">
       </div>
 
       <div id="ev-panel-kinshikai" class="ev-panel">
@@ -1166,6 +1172,52 @@
             <button class="btn btn-danger btn-sm" onclick="clearEventAttendanceTable('ev-irregular-summary')" title="この行事の出欠表（事前連絡・当日出欠のすべての回答）を消去します">クリア（出欠表を消去）</button>
           </div>
           <div id="ev-irregular-summary"></div>
+        </div>
+      </div>
+
+      <div id="ev-panel-irregular2" class="ev-panel hidden">
+        <div class="card">
+          <div class="card-title">新しいイレギュラーな行事を追加</div>
+          <div class="form-grid">
+            <div class="form-group"><label>行事名 *</label><input id="ev-irregular2-name" placeholder="例：〇〇会"></div>
+            <div class="form-group"><label>日付</label><input id="ev-irregular2-date" type="date"></div>
+          </div>
+          <div class="btn-row"><button class="btn btn-primary" onclick="createIrregularEvent('2')">追加する</button></div>
+          <div id="ev-irregular2-add-msg" style="margin-top:8px"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">イレギュラーな行事一覧</div>
+          <div id="ev-irregular2-list">読み込み中...</div>
+        </div>
+        <div class="card hidden" id="ev-irregular2-summary-card">
+          <div class="card-title" id="ev-irregular2-summary-title">出欠状況</div>
+          <div class="btn-row" style="margin-bottom:10px">
+            <button class="btn btn-danger btn-sm" onclick="clearEventAttendanceTable('ev-irregular2-summary')" title="この行事の出欠表（事前連絡・当日出欠のすべての回答）を消去します">クリア（出欠表を消去）</button>
+          </div>
+          <div id="ev-irregular2-summary"></div>
+        </div>
+      </div>
+
+      <div id="ev-panel-irregular3" class="ev-panel hidden">
+        <div class="card">
+          <div class="card-title">新しいイレギュラーな行事を追加</div>
+          <div class="form-grid">
+            <div class="form-group"><label>行事名 *</label><input id="ev-irregular3-name" placeholder="例：〇〇会"></div>
+            <div class="form-group"><label>日付</label><input id="ev-irregular3-date" type="date"></div>
+          </div>
+          <div class="btn-row"><button class="btn btn-primary" onclick="createIrregularEvent('3')">追加する</button></div>
+          <div id="ev-irregular3-add-msg" style="margin-top:8px"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">イレギュラーな行事一覧</div>
+          <div id="ev-irregular3-list">読み込み中...</div>
+        </div>
+        <div class="card hidden" id="ev-irregular3-summary-card">
+          <div class="card-title" id="ev-irregular3-summary-title">出欠状況</div>
+          <div class="btn-row" style="margin-bottom:10px">
+            <button class="btn btn-danger btn-sm" onclick="clearEventAttendanceTable('ev-irregular3-summary')" title="この行事の出欠表（事前連絡・当日出欠のすべての回答）を消去します">クリア（出欠表を消去）</button>
+          </div>
+          <div id="ev-irregular3-summary"></div>
         </div>
       </div>
     </div>
@@ -1489,7 +1541,7 @@
           <div class="howto-body">
             <p>勤詰会・詰員慰労(中元)・詰員慰労(歳暮)・イレギュラー行事の出欠を管理する画面です。</p>
             <ol>
-              <li>上部のタブで対象の行事を選びます（イレギュラー行事は「行事名を入力」タブに新しく名前・日付を入力して「追加する」を押すと一覧に追加されます）。</li>
+              <li>上部のタブで対象の行事を選びます（「行事名を入力」タブは3つあり、それぞれ独立してイレギュラー行事を管理できます。タブ名をクリックすると自由に名前を付けられ、次に開いたときも同じ名前で表示されます。各タブの中で、新しく名前・日付を入力して「追加する」を押すと一覧に追加されます）。</li>
               <li>勤詰会・詰員慰労(中元)・詰員慰労(歳暮)は「日付」欄に日付を入力して「保存する」を押します（年の入力欄はなく、日付だけで管理します。勤詰会は日付が未定のまま保存することもできます）。</li>
               <li>保存すると下に出欠状況の表が表示され、詰員1名につき1行で「事前連絡」（詰員がメールなどで事前に連絡してきた内容を管理者が代わりに入力する欄）と「当日出欠」（行事当日に実際にいた詰員を管理者が記録する欄）が並びます。どちらも「出席」「欠席」ボタンで記録し、同じボタンをもう一度押すと未回答／未確認に戻ります。</li>
               <li>その行事の日付にannual_rosterで当番が決まっている詰員は、ボタンを押さなくても最初から「当番」バッジで自動表示されます（当番は1名だけのため、他の詰員を手動で「当番」にすることはできません）。</li>
@@ -1691,29 +1743,36 @@ let eventsPageInitialized = false;
 const EVENT_CATEGORY_NAMES = { kinshikai: '勤詰会', natsu_ianro: '詰員慰労(中元)', fuyu_ianro: '詰員慰労(歳暮)' };
 const EVENT_FIXED_DEFAULT_MD = { natsu_ianro: '06-26', fuyu_ianro: '12-26' }; // 勤詰会は日付未定がデフォルト
 let fixedEventCache = {}; // category -> { id, category, year, name, event_date } | null
-let eventsTabLoadedOnce = { kinshikai: false, natsu_ianro: false, fuyu_ianro: false, irregular: false };
-let irregularEvents = [];
+// 「行事名を入力」タブは3つ（イレギュラーな行事を最大3系統、それぞれ独立に管理できる）。
+// slotは ''（1つ目）・'2'（2つ目）・'3'（3つ目）のいずれかで、タブ・パネル・行事データを
+// それぞれ独立させるための接尾辞として使う（例：ev-tab-btn-irregular2、category='irregular2'）。
+const IRREGULAR_SLOTS = ['', '2', '3'];
+let eventsTabLoadedOnce = { kinshikai: false, natsu_ianro: false, fuyu_ianro: false, irregular: false, irregular2: false, irregular3: false };
+let irregularEventsBySlot = { '': [], '2': [], '3': [] };
 let irregularTabLabelLoaded = false;
 
 // 「イレギュラー」タブの名前は固定文字ではなく空欄になっており、管理者が自由に
 // 手入力できる（app_settingsテーブルに保存し、次に開いたときも同じ名前が表示される）。
+// 3つのタブそれぞれ独立した名前を保存できるよう、app_settingsのキーにもslotを付ける。
 async function loadIrregularTabLabel() {
   if (irregularTabLabelLoaded) return;
   irregularTabLabelLoaded = true;
-  const input = document.getElementById('ev-tab-btn-irregular');
-  if (!input) return;
-  try {
-    const { data, error } = await sbClient.from('app_settings').select('value').eq('key', 'events_irregular_tab_label').maybeSingle();
-    if (error) throw error;
-    if (data && data.value) input.value = data.value;
-  } catch (e) { /* 読み込みに失敗しても、空欄のまま表示を続ける */ }
+  for (const slot of IRREGULAR_SLOTS) {
+    const input = document.getElementById('ev-tab-btn-irregular' + slot);
+    if (!input) continue;
+    try {
+      const { data, error } = await sbClient.from('app_settings').select('value').eq('key', 'events_irregular_tab_label' + slot).maybeSingle();
+      if (error) throw error;
+      if (data && data.value) input.value = data.value;
+    } catch (e) { /* 読み込みに失敗しても、空欄のまま表示を続ける */ }
+  }
 }
 
-async function saveIrregularTabLabel(value) {
+async function saveIrregularTabLabel(value, slot) {
   const trimmed = (value || '').trim();
-  const input = document.getElementById('ev-tab-btn-irregular');
+  const input = document.getElementById('ev-tab-btn-irregular' + slot);
   try {
-    const { error } = await sbClient.from('app_settings').upsert({ key: 'events_irregular_tab_label', value: trimmed }, { onConflict: 'key' });
+    const { error } = await sbClient.from('app_settings').upsert({ key: 'events_irregular_tab_label' + slot, value: trimmed }, { onConflict: 'key' });
     if (error) throw error;
     if (input) input.value = trimmed;
   } catch (e) {
@@ -1773,7 +1832,7 @@ async function saveCheckinOperators() {
 }
 
 async function switchEventTab(tab) {
-  ['kinshikai', 'natsu_ianro', 'fuyu_ianro', 'irregular'].forEach(t => {
+  ['kinshikai', 'natsu_ianro', 'fuyu_ianro', 'irregular', 'irregular2', 'irregular3'].forEach(t => {
     const btn = document.getElementById('ev-tab-btn-' + t);
     const panel = document.getElementById('ev-panel-' + t);
     if (btn) btn.classList.toggle('active', t === tab);
@@ -1781,7 +1840,7 @@ async function switchEventTab(tab) {
   });
   if (!eventsTabLoadedOnce[tab]) {
     eventsTabLoadedOnce[tab] = true;
-    if (tab === 'irregular') await loadIrregularEvents();
+    if (tab.startsWith('irregular')) await loadIrregularEvents(tab.replace('irregular', ''));
     else await loadFixedEventTab(tab);
   }
 }
@@ -2026,20 +2085,21 @@ async function clearEventAttendanceTable(containerId) {
   }
 }
 
-async function loadIrregularEvents() {
-  const listEl = document.getElementById('ev-irregular-list');
+async function loadIrregularEvents(slot) {
+  slot = slot || '';
+  const listEl = document.getElementById('ev-irregular' + slot + '-list');
   if (!listEl) return;
   listEl.innerHTML = '読み込み中...';
   try {
-    const { data, error } = await sbClient.from('events').select('*').eq('category', 'irregular').order('event_date', { ascending: false, nullsFirst: false });
+    const { data, error } = await sbClient.from('events').select('*').eq('category', 'irregular' + slot).order('event_date', { ascending: false, nullsFirst: false });
     if (error) throw error;
-    irregularEvents = data || [];
-    if (!irregularEvents.length) {
+    irregularEventsBySlot[slot] = data || [];
+    if (!irregularEventsBySlot[slot].length) {
       listEl.innerHTML = '<p style="color:var(--text-hint);font-size:13px">まだ登録されたイレギュラーな行事はありません。</p>';
       return;
     }
-    listEl.innerHTML = irregularEvents.map(ev => `
-      <div class="ev-list-item" onclick="showIrregularEventSummary(${ev.id})">
+    listEl.innerHTML = irregularEventsBySlot[slot].map(ev => `
+      <div class="ev-list-item" onclick="showIrregularEventSummary(${ev.id}, '${slot}')">
         <span>${ev.name}${ev.event_date ? '（' + ev.event_date + '）' : '（日付未定）'}</span>
         <span style="color:var(--text-hint);font-size:12px">▶</span>
       </div>
@@ -2049,30 +2109,32 @@ async function loadIrregularEvents() {
   }
 }
 
-async function createIrregularEvent() {
-  const msgId = 'ev-irregular-add-msg';
-  const name = document.getElementById('ev-irregular-name').value.trim();
-  const dateVal = document.getElementById('ev-irregular-date').value || null;
+async function createIrregularEvent(slot) {
+  slot = slot || '';
+  const msgId = 'ev-irregular' + slot + '-add-msg';
+  const name = document.getElementById('ev-irregular' + slot + '-name').value.trim();
+  const dateVal = document.getElementById('ev-irregular' + slot + '-date').value || null;
   if (!name) { showMsg(msgId, '行事名を入力してください', 'error'); return; }
   const year = dateVal ? parseInt(dateVal.slice(0, 4), 10) : new Date().getFullYear();
   try {
-    const { error } = await sbClient.from('events').insert({ category: 'irregular', year, name, event_date: dateVal });
+    const { error } = await sbClient.from('events').insert({ category: 'irregular' + slot, year, name, event_date: dateVal });
     if (error) throw error;
-    document.getElementById('ev-irregular-name').value = '';
-    document.getElementById('ev-irregular-date').value = '';
+    document.getElementById('ev-irregular' + slot + '-name').value = '';
+    document.getElementById('ev-irregular' + slot + '-date').value = '';
     showMsg(msgId, '追加しました', 'success');
-    await loadIrregularEvents();
+    await loadIrregularEvents(slot);
   } catch (e) {
     showMsg(msgId, '追加に失敗しました: ' + e.message, 'error');
   }
 }
 
-async function showIrregularEventSummary(id) {
-  const ev = irregularEvents.find(e => e.id === id);
+async function showIrregularEventSummary(id, slot) {
+  slot = slot || '';
+  const ev = irregularEventsBySlot[slot].find(e => e.id === id);
   if (!ev) return;
-  document.getElementById('ev-irregular-summary-card').classList.remove('hidden');
-  document.getElementById('ev-irregular-summary-title').textContent = `${ev.name}の出欠状況${ev.event_date ? '（' + ev.event_date + '）' : '（日付未定）'}`;
-  await renderEventAttendanceSummary(ev.id, ev.event_date, 'ev-irregular-summary');
+  document.getElementById('ev-irregular' + slot + '-summary-card').classList.remove('hidden');
+  document.getElementById('ev-irregular' + slot + '-summary-title').textContent = `${ev.name}の出欠状況${ev.event_date ? '（' + ev.event_date + '）' : '（日付未定）'}`;
+  await renderEventAttendanceSummary(ev.id, ev.event_date, 'ev-irregular' + slot + '-summary');
 }
 
 const DOW_JP = ['日','月','火','水','木','金','土'];
