@@ -171,9 +171,17 @@
      ため、上の余白は中身側（#attendance-modal-body）に付けている */
   .attendance-modal-scroll { flex: 1 1 auto; overflow-y: auto; padding: 0 20px 20px; }
   .attendance-event-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-top: 12px; }
-  .attendance-event-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+  .attendance-event-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; color: var(--text); }
   .attendance-event-date { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
-  .mchk-card-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; }
+  /* 行事名・日付・出席者数の見出しブロックも、氏名・当日出欠の見出し行と同様に
+     スクロール中は画面上部に固定表示する（行事カード自身の範囲内でのみ固定されるため、
+     複数の行事が並んでいる場合は、次の行事カードがせり上がってきた時点で自然に
+     入れ替わる：連絡先アプリの「あ・か・さ…」の見出しのような挙動）。
+     行事名がまれに2行になった場合でも見た目が崩れないよう、高さは固定していない。 */
+  .mchk-card-header {
+    display: flex; justify-content: space-between; align-items: flex-end; gap: 8px;
+    position: sticky; top: 0; z-index: 4; background: var(--surface); padding-top: 2px;
+  }
   .mchk-present-count { font-size: 12px; font-weight: 700; color: var(--accent-dark); white-space: nowrap; margin-bottom: 8px; }
 
   /* 出欠確認タブ（現場確認の担当者専用）：詰員全員分の出欠を、氏名・当日出欠を
@@ -192,9 +200,10 @@
   .mchk-table th {
     text-align: center; font-size: 11px; font-weight: 600; color: var(--text-hint);
     padding: 6px 4px; border-bottom: 1px solid var(--border); white-space: nowrap;
-    /* 詰員が多く縦に長い表でも、氏名・当日出欠の見出しが見えたままスクロールできるよう、
-       スクロール領域（.attendance-modal-scroll）の上端に貼り付けて固定表示する */
-    position: sticky; top: 0; z-index: 3; background: var(--surface);
+    /* 詰員が多く縦に長い表でも、氏名・当日出欠の見出しが見えたままスクロールできるよう固定表示する。
+       すぐ上に行事名・日付・出席者数の見出しブロック（.mchk-card-header、高さ約50px）も
+       固定表示されているため、その真下に重ならないようtopをその高さ分だけ下げている */
+    position: sticky; top: 50px; z-index: 3; background: var(--surface);
   }
   .mchk-table td { padding: 10px 4px; border-bottom: 1px solid var(--border); vertical-align: middle; }
   .mchk-name { font-weight: 500; white-space: nowrap; }
