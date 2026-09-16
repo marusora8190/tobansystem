@@ -160,6 +160,9 @@
   .attendance-modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; padding: 16px; }
   .attendance-modal-bg.open { display: flex; }
   .attendance-modal { background: var(--surface); border-radius: var(--radius-lg); padding: 20px; width: 420px; max-width: 100%; max-height: 85vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+  /* 詰員数が多く出欠確認モーダルが長くなっても、下までスクロールしなくてもすぐ閉じられるよう、
+     上部にも「閉じる」ボタンを固定表示する（下部の既存ボタンはそのまま残す） */
+  .attendance-modal-top-close { position: sticky; top: -20px; z-index: 5; background: var(--surface); margin: -20px -20px 10px; padding: 14px 20px 10px; border-bottom: 1px solid var(--border); }
   .attendance-event-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-top: 12px; }
   .attendance-event-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
   .attendance-event-date { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
@@ -410,6 +413,9 @@
 
   <div class="attendance-modal-bg" id="attendance-modal-bg">
     <div class="attendance-modal">
+      <div class="attendance-modal-top-close">
+        <button class="btn btn-block" onclick="closeAttendanceModal()">閉じる</button>
+      </div>
       <div id="attendance-modal-body">読み込み中...</div>
       <div class="btn-row">
         <button class="btn btn-block" onclick="closeAttendanceModal()">閉じる</button>
