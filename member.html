@@ -160,36 +160,36 @@
   .attendance-modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; padding: 16px; }
   .attendance-modal-bg.open { display: flex; }
   /* 詰員数が多く出欠確認モーダルが長くなっても、下までスクロールしなくてもすぐ閉じられるよう、
-     「閉じる」ボタン（上部固定・下部のボタンは廃止済み）と、氏名・当日出欠の表の見出し行を
-     常に画面内に固定表示する。そのため、閉じるボタンの行はスクロールしない固定ヘッダーとして
-     別枠にし、実際にスクロールするのは中身（.attendance-modal-scroll）だけにしている。 */
-  .attendance-modal { background: var(--surface); border-radius: var(--radius-lg); width: 420px; max-width: 100%; max-height: 85vh; box-shadow: 0 8px 32px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden; }
-  .attendance-modal-top-close { flex: 0 0 auto; padding: 14px 20px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
-  /* padding-topはこのdiv自体には付けない：付けると氏名・当日出欠の見出し行を
+     「閉じる」ボタンは各行事カードの見出し（行事名の横）に配置し、氏名・当日出欠の表の
+     見出し行とあわせて常に画面内に固定表示する。.attendance-modal自体がスクロール領域。 */
+  .attendance-modal { background: var(--surface); border-radius: var(--radius-lg); width: 420px; max-width: 100%; max-height: 85vh; box-shadow: 0 8px 32px rgba(0,0,0,0.2); overflow-y: auto; padding: 0 20px 20px; }
+  /* padding-topはこのdiv自体（スクロール領域）には付けない：付けると行事名等の見出しブロックを
      position:stickyで固定表示したときに、上部にできる余白（パディング部分）を通して
      直前の行が一瞬透けて見えてしまう（見出し行と本文行が重なって見える不具合の原因だった）
      ため、上の余白は中身側（#attendance-modal-body）に付けている */
-  .attendance-modal-scroll { flex: 1 1 auto; overflow-y: auto; padding: 0 20px 20px; }
   .attendance-event-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-top: 12px; }
-  .attendance-event-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; color: var(--text); }
-  .attendance-event-date { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
-  /* 行事名・日付・出席者数の見出しブロックも、氏名・当日出欠の見出し行と同様に
-     スクロール中は画面上部に固定表示する（行事カード自身の範囲内でのみ固定されるため、
-     複数の行事が並んでいる場合は、次の行事カードがせり上がってきた時点で自然に
-     入れ替わる：連絡先アプリの「あ・か・さ…」の見出しのような挙動）。
+  .attendance-event-title { font-weight: 600; font-size: 13px; color: var(--text); }
+  .attendance-event-date { font-size: 11px; color: var(--text-muted); }
+  /* 行事名・日付・出席者数・「閉じる」ボタンをまとめた見出しブロック。氏名・当日出欠の
+     見出し行と同様に、スクロール中は画面上部に固定表示する（行事カード自身の範囲内でのみ
+     固定されるため、複数の行事が並んでいる場合は、次の行事カードがせり上がってきた時点で
+     自然に入れ替わる：連絡先アプリの「あ・か・さ…」の見出しのような挙動）。
+     以前はモーダル最上部に「閉じる」ボタンを常設していたが、行事名の横に統合したことで廃止した。
+     1行目に行事名と「閉じる」ボタン、2行目に日付と出席者数を並べるグリッド配置。
      行事名がまれに2行になった場合でも見た目が崩れないよう、高さは固定していない。 */
   .mchk-card-header {
-    display: flex; justify-content: space-between; align-items: flex-end; gap: 8px;
-    position: sticky; top: 0; z-index: 4; background: var(--surface); padding-top: 2px;
+    display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 10px;
+    position: sticky; top: 0; z-index: 4; background: var(--surface); padding: 2px 0;
   }
-  .mchk-present-count { font-size: 12px; font-weight: 700; color: var(--accent-dark); white-space: nowrap; margin-bottom: 8px; }
+  .mchk-close-btn { padding: 6px 14px; font-size: 12px; white-space: nowrap; }
+  .mchk-present-count { font-size: 12px; font-weight: 700; color: var(--accent-dark); white-space: nowrap; }
 
   /* 出欠確認タブ（現場確認の担当者専用）：詰員全員分の出欠を、氏名・当日出欠を
      1行にまとめた表で一覧表示する。スマホでの誤タップ（隣の詰員のボタンを押してしまう）
      を防ぐため、行の高さ・ボタンは指で押しやすい大きさを優先している。 */
   /* overflow-x:auto は付けない：付けるとCSSの仕様上overflow-yも自動的に「auto」扱いになり、
      このdiv自体が縦スクロールの基準にされてしまうため、下のthead thのposition:stickyが
-     本来固定したい外側のスクロール領域（.attendance-modal-scroll）ではなく、このdiv基準に
+     本来固定したい外側のスクロール領域（.attendance-modal）ではなく、このdiv基準に
      なってしまい、見出し行が正しく貼り付かなくなる（実際にその不具合が起きたため、付けない
      方針にしている） */
   .mchk-list { margin-top: 6px; }
@@ -201,9 +201,9 @@
     text-align: center; font-size: 11px; font-weight: 600; color: var(--text-hint);
     padding: 6px 4px; border-bottom: 1px solid var(--border); white-space: nowrap;
     /* 詰員が多く縦に長い表でも、氏名・当日出欠の見出しが見えたままスクロールできるよう固定表示する。
-       すぐ上に行事名・日付・出席者数の見出しブロック（.mchk-card-header、高さ約50px）も
-       固定表示されているため、その真下に重ならないようtopをその高さ分だけ下げている */
-    position: sticky; top: 50px; z-index: 3; background: var(--surface);
+       すぐ上に行事名・日付・出席者数・「閉じる」ボタンの見出しブロック（.mchk-card-header、
+       高さ約56px）も固定表示されているため、その真下に重ならないようtopをその高さ分だけ下げている */
+    position: sticky; top: 56px; z-index: 3; background: var(--surface);
   }
   .mchk-table td { padding: 10px 4px; border-bottom: 1px solid var(--border); vertical-align: middle; }
   .mchk-name { font-weight: 500; white-space: nowrap; }
@@ -440,12 +440,7 @@
 
   <div class="attendance-modal-bg" id="attendance-modal-bg">
     <div class="attendance-modal">
-      <div class="attendance-modal-top-close">
-        <button class="btn btn-block" onclick="closeAttendanceModal()">閉じる</button>
-      </div>
-      <div class="attendance-modal-scroll">
-        <div id="attendance-modal-body" style="padding-top:10px">読み込み中...</div>
-      </div>
+      <div id="attendance-modal-body" style="padding-top:10px">読み込み中...</div>
     </div>
   </div>
 
@@ -1421,7 +1416,11 @@ async function renderOperatorCheckinSection(events) {
     const targetEvents = events || [];
     let inner;
     if (!targetEvents.length) {
-      inner = '<p style="font-size:13px;color:var(--text-hint)">現在、確認できる行事はありません。</p>';
+      // 行事カードが1つも表示されない場合でも「閉じる」ボタンだけは常に表示する
+      inner = `<div class="mchk-card-header" style="grid-template-columns:1fr auto">
+        <p style="font-size:13px;color:var(--text-hint);margin:0">現在、確認できる行事はありません。</p>
+        <button type="button" class="btn btn-sm mchk-close-btn" onclick="closeAttendanceModal()">閉じる</button>
+      </div>`;
     } else {
       if (!allMembersCache.length) await loadAllMembersCache();
       inner = (await Promise.all(targetEvents.map(ev => renderCheckinEventCard(ev)))).join('');
@@ -1430,7 +1429,10 @@ async function renderOperatorCheckinSection(events) {
       ${inner}
     </div>`;
   } catch (e) {
-    return '<div class="mchk-section"><div style="color:var(--danger);font-size:12px">出欠確認の読み込みに失敗しました</div></div>';
+    return `<div class="mchk-section"><div class="mchk-card-header" style="grid-template-columns:1fr auto">
+      <div style="color:var(--danger);font-size:12px">出欠確認の読み込みに失敗しました</div>
+      <button type="button" class="btn btn-sm mchk-close-btn" onclick="closeAttendanceModal()">閉じる</button>
+    </div></div>`;
   }
 }
 
@@ -1489,10 +1491,9 @@ async function renderCheckinEventCard(ev) {
 
   return `<div class="attendance-event-card">
     <div class="mchk-card-header">
-      <div>
-        <div class="attendance-event-title">${ev.name}</div>
-        <div class="attendance-event-date">${ev.event_date || '日付未定'}</div>
-      </div>
+      <div class="attendance-event-title">${ev.name}</div>
+      <button type="button" class="btn btn-sm mchk-close-btn" onclick="closeAttendanceModal()">閉じる</button>
+      <div class="attendance-event-date">${ev.event_date || '日付未定'}</div>
       <div class="mchk-present-count">出席者：${presentCount}名</div>
     </div>
     <div class="mchk-list"><table class="mchk-table">
