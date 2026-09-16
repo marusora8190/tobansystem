@@ -1110,6 +1110,7 @@
         </div>
         <div class="card">
           <div class="card-title" id="ev-kinshikai-summary-title">出欠状況</div>
+          <div class="btn-row" style="margin-bottom:10px"><button class="btn btn-sm" onclick="printEventAttendance('ev-kinshikai-summary')">🖨 印刷</button></div>
           <div id="ev-kinshikai-summary">読み込み中...</div>
         </div>
       </div>
@@ -1129,6 +1130,7 @@
         </div>
         <div class="card">
           <div class="card-title" id="ev-natsu_ianro-summary-title">出欠状況</div>
+          <div class="btn-row" style="margin-bottom:10px"><button class="btn btn-sm" onclick="printEventAttendance('ev-natsu_ianro-summary')">🖨 印刷</button></div>
           <div id="ev-natsu_ianro-summary">読み込み中...</div>
         </div>
       </div>
@@ -1148,6 +1150,7 @@
         </div>
         <div class="card">
           <div class="card-title" id="ev-fuyu_ianro-summary-title">出欠状況</div>
+          <div class="btn-row" style="margin-bottom:10px"><button class="btn btn-sm" onclick="printEventAttendance('ev-fuyu_ianro-summary')">🖨 印刷</button></div>
           <div id="ev-fuyu_ianro-summary">読み込み中...</div>
         </div>
       </div>
@@ -1170,6 +1173,7 @@
           <div class="card-title" id="ev-irregular-summary-title">出欠状況</div>
           <div class="btn-row" style="margin-bottom:10px">
             <button class="btn btn-danger btn-sm" onclick="clearEventAttendanceTable('ev-irregular-summary')" title="この行事の出欠表（事前連絡・当日出欠のすべての回答）を消去します">クリア（出欠表を消去）</button>
+            <button class="btn btn-sm" onclick="printEventAttendance('ev-irregular-summary')">🖨 印刷</button>
           </div>
           <div id="ev-irregular-summary"></div>
         </div>
@@ -1193,6 +1197,7 @@
           <div class="card-title" id="ev-irregular2-summary-title">出欠状況</div>
           <div class="btn-row" style="margin-bottom:10px">
             <button class="btn btn-danger btn-sm" onclick="clearEventAttendanceTable('ev-irregular2-summary')" title="この行事の出欠表（事前連絡・当日出欠のすべての回答）を消去します">クリア（出欠表を消去）</button>
+            <button class="btn btn-sm" onclick="printEventAttendance('ev-irregular2-summary')">🖨 印刷</button>
           </div>
           <div id="ev-irregular2-summary"></div>
         </div>
@@ -1216,6 +1221,7 @@
           <div class="card-title" id="ev-irregular3-summary-title">出欠状況</div>
           <div class="btn-row" style="margin-bottom:10px">
             <button class="btn btn-danger btn-sm" onclick="clearEventAttendanceTable('ev-irregular3-summary')" title="この行事の出欠表（事前連絡・当日出欠のすべての回答）を消去します">クリア（出欠表を消去）</button>
+            <button class="btn btn-sm" onclick="printEventAttendance('ev-irregular3-summary')">🖨 印刷</button>
           </div>
           <div id="ev-irregular3-summary"></div>
         </div>
@@ -1546,6 +1552,7 @@
               <li>保存すると下に出欠状況の表が表示され、詰員1名につき1行で「事前連絡」（詰員がメールなどで事前に連絡してきた内容を管理者が代わりに入力する欄）と「当日出欠」（行事当日に実際にいた詰員を管理者が記録する欄）が並びます。どちらも「出席」「欠席」ボタンで記録し、同じボタンをもう一度押すと未回答／未確認に戻ります。</li>
               <li>その行事の日付にannual_rosterで当番が決まっている詰員は、ボタンを押さなくても最初から「当番」バッジで自動表示されます（当番は1名だけのため、他の詰員を手動で「当番」にすることはできません）。</li>
               <li>「クリア（出欠表を消去）」で、日付はそのまま残して出欠の記録だけを消去できます（勤詰会など毎回使い回す行事で、前回分をリセットしたいときに使います）。「保存した行事を削除」を押すと、日付を含めたその行事の保存内容と出欠記録がすべて削除され、未保存の状態に戻ります。</li>
+              <li>出欠状況カードの「🖨 印刷」を押すと、氏名・事前連絡・当日出欠を一覧表にした印刷用の画面が別ウィンドウで開きます。</li>
               <li>画面上部の「現場確認の担当者」欄で、詰員用アプリ（member.html）から当日出欠を記録できる詰員（現場確認担当者）を選び、「保存する」を押します。</li>
             </ol>
             <div class="howto-note">現場確認担当者に選ばれた詰員は、自分のスマホのmember.html画面から当日出欠を確認・記録できます。選ばれていない詰員には、その機能は表示されません。操作方法は「詰員用アプリの左上に表示されている自分の名前をタッチする」だけです（パソコンの場合は右クリック）。担当者になった詰員には、その旨をお伝えください。</div>
@@ -5870,6 +5877,37 @@ ${bodyHtml}
   w.document.open();
   w.document.write(doc);
   w.document.close();
+}
+
+// 出欠管理（勤詰会・詰員慰労(中元)・詰員慰労(歳暮)・イレギュラー行事×3）の各行事の
+// 「出欠状況」を印刷する。画面に表示済みの出欠表（ボタンで「出席」「欠席」「当番」を
+// 表している）をそのまま読み取り、印刷用には文字（出席／欠席／当番／未回答・未確認）に
+// 変換して一覧表にする（ボタンをそのまま印刷しても押せないため）。
+function printEventAttendance(containerId) {
+  const container = document.getElementById(containerId);
+  const titleEl = document.getElementById(containerId + '-title');
+  const title = titleEl ? titleEl.textContent : '出欠状況';
+  const table = container ? container.querySelector('table') : null;
+  if (!table) { alert('印刷できる出欠状況がありません。行事を保存すると出欠表が表示されます。'); return; }
+  const cellText = (td) => {
+    if (!td) return '';
+    if (td.querySelector('.ev-checkin-duty-badge')) return '当番';
+    const activeBtn = td.querySelector('button.active');
+    return activeBtn ? activeBtn.textContent.trim() : '';
+  };
+  const rowsHtml = Array.from(table.querySelectorAll('tbody tr')).map(tr => {
+    const tds = tr.querySelectorAll('td');
+    const name = tds[0] ? tds[0].textContent.trim() : '';
+    const adv = cellText(tds[1]) || '未回答';
+    const ci = cellText(tds[2]) || '未確認';
+    return `<tr><td style="text-align:left">${name}</td><td style="text-align:center">${adv}</td><td style="text-align:center">${ci}</td></tr>`;
+  }).join('');
+  const bodyHtml = `
+    <h1>${title}</h1>
+    <div class="print-date">印刷日：${new Date().toLocaleDateString('ja-JP')}</div>
+    <table><thead><tr><th style="text-align:left">氏名</th><th style="text-align:center">事前連絡</th><th style="text-align:center">当日出欠</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+  `;
+  openPrintWindow(title, bodyHtml);
 }
 
 // 朝勤め・夕勤め 時刻表（月ごと：前半1〜15日／後半16日〜月末日）
