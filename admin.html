@@ -5898,8 +5898,9 @@ function printEventAttendance(containerId) {
   const rowsHtml = Array.from(table.querySelectorAll('tbody tr')).map(tr => {
     const tds = tr.querySelectorAll('td');
     const name = tds[0] ? tds[0].textContent.trim() : '';
-    const adv = cellText(tds[1]) || '未回答';
-    const ci = cellText(tds[2]) || '未確認';
+    // 未回答／未確認は印刷時は空欄にする（出席・欠席・当番だけ文字で表記する）
+    const adv = cellText(tds[1]);
+    const ci = cellText(tds[2]);
     return `<tr><td style="text-align:left">${name}</td><td style="text-align:center">${adv}</td><td style="text-align:center">${ci}</td></tr>`;
   }).join('');
   const bodyHtml = `
