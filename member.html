@@ -159,10 +159,17 @@
      現場確認の担当者（is_checkin_operator）専用） */
   .attendance-modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; padding: 16px; }
   .attendance-modal-bg.open { display: flex; }
-  .attendance-modal { background: var(--surface); border-radius: var(--radius-lg); padding: 20px; width: 420px; max-width: 100%; max-height: 85vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
   /* 詰員数が多く出欠確認モーダルが長くなっても、下までスクロールしなくてもすぐ閉じられるよう、
-     上部にも「閉じる」ボタンを固定表示する（下部の既存ボタンはそのまま残す） */
-  .attendance-modal-top-close { position: sticky; top: -20px; z-index: 5; background: var(--surface); margin: -20px -20px 10px; padding: 14px 20px 10px; border-bottom: 1px solid var(--border); }
+     「閉じる」ボタン（上部固定・下部のボタンは廃止済み）と、氏名・当日出欠の表の見出し行を
+     常に画面内に固定表示する。そのため、閉じるボタンの行はスクロールしない固定ヘッダーとして
+     別枠にし、実際にスクロールするのは中身（.attendance-modal-scroll）だけにしている。 */
+  .attendance-modal { background: var(--surface); border-radius: var(--radius-lg); width: 420px; max-width: 100%; max-height: 85vh; box-shadow: 0 8px 32px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden; }
+  .attendance-modal-top-close { flex: 0 0 auto; padding: 14px 20px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  /* padding-topはこのdiv自体には付けない：付けると氏名・当日出欠の見出し行を
+     position:stickyで固定表示したときに、上部にできる余白（パディング部分）を通して
+     直前の行が一瞬透けて見えてしまう（見出し行と本文行が重なって見える不具合の原因だった）
+     ため、上の余白は中身側（#attendance-modal-body）に付けている */
+  .attendance-modal-scroll { flex: 1 1 auto; overflow-y: auto; padding: 0 20px 20px; }
   .attendance-event-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-top: 12px; }
   .attendance-event-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
   .attendance-event-date { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
@@ -172,11 +179,22 @@
   /* 出欠確認タブ（現場確認の担当者専用）：詰員全員分の出欠を、氏名・当日出欠を
      1行にまとめた表で一覧表示する。スマホでの誤タップ（隣の詰員のボタンを押してしまう）
      を防ぐため、行の高さ・ボタンは指で押しやすい大きさを優先している。 */
-  .mchk-list { margin-top: 6px; overflow-x: auto; }
-  .mchk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  /* overflow-x:auto は付けない：付けるとCSSの仕様上overflow-yも自動的に「auto」扱いになり、
+     このdiv自体が縦スクロールの基準にされてしまうため、下のthead thのposition:stickyが
+     本来固定したい外側のスクロール領域（.attendance-modal-scroll）ではなく、このdiv基準に
+     なってしまい、見出し行が正しく貼り付かなくなる（実際にその不具合が起きたため、付けない
+     方針にしている） */
+  .mchk-list { margin-top: 6px; }
+  /* border-collapse:separateにしているのは、collapseのままだと見出し行（th）を
+     position:stickyで固定したときに、本文の行と重なって表示が崩れてしまう
+     ブラウザの既知の癖があるため */
+  .mchk-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
   .mchk-table th {
     text-align: center; font-size: 11px; font-weight: 600; color: var(--text-hint);
     padding: 6px 4px; border-bottom: 1px solid var(--border); white-space: nowrap;
+    /* 詰員が多く縦に長い表でも、氏名・当日出欠の見出しが見えたままスクロールできるよう、
+       スクロール領域（.attendance-modal-scroll）の上端に貼り付けて固定表示する */
+    position: sticky; top: 0; z-index: 3; background: var(--surface);
   }
   .mchk-table td { padding: 10px 4px; border-bottom: 1px solid var(--border); vertical-align: middle; }
   .mchk-name { font-weight: 500; white-space: nowrap; }
@@ -416,9 +434,8 @@
       <div class="attendance-modal-top-close">
         <button class="btn btn-block" onclick="closeAttendanceModal()">閉じる</button>
       </div>
-      <div id="attendance-modal-body">読み込み中...</div>
-      <div class="btn-row">
-        <button class="btn btn-block" onclick="closeAttendanceModal()">閉じる</button>
+      <div class="attendance-modal-scroll">
+        <div id="attendance-modal-body" style="padding-top:10px">読み込み中...</div>
       </div>
     </div>
   </div>
