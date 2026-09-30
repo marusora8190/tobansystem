@@ -1080,6 +1080,13 @@
         <div id="ev-operator-msg" style="margin-top:8px"></div>
       </div>
 
+      <div class="card">
+        <div class="card-title">スマホに表示する行事</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">チェックを入れた行事だけが、現場確認の担当者のスマホ（詰員用アプリ）の出欠表に表示されます。チェックを切り替えるとすぐに保存されます。新しく保存・追加した行事は、最初は「表示する」になっています（終了した行事はチェックに関係なくスマホには表示されません）。</p>
+        <div id="ev-mobile-list" style="display:flex;flex-direction:column;gap:8px">読み込み中...</div>
+        <div id="ev-mobile-msg" style="margin-top:8px"></div>
+      </div>
+
       <div class="tab-bar">
         <button class="tab-btn active" id="ev-tab-btn-kinshikai" onclick="switchEventTab('kinshikai')">勤詰会</button>
         <button class="tab-btn" id="ev-tab-btn-natsu_ianro" onclick="switchEventTab('natsu_ianro')">詰員慰労(中元)</button>
@@ -1555,6 +1562,7 @@
               <li>「クリア（出欠表を消去）」で、日付はそのまま残して出欠の記録だけを消去できます（勤詰会など毎回使い回す行事で、前回分をリセットしたいときに使います）。「保存した行事を削除」を押すと、日付を含めたその行事の保存内容と出欠記録がすべて削除され、未保存の状態に戻ります。</li>
               <li>出欠状況カードの「🖨 印刷」を押すと、氏名・事前連絡・当日出欠を一覧表にした印刷用の画面が別ウィンドウで開きます。</li>
               <li>画面上部の「現場確認の担当者」欄で、詰員用アプリ（member.html）から当日出欠を記録できる詰員（現場確認担当者）を選び、「保存する」を押します。</li>
+              <li>その下の「スマホに表示する行事」欄で、現場確認担当者のスマホの出欠表に表示する行事を選べます。チェックを入れた行事だけがスマホに表示され、チェックを外した行事は表示されなくなります（切り替えるとすぐに保存されます）。新しく保存・追加した行事は最初は「表示する」になっています。終了した行事はチェックに関係なくスマホには表示されません。</li>
             </ol>
             <div class="howto-note">現場確認担当者に選ばれた詰員は、自分のスマホのmember.html画面から当日出欠を確認・記録できます。選ばれていない詰員には、その機能は表示されません。操作方法は「詰員用アプリの左上に表示されている自分の名前をタッチする」だけです（パソコンの場合は右クリック）。担当者になった詰員には、その旨をお伝えください。</div>
           </div>
@@ -1783,6 +1791,7 @@ async function saveIrregularTabLabel(value, slot) {
     const { error } = await sbClient.from('app_settings').upsert({ key: 'events_irregular_tab_label' + slot, value: trimmed }, { onConflict: 'key' });
     if (error) throw error;
     if (input) input.value = trimmed;
+    loadMobileEventSelector();
   } catch (e) {
     alert('タブ名の保存に失敗しました: ' + e.message);
   }
@@ -1815,6 +1824,56 @@ function refreshEventsPageMemberViews() {
       renderEventAttendanceSummary(ctx.eventId, ctx.eventDate, containerId).catch(() => {});
     }
   });
+}
+
+// スマホ（member.html の現場確認の出欠表）に表示する行事の選択。
+// member.html は events.is_open = true かつ今日以降（または日付未定）の行事だけを表示するので、
+// ここで is_open を切り替えることで、スマホに出す行事を管理者が選べるようにする。
+// 終了した行事はスマホ側で必ず除外されるため、この一覧にも出さない。
+function mobileEventLabel(ev) {
+  let cat = EVENT_CATEGORY_NAMES[ev.category] || '';
+  if (!cat && String(ev.category).startsWith('irregular')) {
+    const tab = document.getElementById('ev-tab-btn-' + ev.category);
+    cat = (tab && tab.value.trim()) || 'イレギュラー行事';
+  }
+  const name = (cat && cat !== ev.name) ? `${cat}：${ev.name}` : ev.name;
+  return `${name}${ev.event_date ? '（' + ev.event_date + '）' : '（日付未定）'}`;
+}
+
+async function loadMobileEventSelector() {
+  const el = document.getElementById('ev-mobile-list');
+  if (!el) return;
+  try {
+    const { data, error } = await sbClient.from('events').select('*').order('event_date', { ascending: true, nullsFirst: false });
+    if (error) throw error;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const list = (data || []).filter(ev => !ev.event_date || ev.event_date >= todayStr);
+    if (!list.length) {
+      el.innerHTML = '<span style="color:var(--text-hint);font-size:13px">これから開催予定の行事はまだありません。各タブで行事を保存・追加すると、ここに表示されます。</span>';
+      return;
+    }
+    el.innerHTML = list.map(ev => `<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+      <input type="checkbox" data-event-id="${ev.id}" ${ev.is_open !== false ? 'checked' : ''} onchange="toggleMobileEvent(${ev.id}, this)">
+      <span>${mobileEventLabel(ev)}</span>
+    </label>`).join('');
+  } catch (e) {
+    el.innerHTML = '<div class="alert alert-error">読み込みに失敗しました: ' + e.message + '</div>';
+  }
+}
+
+async function toggleMobileEvent(id, checkbox) {
+  const checked = checkbox.checked;
+  checkbox.disabled = true;
+  try {
+    const { error } = await sbClient.from('events').update({ is_open: checked }).eq('id', id);
+    if (error) throw error;
+    showMsg('ev-mobile-msg', checked ? 'スマホに表示するようにしました' : 'スマホに表示しないようにしました', 'success');
+  } catch (e) {
+    checkbox.checked = !checked; // 保存に失敗したら元に戻す
+    showMsg('ev-mobile-msg', '保存に失敗しました: ' + e.message, 'error');
+  } finally {
+    checkbox.disabled = false;
+  }
 }
 
 async function saveCheckinOperators() {
@@ -1909,6 +1968,7 @@ async function saveFixedEvent(category) {
     showMsg(msgId, '保存しました', 'success');
     updateEventSummaryTitle(category, fixedEventCache[category]);
     await renderEventAttendanceSummary(eventId, dateVal, 'ev-' + category + '-summary');
+    loadMobileEventSelector();
   } catch (e) {
     showMsg(msgId, '保存に失敗しました: ' + e.message, 'error');
   }
@@ -1928,6 +1988,7 @@ async function deleteFixedEvent(category) {
     fixedEventCache[category] = null;
     showMsg(msgId, '削除しました', 'success');
     await loadFixedEventTab(category);
+    loadMobileEventSelector();
   } catch (e) {
     showMsg(msgId, '削除に失敗しました: ' + e.message, 'error');
   }
@@ -2160,6 +2221,7 @@ async function createIrregularEvent(slot) {
     document.getElementById('ev-irregular' + slot + '-date').value = '';
     showMsg(msgId, '追加しました', 'success');
     await loadIrregularEvents(slot);
+    loadMobileEventSelector();
   } catch (e) {
     showMsg(msgId, '追加に失敗しました: ' + e.message, 'error');
   }
@@ -6098,6 +6160,7 @@ async function showPage(name) {
     if (!members.length) await loadMembers().catch(() => {});
     renderCheckinOperatorSelector();
     await loadIrregularTabLabel();
+    loadMobileEventSelector();
     if (!eventsPageInitialized) { eventsPageInitialized = true; await switchEventTab('kinshikai'); }
   }
 }

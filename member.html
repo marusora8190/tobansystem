@@ -203,8 +203,21 @@
     /* 詰員が多く縦に長い表でも、氏名・当日出欠の見出しが見えたままスクロールできるよう固定表示する。
        すぐ上に行事名・日付・出席者数・「閉じる」ボタンの見出しブロック（.mchk-card-header、
        高さ約62px）も固定表示されているため、その真下に重ならないようtopをその高さ分だけ下げている */
-    position: sticky; top: 62px; z-index: 3; background: var(--surface);
+    position: sticky; top: var(--mchk-header-h, 62px); z-index: 3; background: var(--surface);
   }
+  /* 行事が2つ以上あるとき、見出しブロックの最上段に並べる行事の切替ボタン。
+     見出しブロックごと固定表示されるので、表を下までスクロールしていても切り替えられる。
+     切替ボタンの分だけ見出しの高さが変わるため、上の th の top は描画後に実測した
+     見出しの高さ（--mchk-header-h）を使う。 */
+  .mchk-switcher { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; }
+  .mchk-switch-btn {
+    flex: 1 1 0; min-width: 0; padding: 7px 8px; border-radius: var(--radius);
+    border: 1px solid var(--border-strong); background: #fff; color: var(--text-muted);
+    font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; line-height: 1.3;
+    -webkit-appearance: none; appearance: none;
+  }
+  .mchk-switch-btn .mchk-switch-date { display: block; font-size: 10px; font-weight: 400; }
+  .mchk-switch-btn.active { background: var(--accent-dark); border-color: var(--accent-dark); color: #fff; }
   .mchk-table td { padding: 10px 4px; border-bottom: 1px solid var(--border); vertical-align: middle; }
   .mchk-name { font-weight: 500; white-space: nowrap; }
   /* 当日出欠：「出席」「欠席」の2つのボタンで記録する。押すと色が付き、
@@ -1389,6 +1402,7 @@ async function openAttendanceModal(silent) {
     const checkinHtml = currentMember.is_checkin_operator ? await renderOperatorCheckinSection(attendanceEventsCache) : '<p style="font-size:13px;color:var(--text-hint)">現在、表示できる内容はありません。</p>';
 
     body.innerHTML = checkinHtml;
+    adjustCheckinStickyOffset();
   } catch (e) {
     if (silent) alert('最新の状態の読み込みに失敗しました');
     else body.innerHTML = '<div style="color:var(--danger);font-size:13px">読み込みに失敗しました</div>';
@@ -1421,7 +1435,13 @@ async function renderOperatorCheckinSection(events) {
       </div>`;
     } else {
       if (!allMembersCache.length) await loadAllMembersCache();
-      inner = (await Promise.all(targetEvents.map(ev => renderCheckinEventCard(ev)))).join('');
+      // 行事が2つ以上ある場合は、切替ボタンで選んだ行事の出欠表だけを表示する。
+      // 選択中の行事は selectedCheckinEventId に覚えておき、出席・欠席ボタンを押した後の
+      // 再読み込みやモーダルの開き直しでも、同じ行事のまま表示を続ける。
+      let current = targetEvents.find(ev => ev.id === selectedCheckinEventId);
+      if (!current) current = targetEvents[0];
+      selectedCheckinEventId = current.id;
+      inner = await renderCheckinEventCard(current, targetEvents.length >= 2 ? targetEvents : null);
     }
     return `<div class="mchk-section">
       ${inner}
@@ -1434,6 +1454,27 @@ async function renderOperatorCheckinSection(events) {
   }
 }
 
+let selectedCheckinEventId = null;
+
+// 行事の切替ボタン：選んだ行事の出欠表に表示を切り替え、表の先頭に戻す。
+async function switchCheckinEvent(eventId) {
+  if (eventId === selectedCheckinEventId) return;
+  selectedCheckinEventId = eventId;
+  const body = document.getElementById('attendance-modal-body');
+  if (!body) return;
+  body.innerHTML = await renderOperatorCheckinSection(attendanceEventsCache);
+  adjustCheckinStickyOffset();
+  const modal = body.closest('.attendance-modal');
+  if (modal) modal.scrollTop = 0;
+}
+
+// 見出しブロックの実際の高さに合わせて、氏名・当日出欠の見出し行の固定位置を調整する。
+function adjustCheckinStickyOffset() {
+  const header = document.querySelector('#attendance-modal-body .mchk-card-header');
+  const modal = document.querySelector('.attendance-modal');
+  if (header && modal) modal.style.setProperty('--mchk-header-h', header.offsetHeight + 'px');
+}
+
 let allMembersCache = [];
 async function loadAllMembersCache() {
   try {
@@ -1443,7 +1484,7 @@ async function loadAllMembersCache() {
   } catch (e) { allMembersCache = []; }
 }
 
-async function renderCheckinEventCard(ev) {
+async function renderCheckinEventCard(ev, switchEvents) {
   let onDutyMemberId = null;
   if (ev.event_date) {
     try {
@@ -1487,8 +1528,11 @@ async function renderCheckinEventCard(ev) {
     </tr>`;
   }).join('');
 
+  const switcher = switchEvents ? `<div class="mchk-switcher">${switchEvents.map(e => `<button type="button" class="mchk-switch-btn ${e.id === ev.id ? 'active' : ''}" onclick="switchCheckinEvent(${e.id})">${e.name}<span class="mchk-switch-date">${e.event_date || '日付未定'}</span></button>`).join('')}</div>` : '';
+
   return `<div class="attendance-event-card">
     <div class="mchk-card-header">
+      ${switcher}
       <div class="attendance-event-title">${ev.name}</div>
       <button type="button" class="btn btn-sm mchk-close-btn" onclick="closeAttendanceModal()">閉じる</button>
       <div class="attendance-event-date">${ev.event_date || '日付未定'}</div>
