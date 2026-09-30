@@ -1551,7 +1551,7 @@
               <li>勤詰会・詰員慰労(中元)・詰員慰労(歳暮)は「日付」欄に日付を入力して「保存する」を押します（年の入力欄はなく、日付だけで管理します。勤詰会は日付が未定のまま保存することもできます）。</li>
               <li>保存すると下に出欠状況の表が表示され、詰員1名につき1行で「事前連絡」（詰員がメールなどで事前に連絡してきた内容を管理者が代わりに入力する欄）と「当日出欠」（行事当日に実際にいた詰員を管理者が記録する欄）が並びます。どちらも「出席」「欠席」ボタンで記録し、同じボタンをもう一度押すと未回答／未確認に戻ります。</li>
               <li>その行事の日付にannual_rosterで当番が決まっている詰員は、ボタンを押さなくても最初から「当番」バッジで自動表示されます（当番は1名だけのため、他の詰員を手動で「当番」にすることはできません）。</li>
-              <li>出欠状況の表の見出し行、「事前連絡」の横にある「全出席」ボタンを押すと、当番の詰員を除く全員の事前連絡が一括で「出席」になります（当番の詰員はボタンを押しても「当番」のまま変わりません）。</li>
+              <li>出欠状況の表の見出し行、「事前連絡」の左側にある「全員出席」ボタン（どの行事タブでも同じ位置に表示されます）を押すと、当番の詰員を除く全員の事前連絡が一括で「出席」になります（当番の詰員はボタンを押しても「当番」のまま変わりません）。</li>
               <li>「クリア（出欠表を消去）」で、日付はそのまま残して出欠の記録だけを消去できます（勤詰会など毎回使い回す行事で、前回分をリセットしたいときに使います）。「保存した行事を削除」を押すと、日付を含めたその行事の保存内容と出欠記録がすべて削除され、未保存の状態に戻ります。</li>
               <li>出欠状況カードの「🖨 印刷」を押すと、氏名・事前連絡・当日出欠を一覧表にした印刷用の画面が別ウィンドウで開きます。</li>
               <li>画面上部の「現場確認の担当者」欄で、詰員用アプリ（member.html）から当日出欠を記録できる詰員（現場確認担当者）を選び、「保存する」を押します。</li>
@@ -2029,7 +2029,7 @@ async function renderEventAttendanceSummary(eventId, eventDate, containerId, sil
       <span style="color:var(--text-hint)">（全${members.length}名）</span>
     </div>
     <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px">詰員がメールなどで事前に出欠を連絡してきた場合は、「事前連絡」欄から管理者が代わりに入力できます。「当日出欠」欄は、行事当日に実際にいた詰員を記録する欄です。どちらも「出席」「欠席」ボタンで記録し、同じボタンをもう一度押すと未回答／未確認に戻ります（annual_rosterで自動判定された当番は、押さなくても最初から「当番」と表示されます）。</p>
-    <div class="table-wrap"><table><thead><tr><th style="text-align:left">氏名</th><th style="text-align:center">事前連絡 <button type="button" class="btn btn-sm" onclick="bulkSetAllPresent('${containerId}')" title="当番の詰員を除く全員の事前連絡を「出席」にします">全出席</button></th><th style="text-align:center">当日出欠</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="table-wrap"><table><thead><tr><th style="text-align:left">氏名</th><th style="text-align:center"><button type="button" class="btn btn-sm" onclick="bulkSetAllPresent('${containerId}')" title="当番の詰員を除く全員の事前連絡を「出席」にします">全員出席</button> 事前連絡</th><th style="text-align:center">当日出欠</th></tr></thead><tbody>${rows}</tbody></table></div>
   `;
 }
 
@@ -2078,7 +2078,7 @@ async function setCheckin(containerId, memberId, status) {
   }
 }
 
-// 「全出席」ボタン：事前連絡欄を、当番の詰員を除く全員まとめて「出席」にする。
+// 「全員出席」ボタン：事前連絡欄を、当番の詰員を除く全員まとめて「出席」にする。
 // その日にannual_rosterで当番が決まっている詰員は、このボタンを押しても
 // 「当番」のまま表示され続ける（事前連絡の記録自体を書き換えない）。
 async function bulkSetAllPresent(containerId) {
@@ -2091,7 +2091,7 @@ async function bulkSetAllPresent(containerId) {
       try {
         const { data } = await sbClient.from('annual_roster').select('member_id').eq('duty_date', ctx.eventDate).maybeSingle();
         onDutyMemberId = data ? data.member_id : null;
-      } catch (e) { /* 当番の突き合わせに失敗しても全出席の設定自体は続行する */ }
+      } catch (e) { /* 当番の突き合わせに失敗しても全員出席の設定自体は続行する */ }
     }
     const rowsToUpsert = members.filter(m => m.id !== onDutyMemberId).map(m => ({ event_id: ctx.eventId, member_id: m.id, status: 'present' }));
     if (rowsToUpsert.length) {
@@ -2100,7 +2100,7 @@ async function bulkSetAllPresent(containerId) {
     }
     await renderEventAttendanceSummary(ctx.eventId, ctx.eventDate, containerId, true);
   } catch (e) {
-    alert('全出席の設定に失敗しました: ' + e.message);
+    alert('全員出席の設定に失敗しました: ' + e.message);
   }
 }
 
