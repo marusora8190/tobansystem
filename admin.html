@@ -490,6 +490,8 @@
   #page-events .ev-mobile-state { margin-left: auto; flex: none; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: var(--radius); white-space: nowrap; }
   #page-events .ev-mobile-row.on .ev-mobile-state { background: #e3f1e4; color: #2e7d32; }
   #page-events .ev-mobile-row.off { background: var(--bg); }
+  #page-events .ev-mobile-ended { margin-left: 6px; font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: var(--radius); background: #eee; color: var(--text-muted); white-space: nowrap; }
+  #page-events .ev-mobile-subhead { margin-top: 6px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
   #page-events .ev-mobile-row.off .ev-mobile-name { color: var(--text-hint); }
   #page-events .ev-mobile-row.off .ev-mobile-state { background: #eee; color: var(--text-hint); }
   #page-events .ev-checkin-duty-badge {
@@ -1104,7 +1106,7 @@
 
       <div class="card">
         <div class="card-title">スマホに表示する行事</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">チェックを入れた行事だけが、現場確認の担当者のスマホ（詰員用アプリ）の出欠表に表示されます。チェックを切り替えるとすぐに保存されます。新しく保存・追加した行事は、最初は「表示する」になっています（終了した行事はチェックに関係なくスマホには表示されません）。</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">チェックを入れた行事だけが、現場確認の担当者のスマホ（詰員用アプリ）の出欠表に表示されます。チェックを切り替えるとすぐに保存されます。新しく保存・追加した行事は、最初は「表示する」になっています。終了した行事も自動では消えないので、スマホに出す必要がなくなったらチェックを外してください。</p>
         <div id="ev-mobile-list" style="display:flex;flex-direction:column;gap:8px">読み込み中...</div>
         <div id="ev-mobile-msg" style="margin-top:8px"></div>
       </div>
@@ -1584,7 +1586,7 @@
               <li>「クリア（出欠表を消去）」で、日付はそのまま残して出欠の記録だけを消去できます（勤詰会など毎回使い回す行事で、前回分をリセットしたいときに使います）。「保存した行事を削除」を押すと、日付を含めたその行事の保存内容と出欠記録がすべて削除され、未保存の状態に戻ります。</li>
               <li>出欠状況カードの「🖨 印刷」を押すと、氏名・事前連絡・当日出欠を一覧表にした印刷用の画面が別ウィンドウで開きます。</li>
               <li>画面上部の「現場確認の担当者」欄で、詰員用アプリ（member.html）から当日出欠を記録できる詰員（現場確認担当者）を選び、「保存する」を押します。</li>
-              <li>その下の「スマホに表示する行事」欄で、現場確認担当者のスマホの出欠表に表示する行事を選べます。チェックを入れた行事だけがスマホに表示され、チェックを外した行事は表示されなくなります（切り替えるとすぐに保存されます）。新しく保存・追加した行事は最初は「表示する」になっています。終了した行事はチェックに関係なくスマホには表示されません。</li>
+              <li>その下の「スマホに表示する行事」欄で、現場確認担当者のスマホの出欠表に表示する行事を選べます。チェックを入れた行事だけがスマホに表示され、チェックを外した行事は表示されなくなります（切り替えるとすぐに保存されます）。新しく保存・追加した行事は最初は「表示する」になっています。終了した行事も自動では非表示にならず、チェックを外すまでスマホに表示されます（一覧では「終了した行事」の見出しの下に、日付の新しい順に並びます）。</li>
             </ol>
             <div class="howto-note">現場確認担当者に選ばれた詰員は、自分のスマホのmember.html画面から当日出欠を確認・記録できます。選ばれていない詰員には、その機能は表示されません。操作方法は「詰員用アプリの左上に表示されている自分の名前をタッチする」だけです（パソコンの場合は右クリック）。担当者になった詰員には、その旨をお伝えください。</div>
           </div>
@@ -1851,7 +1853,8 @@ function refreshEventsPageMemberViews() {
 // スマホ（member.html の現場確認の出欠表）に表示する行事の選択。
 // member.html は events.is_open = true かつ今日以降（または日付未定）の行事だけを表示するので、
 // ここで is_open を切り替えることで、スマホに出す行事を管理者が選べるようにする。
-// 終了した行事はスマホ側で必ず除外されるため、この一覧にも出さない。
+// 終了した行事もスマホ側で自動的には除外しない（表示・非表示は is_open だけで決まる）ため、
+// この一覧にも出し、管理者が手動でチェックを外せるようにする。
 function mobileEventName(ev) {
   let cat = EVENT_CATEGORY_NAMES[ev.category] || '';
   if (!cat && String(ev.category).startsWith('irregular')) {
@@ -1879,20 +1882,31 @@ async function loadMobileEventSelector() {
   try {
     const { data, error } = await sbClient.from('events').select('*').order('event_date', { ascending: true, nullsFirst: false });
     if (error) throw error;
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const list = (data || []).filter(ev => !ev.event_date || ev.event_date >= todayStr);
-    if (!list.length) {
-      el.innerHTML = '<span style="color:var(--text-hint);font-size:13px">これから開催予定の行事はまだありません。各タブで行事を保存・追加すると、ここに表示されます。</span>';
+    // 日本時間の今日（toISOString は UTC のため、朝9時前に前日扱いになるのを避ける）
+    const t = new Date();
+    const todayStr = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    const all = data || [];
+    if (!all.length) {
+      el.innerHTML = '<span style="color:var(--text-hint);font-size:13px">まだ行事がありません。各タブで行事を保存・追加すると、ここに表示されます。</span>';
       return;
     }
-    el.innerHTML = list.map(ev => {
+    // これから開催（日付未定を含む）は日付の早い順、終了した行事は見出しの下に新しい順で並べる
+    const upcoming = all.filter(ev => !ev.event_date || ev.event_date >= todayStr);
+    const past = all.filter(ev => ev.event_date && ev.event_date < todayStr).sort((a, b) => a.event_date < b.event_date ? 1 : -1);
+    const rowHtml = (ev, ended) => {
       const on = ev.is_open !== false;
       return `<label class="ev-mobile-row ${on ? 'on' : 'off'}" title="クリックでスマホへの表示／非表示を切り替えます">
       <input type="checkbox" data-event-id="${ev.id}" ${on ? 'checked' : ''} onchange="toggleMobileEvent(${ev.id}, this)">
-      <span><span class="ev-mobile-name">${mobileEventName(ev)}</span><span class="ev-mobile-date">${ev.event_date || '日付未定'}</span></span>
+      <span><span class="ev-mobile-name">${mobileEventName(ev)}</span><span class="ev-mobile-date">${ev.event_date || '日付未定'}</span>${ended ? '<span class="ev-mobile-ended">終了</span>' : ''}</span>
       <span class="ev-mobile-state">${on ? 'スマホに表示中' : '非表示'}</span>
     </label>`;
-    }).join('');
+    };
+    let html = upcoming.map(ev => rowHtml(ev, false)).join('');
+    if (!upcoming.length) html += '<span style="color:var(--text-hint);font-size:13px">これから開催予定の行事はありません。</span>';
+    if (past.length) {
+      html += '<div class="ev-mobile-subhead">終了した行事</div>' + past.map(ev => rowHtml(ev, true)).join('');
+    }
+    el.innerHTML = html;
   } catch (e) {
     el.innerHTML = '<div class="alert alert-error">読み込みに失敗しました: ' + e.message + '</div>';
   }

@@ -1392,10 +1392,10 @@ async function openAttendanceModal(silent) {
   try {
     const { data: events, error } = await sbClient.from('events').select('*').eq('is_open', true).order('event_date', { ascending: true, nullsFirst: false });
     if (error) throw error;
-    // 日付が決まっている行事のうち、すでに終わったもの（今日より前の日付）は
-    // 現場確認の対象外として一覧から除外する（日付未定の行事は引き続き表示する）
-    const todayStr = new Date().toISOString().slice(0, 10);
-    attendanceEventsCache = (events || []).filter(ev => !ev.event_date || ev.event_date >= todayStr);
+    // 表示する行事は、管理画面の「スマホに表示する行事」のチェック（is_open）だけで決める。
+    // 終了した行事（今日より前の日付）も自動では除外せず、管理者が手動でチェックを外すまで
+    // 表示を続ける（行事が終わった後でも当日出欠の記録・確認ができるようにするため）。
+    attendanceEventsCache = events || [];
 
     // 現場確認の担当者（is_checkin_operator）に選ばれた詰員だけ、行事ごとに詰員全員の
     // 出欠を確認・記録できる欄を表示する（担当者以外には表示するものがない）。
