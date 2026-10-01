@@ -6032,7 +6032,9 @@ const PRINT_ROOT_STYLE = `
   }
 `;
 
-function openPrintWindow(title, bodyHtml, extraStyle) {
+// beforePrintJs：印刷ダイアログを出す直前に印刷用ウィンドウ内で実行するJavaScript（任意）。
+// 文字の幅を実測して大きさを調整するなど、レイアウトが確定してから行う処理に使う。
+function openPrintWindow(title, bodyHtml, extraStyle, beforePrintJs) {
   const w = window.open('', '_blank', 'width=900,height=1000');
   if (!w) { alert('ポップアップがブロックされました。ブラウザの設定でこのサイトのポップアップを許可してください。'); return; }
   const doc = `<!DOCTYPE html>
@@ -6042,7 +6044,12 @@ function openPrintWindow(title, bodyHtml, extraStyle) {
 ${bodyHtml}
 <script>
   window.onload = function () {
-    window.print();
+    var run = function () {
+      try { ${beforePrintJs || ''} } catch (e) { console.error(e); }
+      window.print();
+    };
+    // Webフォントの読み込み完了を待ってから測る（文字幅がずれないように）
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(run); else run();
   };
 <\/script>
 </body></html>`;
@@ -6099,14 +6106,17 @@ const CHOTOME_TIMES = {
   12: { amFirst: '7:00', pmFirst: '5:00', amSecond: '7:00', pmSecond: '5:00' },
 };
 
-// カレンダー印刷（B5縦・余白0・本文左右20px）の列幅。
-// 1つの表の幅は約316px（(688px - 40px) / 2 - 8px）。日付列48px・右端（備考）列55pxを除いた
-// 氏名欄は約213pxで、左右の余白8pxずつを引いた約197pxが部署名・連絡先に使える幅になる。
-// 右端列を広げると部署名・連絡先がセルからはみ出すため、55pxにしておく。
-const PRINT_CAL_NOTE_COL_PX = 55;
-const PRINT_CAL_SUB_AVAIL_PX = 185; // 約197pxから、太字や印刷時の誤差の分の余裕を引いた幅
+// カレンダー印刷（@page B5縦・余白0・本文左右20px）のレイアウト。
+// Chrome の CSS「B5」は国際規格のB5（176mm＝約666px幅）で、本文幅は約626px。
+// 表全体の幅を「用紙幅いっぱい、ただし最大でB5の本文幅」にしておくと、印刷プレビュー画面
+// （ウィンドウ幅900px）と実際の印刷で列幅が一致するので、画面で測った文字サイズが
+// そのまま印刷にも当てはまる。1つの表の幅は約305px（(626px - 間16px) / 2）。
+const PRINT_CAL_CONTENT_MAX = 'calc(176mm - 40px)';
+const PRINT_CAL_NOTE_COL_PX = 55;   // 右端（備考）列
+const PRINT_CAL_SUB_AVAIL_PX = 185; // 初期値の見積もり用：部署名・連絡先に使える幅の目安
 
-// 部署名・連絡先の行が氏名欄に1行で収まる文字サイズ（最大10px）を、文字ごとの幅から求める。
+// 部署名・連絡先の文字サイズの初期値（最大10px）を文字ごとの幅から見積もる。
+// 実際の大きさは、印刷用ウィンドウでセル幅を実測して決め直す（PRINT_CAL_FIT_JS）。
 // 全角文字は文字サイズと同じ幅、半角の数字・記号は約0.62文字分として見積もる。
 function calcPrintSubFontSize(text) {
   if (!text) return 10;
@@ -6115,6 +6125,32 @@ function calcPrintSubFontSize(text) {
   const size = Math.floor((PRINT_CAL_SUB_AVAIL_PX / units) * 2) / 2; // 0.5px刻み
   return Math.max(5, Math.min(10, size));
 }
+
+// 印刷用ウィンドウで実行：部署名・連絡先（.cal-sub）が氏名欄の幅に1行で収まるまで、
+// 10pxから0.5pxずつ文字を小さくする。6pxまで小さくしても入りきらない極端に長い場合は、
+// 読める大きさを保ったまま文字を横方向に詰めて（長体）セル幅に収める。
+// セル幅を実測しているので、列幅を変えても自動で追従する。
+const PRINT_CAL_FIT_JS = `
+  document.querySelectorAll('.cal-sub').forEach(function (el) {
+    var txt = el.querySelector('.cal-sub-text');
+    if (!txt) return;
+    var avail = el.clientWidth;
+    var size = 10;
+    txt.style.transform = '';
+    el.style.fontSize = size + 'px';
+    while (txt.offsetWidth > avail && size > 6) {
+      size -= 0.5;
+      el.style.fontSize = size + 'px';
+    }
+    var scale = 1;
+    if (txt.offsetWidth > avail) {
+      scale = Math.floor((avail / txt.offsetWidth) * 1000) / 1000;
+      txt.style.transform = 'scaleX(' + scale + ')';
+    }
+    el.setAttribute('data-fit-size', size);
+    el.setAttribute('data-fit-scale', scale);
+  });
+`;
 
 function printCalendar() {
   const month = calMonth + 1;
@@ -6147,7 +6183,7 @@ function printCalendar() {
       <td style="width:48px;text-align:center;font-size:14px;font-weight:700;border:1px solid #555;padding:2px;white-space:nowrap;${dayBg}">${dowLabel}</td>
       <td style="border:1px solid #555;padding:2px 8px;">
         <div style="font-size:15px;font-weight:700;">${name}</div>
-        <div style="font-size:${subFontSize}px;font-weight:700;color:#555;margin-top:1px;white-space:nowrap">${subLine}</div>
+        <div class="cal-sub" style="font-size:${subFontSize}px;font-weight:700;color:#555;margin-top:1px;white-space:nowrap;overflow:hidden"><span class="cal-sub-text" style="display:inline-block;transform-origin:left center">${subLine}</span></div>
       </td>
       <td style="border:1px solid #555;padding:2px 4px;vertical-align:middle;">${noteCellHtml}</td>
     </tr>`;
@@ -6172,7 +6208,7 @@ function printCalendar() {
 
   const bodyHtml = `
     <h1>${title}</h1>
-    <div style="margin-top:12px;">
+    <div style="margin:12px auto 0;width:100%;max-width:${PRINT_CAL_CONTENT_MAX};">
       <div style="float:left;width:calc(50% - 8px);">
         <div style="font-size:13px;font-weight:700;margin-bottom:6px;line-height:1.5">${subFirst}</div>
         <table style="${tableStyle}">
@@ -6190,7 +6226,7 @@ function printCalendar() {
       <div style="clear:both"></div>
     </div>
   `;
-  openPrintWindow(title, bodyHtml);
+  openPrintWindow(title, bodyHtml, '', PRINT_CAL_FIT_JS);
 }
 
 // 支障日一覧（一覧表形式）を印刷する（横向き・現在表示中の月の内容をそのまま印刷）
