@@ -476,6 +476,22 @@
   }
   #page-events .ev-btn2.present.active { background: #2e7d32; border-color: #2e7d32; color: #fff; }
   #page-events .ev-btn2.absent.active { background: #a33; border-color: #a33; color: #fff; }
+  /* スマホに表示する行事：チェックボックスを行事名のすぐ左に置き、1行事を1つの枠にまとめる。
+     共通スタイル（input { width:100% }）のままだとチェックボックスが横に広がり、
+     行事名と離れて見えてしまうため、幅を自動に戻している。右端に表示状態の印を付ける。 */
+  #page-events .ev-mobile-row {
+    display: flex; align-items: center; gap: 10px; max-width: 520px; padding: 8px 12px;
+    border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; background: var(--surface);
+  }
+  #page-events .ev-mobile-row:hover { background: var(--accent-light); }
+  #page-events .ev-mobile-row input[type="checkbox"] { width: 18px; height: 18px; margin: 0; padding: 0; flex: none; cursor: pointer; }
+  #page-events .ev-mobile-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  #page-events .ev-mobile-date { font-size: 12px; color: var(--text-muted); margin-left: 6px; white-space: nowrap; }
+  #page-events .ev-mobile-state { margin-left: auto; flex: none; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: var(--radius); white-space: nowrap; }
+  #page-events .ev-mobile-row.on .ev-mobile-state { background: #e3f1e4; color: #2e7d32; }
+  #page-events .ev-mobile-row.off { background: var(--bg); }
+  #page-events .ev-mobile-row.off .ev-mobile-name { color: var(--text-hint); }
+  #page-events .ev-mobile-row.off .ev-mobile-state { background: #eee; color: var(--text-hint); }
   #page-events .ev-checkin-duty-badge {
     padding: 3px 10px; border-radius: var(--radius); background: #f5eecb; color: #7a5c00;
     font-size: 13px; font-weight: 600;
@@ -1836,14 +1852,25 @@ function refreshEventsPageMemberViews() {
 // member.html は events.is_open = true かつ今日以降（または日付未定）の行事だけを表示するので、
 // ここで is_open を切り替えることで、スマホに出す行事を管理者が選べるようにする。
 // 終了した行事はスマホ側で必ず除外されるため、この一覧にも出さない。
-function mobileEventLabel(ev) {
+function mobileEventName(ev) {
   let cat = EVENT_CATEGORY_NAMES[ev.category] || '';
   if (!cat && String(ev.category).startsWith('irregular')) {
     const tab = document.getElementById('ev-tab-btn-' + ev.category);
     cat = (tab && tab.value.trim()) || 'イレギュラー行事';
   }
-  const name = (cat && cat !== ev.name) ? `${cat}：${ev.name}` : ev.name;
-  return `${name}${ev.event_date ? '（' + ev.event_date + '）' : '（日付未定）'}`;
+  return (cat && cat !== ev.name) ? `${cat}：${ev.name}` : ev.name;
+}
+function mobileEventLabel(ev) {
+  return `${mobileEventName(ev)}${ev.event_date ? '（' + ev.event_date + '）' : '（日付未定）'}`;
+}
+// 行の見た目（表示中／非表示）をチェック状態に合わせる
+function setMobileRowState(checkbox) {
+  const row = checkbox.closest('.ev-mobile-row');
+  if (!row) return;
+  row.classList.toggle('on', checkbox.checked);
+  row.classList.toggle('off', !checkbox.checked);
+  const st = row.querySelector('.ev-mobile-state');
+  if (st) st.textContent = checkbox.checked ? 'スマホに表示中' : '非表示';
 }
 
 async function loadMobileEventSelector() {
@@ -1858,10 +1885,14 @@ async function loadMobileEventSelector() {
       el.innerHTML = '<span style="color:var(--text-hint);font-size:13px">これから開催予定の行事はまだありません。各タブで行事を保存・追加すると、ここに表示されます。</span>';
       return;
     }
-    el.innerHTML = list.map(ev => `<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
-      <input type="checkbox" data-event-id="${ev.id}" ${ev.is_open !== false ? 'checked' : ''} onchange="toggleMobileEvent(${ev.id}, this)">
-      <span>${mobileEventLabel(ev)}</span>
-    </label>`).join('');
+    el.innerHTML = list.map(ev => {
+      const on = ev.is_open !== false;
+      return `<label class="ev-mobile-row ${on ? 'on' : 'off'}" title="クリックでスマホへの表示／非表示を切り替えます">
+      <input type="checkbox" data-event-id="${ev.id}" ${on ? 'checked' : ''} onchange="toggleMobileEvent(${ev.id}, this)">
+      <span><span class="ev-mobile-name">${mobileEventName(ev)}</span><span class="ev-mobile-date">${ev.event_date || '日付未定'}</span></span>
+      <span class="ev-mobile-state">${on ? 'スマホに表示中' : '非表示'}</span>
+    </label>`;
+    }).join('');
   } catch (e) {
     el.innerHTML = '<div class="alert alert-error">読み込みに失敗しました: ' + e.message + '</div>';
   }
@@ -1869,6 +1900,7 @@ async function loadMobileEventSelector() {
 
 async function toggleMobileEvent(id, checkbox) {
   const checked = checkbox.checked;
+  setMobileRowState(checkbox);
   checkbox.disabled = true;
   try {
     const { error } = await sbClient.from('events').update({ is_open: checked }).eq('id', id);
@@ -1876,6 +1908,7 @@ async function toggleMobileEvent(id, checkbox) {
     showMsg('ev-mobile-msg', checked ? 'スマホに表示するようにしました' : 'スマホに表示しないようにしました', 'success');
   } catch (e) {
     checkbox.checked = !checked; // 保存に失敗したら元に戻す
+    setMobileRowState(checkbox);
     showMsg('ev-mobile-msg', '保存に失敗しました: ' + e.message, 'error');
   } finally {
     checkbox.disabled = false;
