@@ -6126,29 +6126,23 @@ function calcPrintSubFontSize(text) {
   return Math.max(5, Math.min(10, size));
 }
 
-// 印刷用ウィンドウで実行：部署名・連絡先（.cal-sub）が氏名欄の幅に1行で収まるまで、
-// 10pxから0.5pxずつ文字を小さくする。6pxまで小さくしても入りきらない極端に長い場合は、
-// 読める大きさを保ったまま文字を横方向に詰めて（長体）セル幅に収める。
-// セル幅を実測しているので、列幅を変えても自動で追従する。
+// 印刷用ウィンドウで実行：部署名・連絡先（.cal-sub-text）の文字サイズを、セル幅に合わせて自動で決める。
+// 画面で測った幅に合わせるだけだと、印刷時に余白や用紙の設定、フォントの描画の違いでセルが
+// 狭くなったときにはみ出してしまう。そこで、まず実際のフォントで「文字サイズ1pxあたりの文字幅」を
+// 測り、文字サイズを「セル幅（100cqw）× 92% ÷ その文字幅」という式（コンテナクエリ単位）で指定する。
+// こうすると印刷の瞬間のセル幅でブラウザが計算し直すため、印刷時の幅の変化にも追従する。
+// 92% は印刷時のフォント幅の誤差に備えた余裕。最大は10px（短い部署名はこれまでどおり10px）。
+const PRINT_CAL_FIT_RATIO = 0.92;
 const PRINT_CAL_FIT_JS = `
   document.querySelectorAll('.cal-sub').forEach(function (el) {
     var txt = el.querySelector('.cal-sub-text');
-    if (!txt) return;
-    var avail = el.clientWidth;
-    var size = 10;
-    txt.style.transform = '';
-    el.style.fontSize = size + 'px';
-    while (txt.offsetWidth > avail && size > 6) {
-      size -= 0.5;
-      el.style.fontSize = size + 'px';
-    }
-    var scale = 1;
-    if (txt.offsetWidth > avail) {
-      scale = Math.floor((avail / txt.offsetWidth) * 1000) / 1000;
-      txt.style.transform = 'scaleX(' + scale + ')';
-    }
-    el.setAttribute('data-fit-size', size);
-    el.setAttribute('data-fit-scale', scale);
+    if (!txt || !txt.textContent) return;
+    txt.style.fontSize = '10px';
+    var perPx = txt.getBoundingClientRect().width / 10;   // 文字サイズ1pxあたりの文字幅
+    if (!(perPx > 0)) return;
+    var coef = Math.floor((100 * ${PRINT_CAL_FIT_RATIO} / perPx) * 1000) / 1000;
+    txt.style.fontSize = 'min(10px, ' + coef + 'cqw)';
+    el.setAttribute('data-fit-coef', coef);
   });
 `;
 
@@ -6183,7 +6177,7 @@ function printCalendar() {
       <td style="width:48px;text-align:center;font-size:14px;font-weight:700;border:1px solid #555;padding:2px;white-space:nowrap;${dayBg}">${dowLabel}</td>
       <td style="border:1px solid #555;padding:2px 8px;">
         <div style="font-size:15px;font-weight:700;">${name}</div>
-        <div class="cal-sub" style="font-size:${subFontSize}px;font-weight:700;color:#555;margin-top:1px;white-space:nowrap;overflow:hidden"><span class="cal-sub-text" style="display:inline-block;transform-origin:left center">${subLine}</span></div>
+        <div class="cal-sub" style="container-type:inline-size;font-size:10px;font-weight:700;color:#555;margin-top:1px;white-space:nowrap;overflow:hidden"><span class="cal-sub-text" style="display:inline-block;font-size:${subFontSize}px">${subLine}</span></div>
       </td>
       <td style="border:1px solid #555;padding:2px 4px;vertical-align:middle;">${noteCellHtml}</td>
     </tr>`;
