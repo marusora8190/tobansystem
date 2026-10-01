@@ -492,9 +492,6 @@
   #page-events .ev-mobile-row.off { background: var(--bg); }
   #page-events .ev-mobile-ended { margin-left: 6px; font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: var(--radius); background: #eee; color: var(--text-muted); white-space: nowrap; }
   #page-events .ev-mobile-remove { flex: none; padding: 3px 10px; font-size: 11px; margin-left: 4px; }
-  #page-events .ev-mobile-removed { max-width: 520px; margin-top: 6px; font-size: 12px; color: var(--text-muted); }
-  #page-events .ev-mobile-removed summary { cursor: pointer; font-weight: 600; }
-  #page-events .ev-mobile-removed-row { display: flex; align-items: center; gap: 10px; justify-content: space-between; padding: 6px 12px; margin-top: 6px; border: 1px dashed var(--border); border-radius: var(--radius); }
   #page-events .ev-mobile-subhead { margin-top: 6px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
   #page-events .ev-mobile-row.off .ev-mobile-name { color: var(--text-hint); }
   #page-events .ev-mobile-row.off .ev-mobile-state { background: #eee; color: var(--text-hint); }
@@ -1110,7 +1107,7 @@
 
       <div class="card">
         <div class="card-title">スマホに表示する行事</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">チェックを入れた行事だけが、現場確認の担当者のスマホ（詰員用アプリ）の出欠表に表示されます。チェックを切り替えるとすぐに保存されます。新しく保存・追加した行事は、最初は「表示する」になっています。終了した行事も自動では消えないので、スマホに出す必要がなくなったらチェックを外してください。終了した行事は「一覧から外す」でこの一覧から消せます（出欠記録は残り、「一覧から外した行事」からいつでも戻せます）。</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">チェックを入れた行事だけが、現場確認の担当者のスマホ（詰員用アプリ）の出欠表に表示されます。チェックを切り替えるとすぐに保存されます。新しく保存・追加した行事は、最初は「表示する」になっています。終了した行事も自動では消えないので、スマホに出す必要がなくなったらチェックを外してください。終了した行事は「一覧から外す」でこの一覧から見えなくできます（スマホにも表示されなくなります。出欠記録は残ります）。</p>
         <div id="ev-mobile-list" style="display:flex;flex-direction:column;gap:8px">読み込み中...</div>
         <div id="ev-mobile-msg" style="margin-top:8px"></div>
       </div>
@@ -1590,7 +1587,7 @@
               <li>「クリア（出欠表を消去）」で、日付はそのまま残して出欠の記録だけを消去できます（勤詰会など毎回使い回す行事で、前回分をリセットしたいときに使います）。「保存した行事を削除」を押すと、日付を含めたその行事の保存内容と出欠記録がすべて削除され、未保存の状態に戻ります。</li>
               <li>出欠状況カードの「🖨 印刷」を押すと、氏名・事前連絡・当日出欠を一覧表にした印刷用の画面が別ウィンドウで開きます。</li>
               <li>画面上部の「現場確認の担当者」欄で、詰員用アプリ（member.html）から当日出欠を記録できる詰員（現場確認担当者）を選び、「保存する」を押します。</li>
-              <li>その下の「スマホに表示する行事」欄で、現場確認担当者のスマホの出欠表に表示する行事を選べます。チェックを入れた行事だけがスマホに表示され、チェックを外した行事は表示されなくなります（切り替えるとすぐに保存されます）。新しく保存・追加した行事は最初は「表示する」になっています。終了した行事も自動では非表示にならず、チェックを外すまでスマホに表示されます（一覧では「終了した行事」の見出しの下に、日付の新しい順に並びます）。終了した行事の右端にある「一覧から外す」を押すと、その行事は一覧から消え、スマホにも表示されなくなります（出欠記録は残ります）。外した行事は、一覧の下の「一覧から外した行事」を開いて「一覧に戻す」で元に戻せます。</li>
+              <li>その下の「スマホに表示する行事」欄で、現場確認担当者のスマホの出欠表に表示する行事を選べます。チェックを入れた行事だけがスマホに表示され、チェックを外した行事は表示されなくなります（切り替えるとすぐに保存されます）。新しく保存・追加した行事は最初は「表示する」になっています。終了した行事も自動では非表示にならず、チェックを外すまでスマホに表示されます（一覧では「終了した行事」の見出しの下に、日付の新しい順に並びます）。終了した行事の右端にある「一覧から外す」を押すと、その行事は一覧から見えなくなり、スマホにも表示されなくなります（出欠記録は残ります）。</li>
             </ol>
             <div class="howto-note">現場確認担当者に選ばれた詰員は、自分のスマホのmember.html画面から当日出欠を確認・記録できます。選ばれていない詰員には、その機能は表示されません。操作方法は「詰員用アプリの左上に表示されている自分の名前をタッチする」だけです（パソコンの場合は右クリック）。担当者になった詰員には、その旨をお伝えください。</div>
           </div>
@@ -1897,10 +1894,8 @@ async function loadMobileEventSelector() {
     // これから開催（日付未定を含む）は日付の早い順、終了した行事は見出しの下に新しい順で並べる
     const upcoming = all.filter(ev => !ev.event_date || ev.event_date >= todayStr);
     const pastAll = all.filter(ev => ev.event_date && ev.event_date < todayStr).sort((a, b) => a.event_date < b.event_date ? 1 : -1);
-    // 「一覧から外す」を押した終了行事（hidden_in_list）は通常の一覧には出さず、
-    // 下の「一覧から外した行事」欄（開閉式）にまとめて、「一覧に戻す」で元に戻せるようにする
+    // 「一覧から外す」を押した終了行事（hidden_in_list）は、画面には一切出さない
     const past = pastAll.filter(ev => !ev.hidden_in_list);
-    const removed = pastAll.filter(ev => ev.hidden_in_list);
     const rowHtml = (ev, ended) => {
       const on = ev.is_open !== false;
       // ボタンはlabelの中にあるため、押したときにチェックまで切り替わらないよう preventDefault する
@@ -1916,12 +1911,6 @@ async function loadMobileEventSelector() {
     if (past.length) {
       html += '<div class="ev-mobile-subhead">終了した行事</div>' + past.map(ev => rowHtml(ev, true)).join('');
     }
-    if (removed.length) {
-      html += `<details class="ev-mobile-removed"><summary>一覧から外した行事（${removed.length}件）</summary>
-        ${removed.map(ev => `<div class="ev-mobile-removed-row"><span><span class="ev-mobile-name">${mobileEventName(ev)}</span><span class="ev-mobile-date">${ev.event_date}</span></span>
-          <button type="button" class="btn btn-sm" onclick="restoreMobileEventToList(${ev.id})">一覧に戻す</button></div>`).join('')}
-      </details>`;
-    }
     el.innerHTML = html;
   } catch (e) {
     el.innerHTML = '<div class="alert alert-error">読み込みに失敗しました: ' + e.message + '</div>';
@@ -1930,8 +1919,9 @@ async function loadMobileEventSelector() {
 
 // 終了した行事を「スマホに表示する行事」の一覧から外す。一覧から消えるとチェックを
 // 外せなくなるため、スマホへの表示（is_open）も同時にオフにする。出欠記録は削除しない。
+// 外した行事を画面から戻す操作は設けない（必要ならデータベースで hidden_in_list を false に戻す）。
 async function removeMobileEventFromList(id) {
-  if (!confirm('この行事を一覧から外しますか？\n（スマホにも表示されなくなります。出欠の記録は残り、「一覧から外した行事」からいつでも戻せます）')) return;
+  if (!confirm('この行事を一覧から外しますか？\n（一覧から見えなくなり、スマホにも表示されなくなります。出欠の記録は残ります）')) return;
   try {
     const { error } = await sbClient.from('events').update({ hidden_in_list: true, is_open: false }).eq('id', id);
     if (error) throw error;
@@ -1939,18 +1929,6 @@ async function removeMobileEventFromList(id) {
     showMsg('ev-mobile-msg', '一覧から外しました', 'success');
   } catch (e) {
     showMsg('ev-mobile-msg', '一覧から外せませんでした: ' + e.message, 'error');
-  }
-}
-
-// 一覧から外した行事を元の一覧に戻す（スマホへの表示はオフのまま。必要ならチェックを入れる）
-async function restoreMobileEventToList(id) {
-  try {
-    const { error } = await sbClient.from('events').update({ hidden_in_list: false }).eq('id', id);
-    if (error) throw error;
-    await loadMobileEventSelector();
-    showMsg('ev-mobile-msg', '一覧に戻しました（スマホに表示する場合はチェックを入れてください）', 'success');
-  } catch (e) {
-    showMsg('ev-mobile-msg', '一覧に戻せませんでした: ' + e.message, 'error');
   }
 }
 
