@@ -183,7 +183,7 @@
   .matrix-cell-clickable:hover { background: #fee2e2 !important; }
 
   /* 支障日一覧表：下にスクロールしても見出し行（日にち・曜日）と
-     先頭3列（氏名・回数・日祝）が固定表示されるようにする。
+     先頭4列（氏名・前月の当番日・回数・日祝）が固定表示されるようにする。
      専用ページになったため、表示エリアをできるだけ広く確保する */
   .unavail-matrix-wrap { overflow-y: auto; max-height: calc(100vh - 260px); min-height: 240px; border: 1px solid var(--border); border-radius: var(--radius); }
   .unavail-matrix-wrap .matrix-table { border-collapse: separate; border-spacing: 0; }
@@ -193,10 +193,16 @@
   .unavail-matrix-wrap .matrix-table td:nth-child(2),
   .unavail-matrix-wrap .matrix-table th:nth-child(2) { position: sticky; left: var(--unavail-col2-left, 44px); z-index: 4; background: var(--surface); }
   .unavail-matrix-wrap .matrix-table td:nth-child(3),
-  .unavail-matrix-wrap .matrix-table th:nth-child(3) { position: sticky; left: var(--unavail-col3-left, 64px); z-index: 4; background: var(--surface); }
+  .unavail-matrix-wrap .matrix-table th:nth-child(3) { position: sticky; left: var(--unavail-col3-left, 70px); z-index: 4; background: var(--surface); }
+  .unavail-matrix-wrap .matrix-table td:nth-child(4),
+  .unavail-matrix-wrap .matrix-table th:nth-child(4) { position: sticky; left: var(--unavail-col4-left, 90px); z-index: 4; background: var(--surface); }
   .unavail-matrix-wrap .matrix-table thead th:nth-child(1),
   .unavail-matrix-wrap .matrix-table thead th:nth-child(2),
-  .unavail-matrix-wrap .matrix-table thead th:nth-child(3) { z-index: 11; background: var(--bg); }
+  .unavail-matrix-wrap .matrix-table thead th:nth-child(3),
+  .unavail-matrix-wrap .matrix-table thead th:nth-child(4) { z-index: 11; background: var(--bg); }
+  /* 前月の当番日列：表全体の横幅は変えずに増設するため、列幅を最小限にして文字を小さくする
+     （この列の幅の分だけ、日付の列が少しずつ細くなる）。当番が2回の人は2行で表示する。 */
+  .unavail-prev-duty { width: 26px; min-width: 26px; max-width: 26px; font-size: 8px; line-height: 1.25; white-space: nowrap; color: var(--text-muted); padding: 1px 0 !important; }
 
   /* Annual Plan Table: vertical column dividers */
   .annual-table th, .annual-table td { border-right: 1px solid var(--border); }
@@ -1443,7 +1449,7 @@
           <summary>3-7　登録済み支障日一覧</summary>
           <div class="howto-body">
             <ol>
-              <li>表示月を選ぶと、その月の一覧表（メンバー×日付）が表示されます。</li>
+              <li>表示月を選ぶと、その月の一覧表（メンバー×日付）が表示されます。氏名と回数の間の「前月当番日」列には、その方の前月の当番日（例：1日・12日）が表示されます（2回当番だった方は2行で表示されます）。</li>
               <li>空欄のセルをクリックすると支障日として登録され、✓が付いたセルをクリックすると削除されます。</li>
               <li>「🖨 この一覧表を印刷」で印刷できます。</li>
               <li>氏名の左にある📅ボタンを押すと、その方・その月を選んだ状態で「支障日登録」ページのカレンダーに移動します。支障日が多く、空いている日の方が少ない方は、移動後に空いている日だけをクリックして選び、「選んだ日以外をすべて支障日として登録」ボタンを使うと効率的に登録できます。</li>
@@ -4597,7 +4603,7 @@ async function loadUnavailable() {
   const daysInMonth = new Date(year, month, 0).getDate();
 
   const head = document.getElementById('unavail-matrix-head');
-  let headHtml = '<tr><th style="text-align:left;min-width:44px;padding-left:3px;background:var(--bg)">氏名</th><th style="width:20px;min-width:20px;max-width:20px;background:var(--bg)">回数</th><th style="width:20px;min-width:20px;max-width:20px;background:var(--bg)">日祝</th>';
+  let headHtml = '<tr><th style="text-align:left;min-width:44px;padding-left:3px;background:var(--bg)">氏名</th><th class="unavail-prev-duty" style="background:var(--bg);font-size:8px" title="前月の当番日">前月<br>当番日</th><th style="width:20px;min-width:20px;max-width:20px;background:var(--bg)">回数</th><th style="width:20px;min-width:20px;max-width:20px;background:var(--bg)">日祝</th>';
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const dow = new Date(dateStr + 'T00:00:00').getDay();
@@ -4639,7 +4645,7 @@ async function loadUnavailable() {
 
   const body = document.getElementById('unavail-matrix-body');
   if (!members.length) {
-    body.innerHTML = '<tr><td colspan="38" style="text-align:center;color:var(--text-hint);padding:16px">先に詰員名簿でメンバーを登録してください</td></tr>';
+    body.innerHTML = '<tr><td colspan="39" style="text-align:center;color:var(--text-hint);padding:16px">先に詰員名簿でメンバーを登録してください</td></tr>';
     return;
   }
 
@@ -4653,13 +4659,16 @@ async function loadUnavailable() {
   const prevMonthDate = new Date(year, month - 2, 1);
   const prevPrefix = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}-`;
   const lastDutyMap = {};
+  const prevDutyDaysMap = {}; // member_id -> 前月の当番日（日にちの配列、昇順）
   Object.keys(schedules).forEach(dateStr => {
     if (!dateStr.startsWith(prevPrefix)) return;
     const rec = schedules[dateStr];
     if (!rec || !rec.member_id) return;
     const mid = rec.member_id;
     if (!lastDutyMap[mid] || dateStr > lastDutyMap[mid]) lastDutyMap[mid] = dateStr;
+    (prevDutyDaysMap[mid] = prevDutyDaysMap[mid] || []).push(parseInt(dateStr.slice(8, 10), 10));
   });
+  Object.values(prevDutyDaysMap).forEach(arr => arr.sort((a, b) => a - b));
   const fmtDate = (dt) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
   const grayWindowMap = {};
   Object.keys(lastDutyMap).forEach(mid => {
@@ -4680,6 +4689,7 @@ async function loadUnavailable() {
 
     bodyHtml += `<tr>
       <td style="white-space:nowrap;font-weight:500;text-align:left;padding-left:3px;background:var(--surface);font-size:10px"><button type="button" onclick="goToUnavailCalendarFor(${m.id}, '${mon}')" title="${m.name}さんの支障日を、カレンダーでまとめて登録する画面に移動します" style="border:none;background:none;padding:0 2px 0 0;cursor:pointer;font-size:10px;vertical-align:middle">📅</button>${m.name}</td>
+      <td class="unavail-prev-duty" style="background:var(--surface)" title="${m.name}：前月の当番日">${(prevDutyDaysMap[m.id] || []).map(d => d + '日').join('<br>')}</td>
       <td style="width:20px;min-width:20px;max-width:20px;text-align:center;background:var(--surface);font-size:9px;color:#2e7d32;font-weight:500">${twiceCell}</td>
       <td style="width:20px;min-width:20px;max-width:20px;text-align:center;${holCellBg}"></td>`;
     
@@ -4729,18 +4739,21 @@ async function loadUnavailable() {
   updateUnavailMatrixStickyOffsets();
 }
 
-// 支障日一覧表：氏名・回数列の実際の描画幅を測定し、2列目(回数)・3列目(日祝)の
+// 支障日一覧表：氏名・前月の当番日・回数列の実際の描画幅を測定し、2列目(前月の当番日)・
+// 3列目(回数)・4列目(日祝)の
 // sticky位置(left)を正確に合わせる（氏名の長さによって列幅が変わっても崩れないようにする）
 function updateUnavailMatrixStickyOffsets() {
   const wrap = document.querySelector('.unavail-matrix-wrap');
   if (!wrap) return;
   const table = wrap.querySelector('.matrix-table');
   const row = table && table.querySelector('tbody tr');
-  if (!row || row.children.length < 3) return;
+  if (!row || row.children.length < 4) return;
   const w1 = row.children[0].getBoundingClientRect().width;
   const w2 = row.children[1].getBoundingClientRect().width;
+  const w3 = row.children[2].getBoundingClientRect().width;
   if (w1 > 0) table.style.setProperty('--unavail-col2-left', w1 + 'px');
   if (w1 > 0 && w2 > 0) table.style.setProperty('--unavail-col3-left', (w1 + w2) + 'px');
+  if (w1 > 0 && w2 > 0 && w3 > 0) table.style.setProperty('--unavail-col4-left', (w1 + w2 + w3) + 'px');
 }
 window.addEventListener('resize', updateUnavailMatrixStickyOffsets);
 
