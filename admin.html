@@ -6099,6 +6099,23 @@ const CHOTOME_TIMES = {
   12: { amFirst: '7:00', pmFirst: '5:00', amSecond: '7:00', pmSecond: '5:00' },
 };
 
+// カレンダー印刷（B5縦・余白0・本文左右20px）の列幅。
+// 1つの表の幅は約316px（(688px - 40px) / 2 - 8px）。日付列48px・右端（備考）列55pxを除いた
+// 氏名欄は約213pxで、左右の余白8pxずつを引いた約197pxが部署名・連絡先に使える幅になる。
+// 右端列を広げると部署名・連絡先がセルからはみ出すため、55pxにしておく。
+const PRINT_CAL_NOTE_COL_PX = 55;
+const PRINT_CAL_SUB_AVAIL_PX = 185; // 約197pxから、太字や印刷時の誤差の分の余裕を引いた幅
+
+// 部署名・連絡先の行が氏名欄に1行で収まる文字サイズ（最大10px）を、文字ごとの幅から求める。
+// 全角文字は文字サイズと同じ幅、半角の数字・記号は約0.62文字分として見積もる。
+function calcPrintSubFontSize(text) {
+  if (!text) return 10;
+  let units = 0;
+  for (const ch of text) units += /[\x20-\x7e]/.test(ch) ? 0.62 : 1;
+  const size = Math.floor((PRINT_CAL_SUB_AVAIL_PX / units) * 2) / 2; // 0.5px刻み
+  return Math.max(5, Math.min(10, size));
+}
+
 function printCalendar() {
   const month = calMonth + 1;
   const serviceDays = getServiceMonthDays(calYear, month);
@@ -6123,7 +6140,7 @@ function printCalendar() {
     const dept = mInfo ? (mInfo.department || '') : '';
     const phone = mInfo ? (mInfo.phone || mInfo.phone_number || mInfo.tel || '') : '';
     const subLine = [dept, phone].filter(Boolean).join('　');
-    const subFontSize = subLine.length <= 12 ? 10 : subLine.length <= 16 ? 9 : subLine.length <= 20 ? 8 : subLine.length <= 25 ? 7 : 6;
+    const subFontSize = calcPrintSubFontSize(subLine);
     const noteCellHtml = note ? `<div style="font-size:9px;color:#333;line-height:1.3;word-break:break-all;">${note}</div>` : '';
 
     const rowHtml = `<tr>
@@ -6159,14 +6176,14 @@ function printCalendar() {
       <div style="float:left;width:calc(50% - 8px);">
         <div style="font-size:13px;font-weight:700;margin-bottom:6px;line-height:1.5">${subFirst}</div>
         <table style="${tableStyle}">
-          <colgroup><col style="width:48px"><col><col style="width:110px"></colgroup>
+          <colgroup><col style="width:48px"><col><col style="width:${PRINT_CAL_NOTE_COL_PX}px"></colgroup>
           <tbody>${rowsFirst}</tbody>
         </table>
       </div>
       <div style="float:right;width:calc(50% - 8px);">
         <div style="font-size:13px;font-weight:700;margin-bottom:6px;line-height:1.5">${subSecond}</div>
         <table style="${tableStyle}">
-          <colgroup><col style="width:48px"><col><col style="width:110px"></colgroup>
+          <colgroup><col style="width:48px"><col><col style="width:${PRINT_CAL_NOTE_COL_PX}px"></colgroup>
           <tbody>${rowsSecond}</tbody>
         </table>
       </div>
