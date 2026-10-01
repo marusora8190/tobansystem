@@ -2763,6 +2763,19 @@ async function fetchAllRows(table, buildQuery) {
   return rows;
 }
 
+// 支障日（unavailable_dates）を条件付きで全件取得する（1000件対策）。
+// 1か月分でも全員の支障日が1000件を超えると、1回の取得では後ろの分が欠落してしまうため、
+// fetchAllRows で1000件ずつ読み込む。ページ送りの順番が毎回同じになるよう id 順に並べる。
+// 戻り値は従来の書き方に合わせて { data, error } の形にする。
+async function fetchAllUnavail(buildQuery) {
+  try {
+    const data = await fetchAllRows('unavailable_dates', q => buildQuery(q).order('id'));
+    return { data, error: null };
+  } catch (error) {
+    return { data: null, error };
+  }
+}
+
 async function loadSchedules() {
   try {
     const data = await fetchAllRows('annual_roster');
@@ -4689,11 +4702,9 @@ async function loadUnavailable() {
   headHtml += '</tr>';
   head.innerHTML = headHtml;
 
-  const { data, error } = await sbClient
-    .from('unavailable_dates')
-    .select('*')
+  const { data, error } = await fetchAllUnavail(q => q
     .gte('blocked_date', mon + '-01')
-    .lte('blocked_date', lastDayOfMonth(mon));
+    .lte('blocked_date', lastDayOfMonth(mon)));
 
   // この年の月2回・0回当番設定を取得（表示中の年間計画の年と異なる場合もあるため直接取得）
   const twiceMonthMap = {};
@@ -4861,10 +4872,9 @@ async function addMatrixDirect(memberId, dateStr, name) {
 async function loadUnavailSummary() {
   const mon = document.getElementById('u-summary-month').value;
   if (!mon) return;
-  const { data } = await sbClient.from('unavailable_dates')
-    .select('member_id, confirmed')
+  const { data } = await fetchAllUnavail(q => q
     .gte('blocked_date', mon + '-01')
-    .lte('blocked_date', lastDayOfMonth(mon));
+    .lte('blocked_date', lastDayOfMonth(mon)));
   const container = document.getElementById('unavail-summary');
   // member_id ごとに「支障日の総数」と「確認済みの数」を集計する
   const stats = {};
@@ -4948,7 +4958,7 @@ async function generateSchedule() {
   const prevPreviewLocked = {};
   generatedSchedule.forEach(r => { if (r.locked && r.member_id) prevPreviewLocked[r.date] = r.member_id; });
 
-  const { data: unavailData } = await sbClient.from('unavailable_dates').select('member_id, blocked_date').gte('blocked_date', rangeStart).lte('blocked_date', rangeEnd);
+  const { data: unavailData } = await fetchAllUnavail(q => q.gte('blocked_date', rangeStart).lte('blocked_date', rangeEnd));
   const unavailMap = {};
   (unavailData || []).forEach(u => {
     if (!unavailMap[u.blocked_date]) unavailMap[u.blocked_date] = new Set();
