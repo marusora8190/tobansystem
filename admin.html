@@ -797,6 +797,20 @@
 
     <div id="page-unavail-list" class="page">
       <div class="section-title">登録済み支障日一覧</div>
+      <details class="card" id="ucleanup-section" style="margin-bottom:10px;border-color:var(--accent)" ontoggle="if(this.open) refreshUnavailCleanupOldest()">
+        <summary style="cursor:pointer;font-size:14px;font-weight:600;color:var(--accent-dark)">🗑 古いデータの整理（過ぎた支障日の削除）<span style="font-size:12px;font-weight:400;color:var(--text-muted);margin-left:8px">ここを押すと開きます</span></summary>
+        <div style="font-size:13px;line-height:1.7;margin-top:8px">
+          <p style="margin-bottom:6px">入力した日付より前の支障日を、まとめて削除します。判断に使うのは支障日そのものの日付（登録した日ではありません）です。当番表・当番回数・詰員名簿などは消しません。削除したデータは元に戻せません。</p>
+          <p style="margin-bottom:6px;color:var(--text-muted)">これからの支障日を消さないよう、入力できる日付は今日までです。</p>
+          <div id="ucleanup-oldest" style="color:var(--text-muted);margin-bottom:6px">読み込み中...</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="date" id="ucleanup-date" style="width:160px" oninput="resetUnavailCleanupResult()">
+            <span>より前の支障日</span>
+            <button type="button" class="btn btn-sm" onclick="checkUnavailCleanupTargets()">対象を確認する</button>
+          </div>
+          <div id="ucleanup-result" style="display:none;margin-top:10px;white-space:pre-line" class="alert alert-info"></div>
+        </div>
+      </details>
       <div class="card">
         <div class="card-title">登録済み支障日一覧（一覧表形式）</div>
         <p style="font-size:12px;color:var(--text-muted);margin-bottom:4px;line-height:1.3">
@@ -824,20 +838,6 @@
           <span style="font-size:12px;color:var(--text-muted)"><span style="background:#c9c9c9;padding:1px 6px;border-radius:3px">灰</span> 前月当番からの中8日期間</span>
         </div>
       </div>
-      <details class="card" id="ucleanup-section" style="margin-top:16px" ontoggle="if(this.open) refreshUnavailCleanupOldest()">
-        <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted)">古いデータの整理（過ぎた支障日の削除）</summary>
-        <div style="font-size:13px;line-height:1.7;margin-top:8px">
-          <p style="margin-bottom:6px">入力した日付より前の支障日を、まとめて削除します。判断に使うのは支障日そのものの日付（登録した日ではありません）です。当番表・当番回数・詰員名簿などは消しません。削除したデータは元に戻せません。</p>
-          <p style="margin-bottom:6px;color:var(--text-muted)">これからの支障日を消さないよう、入力できる日付は今日までです。</p>
-          <div id="ucleanup-oldest" style="color:var(--text-muted);margin-bottom:6px">読み込み中...</div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <input type="date" id="ucleanup-date" style="width:160px" oninput="resetUnavailCleanupResult()">
-            <span>より前の支障日</span>
-            <button type="button" class="btn btn-sm" onclick="checkUnavailCleanupTargets()">対象を確認する</button>
-          </div>
-          <div id="ucleanup-result" style="display:none;margin-top:10px;white-space:pre-line" class="alert alert-info"></div>
-        </div>
-      </details>
     </div>
 
     <div id="page-generate" class="page">
@@ -1487,7 +1487,7 @@
               <li>空欄のセルをクリックすると支障日として登録され、✓が付いたセルをクリックすると削除されます。</li>
               <li>「🖨 この一覧表を印刷」で印刷できます。</li>
               <li>氏名の左にある📅ボタンを押すと、その方・その月を選んだ状態で「支障日登録」ページのカレンダーに移動します。支障日が多く、空いている日の方が少ない方は、移動後に空いている日だけをクリックして選び、「選んだ日以外をすべて支障日として登録」ボタンを使うと効率的に登録できます。</li>
-              <li>ページのいちばん下の「古いデータの整理」を開くと、日付を入れて、その日より前の支障日をまとめて削除できます。「対象を確認する」で件数を確かめてから削除してください（削除の直前に、もう一度ログインナンバーの入力が必要です）。当番表や当番回数は消えません。</li>
+              <li>ページのいちばん上の「🗑 古いデータの整理」を開くと、日付を入れて、その日より前の支障日をまとめて削除できます。「対象を確認する」で件数を確かめてから削除してください（削除の直前に、もう一度ログインナンバーの入力が必要です）。当番表や当番回数は消えません。</li>
             </ol>
             <div class="howto-note">色分け：✓＝登録済みの支障日、黄色＝当番日決定済み、赤塗りつぶし＝日祝当番の人、薄い赤＝日曜・祝日の枠、灰色＝前月の当番から中8日期間。</div>
           </div>
@@ -2792,7 +2792,7 @@ async function fetchAllUnavail(buildQuery) {
 }
 
 // =============================================
-// 古いデータの整理（登録済み支障日一覧ページのいちばん下）
+// 古いデータの整理（登録済み支障日一覧ページのいちばん上）
 // 入力した日付より前の支障日（unavailable_dates の blocked_date で判断）をまとめて削除する。
 // ・当番表・当番回数・詰員名簿など、ほかのデータは消さない。
 // ・これからの支障日を消さないよう、入力できる日付は今日まで。
