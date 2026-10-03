@@ -159,6 +159,10 @@
   /* 古いデータの整理：閉じているときは文字の幅だけにする（開いたら全幅） */
   #ucleanup-section { width: fit-content; max-width: 100%; }
   #ucleanup-section[open] { width: auto; }
+  /* 閉じているときは「開きます」、開いているときは「閉じます」と表示する */
+  #ucleanup-section .ucleanup-hint-close { display: none; }
+  #ucleanup-section[open] .ucleanup-hint-open { display: none; }
+  #ucleanup-section[open] .ucleanup-hint-close { display: inline; }
   #page-unavail-list .card-title { margin-bottom: 2px; }
   #page-unavail-list input, #page-unavail-list select { padding: 3px 8px; font-size: 12px; }
   #page-unavail-list .btn { padding: 4px 10px; font-size: 12px; }
@@ -801,7 +805,7 @@
     <div id="page-unavail-list" class="page">
       <div class="section-title">登録済み支障日一覧</div>
       <details class="card" id="ucleanup-section" style="margin-bottom:10px;border-color:var(--accent)" ontoggle="if(this.open) refreshUnavailCleanupOldest()">
-        <summary style="cursor:pointer;font-size:14px;font-weight:600;color:var(--accent-dark)">🗑 古いデータの整理（過ぎた支障日の削除）<span style="font-size:12px;font-weight:400;color:var(--text-muted);margin-left:8px">ここを押すと開きます</span></summary>
+        <summary style="cursor:pointer;font-size:14px;font-weight:600;color:var(--accent-dark)">🗑 古いデータの整理（過ぎた支障日の削除）<span class="ucleanup-hint-open" style="font-size:12px;font-weight:400;color:var(--text-muted);margin-left:8px">ここを押すと開きます</span><span class="ucleanup-hint-close" style="font-size:12px;font-weight:400;color:var(--text-muted);margin-left:8px">ここを押すと閉じます</span></summary>
         <div style="font-size:13px;line-height:1.7;margin-top:8px">
           <p style="margin-bottom:6px">入力した日付より前の支障日を、まとめて削除します。判断に使うのは支障日そのものの日付（登録した日ではありません）です。当番表・当番回数・詰員名簿などは消しません。削除したデータは元に戻せません。</p>
           <p style="margin-bottom:6px;color:var(--text-muted)">これからの支障日を消さないよう、入力できる日付は今日までです。</p>
