@@ -156,6 +156,9 @@
      一覧表になるべく広い表示スペースを確保する */
   #page-unavail-list .section-title { margin-bottom: 8px; }
   #page-unavail-list .card { padding: 6px 10px; margin-bottom: 6px; }
+  /* 古いデータの整理：閉じているときは文字の幅だけにする（開いたら全幅） */
+  #ucleanup-section { width: fit-content; max-width: 100%; }
+  #ucleanup-section[open] { width: auto; }
   #page-unavail-list .card-title { margin-bottom: 2px; }
   #page-unavail-list input, #page-unavail-list select { padding: 3px 8px; font-size: 12px; }
   #page-unavail-list .btn { padding: 4px 10px; font-size: 12px; }
