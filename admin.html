@@ -447,6 +447,22 @@
   #page-manual .howto-note { background: #f5f3ee; border-left: 3px solid var(--accent); padding: 8px 10px; font-size: 12px; color: #4a4030; border-radius: 0 4px 4px 0; margin: 4px 0 8px; line-height: 1.5; }
   #page-manual .howto-flow li { font-size: 13px; color: var(--text); padding: 4px 0; line-height: 1.6; }
   #page-manual .howto-flow { margin: 0 0 8px 20px; padding: 0; }
+  /* 設定・管理メモ（サイドバー「設　定」） */
+  #page-settings .set-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; overflow: hidden; }
+  #page-settings .set-item summary { cursor: pointer; padding: 10px 14px; font-weight: 500; font-size: 13px; color: var(--accent-dark); background: var(--bg); list-style: none; }
+  #page-settings .set-item summary::-webkit-details-marker { display: none; }
+  #page-settings .set-item summary::before { content: '▶'; display: inline-block; margin-right: 8px; font-size: 10px; transition: transform 0.15s ease; }
+  #page-settings .set-item[open] summary::before { transform: rotate(90deg); }
+  #page-settings .set-item[open] summary { border-bottom: 1px solid var(--border); }
+  #page-settings .set-body { padding: 10px 16px 14px; font-size: 13px; line-height: 1.6; }
+  #page-settings .set-sub { font-size: 12px; color: var(--text-muted); margin: 4px 0 8px; line-height: 1.5; }
+  #page-settings .set-h { font-size: 13px; font-weight: 500; color: var(--gold); margin: 10px 0 4px; }
+  #page-settings .set-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 3px 0; }
+  #page-settings .set-row a { color: var(--info); word-break: break-all; }
+  #page-settings .set-label { min-width: 11em; color: var(--text-muted); font-size: 12px; }
+  #page-settings .set-ol, #page-settings .set-ul { margin: 0 0 8px 20px; padding: 0; }
+  #page-settings .set-ol li, #page-settings .set-ul li { padding: 3px 0; }
+  #page-settings .set-code { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; font-size: 12px; }
 
   /* カレンダー表示の「Update」ボタンの確認メッセージ：見出し行に収まるよう小さく表示する */
   #cal-update-msg .alert { margin-bottom: 0; padding: 4px 10px; font-size: 12px; white-space: nowrap; }
@@ -574,6 +590,7 @@
     <div class="sidebar-item" onclick="showPage('events')">出欠管理</div>
     <div class="sidebar-item" onclick="showPage('festival-duty')">祭典日当番者記録</div>
     <div class="sidebar-item" onclick="showPage('system-guide')">システムの仕組み</div>
+    <div class="sidebar-item" onclick="showPage('settings')">設　定</div>
   </nav>
 
   <main class="main">
@@ -1358,6 +1375,148 @@
       </div>
     </div>
 
+    <!-- ===== ここから：設定（管理メモ。入力なし・確認専用。2026年10月6日追加） ===== -->
+    <div id="page-settings" class="page">
+      <div class="section-title">設定・管理メモ</div>
+      <div class="alert alert-info">このアプリ（①神殿奉仕当番表）の管理に必要なことをまとめたページです（入力なし・確認専用）。内容は2026年10月6日時点のマスターファイルと「修正を頼むときの依頼メモ」のうち、①に関係することにもとづきます。くわしくは共有サーバーのマスターファイルを見てください。見出しを押すと開きます。</div>
+
+      <details class="set-item" open>
+        <summary>🔗 このアプリのURL</summary>
+        <div class="set-body">
+          <div class="set-row"><span class="set-label">作成者用（このページ）</span><a href="https://marusora8190.github.io/tobansystem/admin.html" target="_blank" rel="noopener">https://marusora8190.github.io/tobansystem/admin.html</a></div>
+          <div class="set-row"><span class="set-label">詰員用（配布用）</span><a href="https://marusora8190.github.io/tobansystem/member.html" target="_blank" rel="noopener">https://marusora8190.github.io/tobansystem/member.html</a><button type="button" class="btn btn-sm" onclick="copySettingsText(this, 'https://marusora8190.github.io/tobansystem/member.html')">コピー</button></div>
+          <div class="set-row"><span class="set-label">公開トップ</span><a href="https://marusora8190.github.io/tobansystem/" target="_blank" rel="noopener">https://marusora8190.github.io/tobansystem/</a><button type="button" class="btn btn-sm" onclick="copySettingsText(this, 'https://marusora8190.github.io/tobansystem/')">コピー</button></div>
+          <p class="set-sub">公開トップ（index.html）は member.html とまったく同じ中身のコピーです。member.html を直したときは、index.html も必ず一緒にアップロードします。</p>
+          <p class="set-sub">ヘッダー右上の「⚙ 設定」は、データベースへの接続先を入れ直すための別の画面です。ふだんは使いません。</p>
+        </div>
+      </details>
+
+      <details class="set-item">
+        <summary>🛠 修正を頼むとき（Claudeへの依頼の手順）</summary>
+        <div class="set-body">
+          <ol class="set-ol">
+            <li>新しいチャットを開き、「修正を頼むときの依頼メモ.txt」と「マスターファイル（.md）」を添付する。</li>
+            <li>依頼メモのひな形をコピーして、「直したいアプリ」に「①神殿奉仕当番表」、「直したい内容」を書いて送る。</li>
+            <li><strong>アプリのファイル（admin.html・member.html・index.html）は添付しない。</strong>Claudeが作業の直前にGitHubから最新版を取り直して直します（手元の古いファイルをもとに直すと、ほかで加えた修正が消えるため）。</li>
+            <li>受け取ったファイルをアップロードしたら、同じチャットで「アップロードしました。確認してください。」と送る。</li>
+          </ol>
+          <div class="set-h">アップロード先（ファイルをドラッグして「Commit changes」を押す）</div>
+          <div class="set-row"><a href="https://github.com/marusora8190/tobansystem/upload/main" target="_blank" rel="noopener">https://github.com/marusora8190/tobansystem/upload/main</a></div>
+          <ul class="set-ul">
+            <li>ファイル名は admin.html・member.html・index.html のまま。「admin (1).html」などになっていたら、元の名前に直してからアップロードする。</li>
+            <li>1つのアプリは、1つのチャットでだけ直す。別のチャットで直す前に、前のチャットのアップロードを済ませる。</li>
+            <li>日にちが空いたとき・別のチャットでアップロードしたあとは、「GitHubから最新版を取り直してから続けてください」と伝える。</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="set-item">
+        <summary>⚠ 絶対に消してはいけない機能</summary>
+        <div class="set-body">
+          <p class="set-sub">修正のたびに、Claudeがこれらが修正前と同じ数だけ残っているかを確認します。</p>
+          <div class="set-h">1000件対策の部品（admin.html）</div>
+          <div><code class="set-code">fetchAllUnavail</code>（支障日の読み込み3か所＋古いデータの整理＝4か所）／ <code class="set-code">fetchAllRows</code>（5か所）</div>
+          <p class="set-sub">データベースは1回に1000件までしか返さないため、1000件ずつ区切ってすべて読み込みます。支障日は1年で約7,000件と、いちばん増えるデータです。これが消えると、1000件を超えたときに表示や集計が欠けます。新しく件数が増える読み込みを追加するときも、この部品を使います。</p>
+          <div class="set-h">ログイン画面（admin.html）</div>
+          <div><code class="set-code">checkLoginPassword</code> ／ <code class="set-code">login-admin</code></div>
+          <p class="set-sub">ログインナンバーを確かめ、管理者の印付きでデータベースにつなぎます。これが消えると、admin.html から何も保存・削除できなくなります。「古いデータの整理」の削除直前の再確認にも使っています。</p>
+        </div>
+      </details>
+
+      <details class="set-item">
+        <summary>🔒 データの守り方・ログイン</summary>
+        <div class="set-body">
+          <ul class="set-ul">
+            <li>admin.html（作成者用）は、開くときに管理者のログインナンバーが必要です。</li>
+            <li>member.html（詰員用）は、詰員がそれぞれ自分の番号でログインします。</li>
+            <li>当番表・確定記録などの書き換えや削除は、管理者のログインでしかできません。詰員は自分の支障日だけ登録・削除できます。</li>
+            <li>ログインナンバーは、この画面にもマスターファイルにも書いていません。</li>
+            <li>①は②〜⑥とは別の、①専用のデータベースを使っています。</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="set-item">
+        <summary>🗑 古いデータの整理</summary>
+        <div class="set-body">
+          <ul class="set-ul">
+            <li>場所は「登録済み支障日一覧」ページのいちばん上です（「🗑 古いデータの整理」を押すと開きます）。</li>
+            <li>入力した日付より前の<strong>支障日だけ</strong>をまとめて削除します。判断に使うのは支障日そのものの日付（登録した日ではありません）。入力した日の当日分は残ります。</li>
+            <li>これからの支障日を消さないよう、入力できる日付は今日までです。</li>
+            <li>「対象を確認する」で件数を見る → ログインナンバーをもう一度入れる → 最終確認 → 削除、の順です。削除したものは元に戻せません。</li>
+            <li>当番表・月ごとの確定記録・運用前の回数・詰員名簿などは消しません。当番表は2013年からの記録で、祭典日当番者記録・年末年始当番記録の回数・Excel出力・カレンダーに使っているため残します。</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="set-item">
+        <summary>💾 バックアップ</summary>
+        <div class="set-body">
+          <div class="set-h">自動バックアップ（週1回）</div>
+          <ul class="set-ul">
+            <li>毎週日曜の午前3時10分ごろ、①のデータベースの全部の表を自動で控えています。</li>
+            <li>直近8週間分はすべて保存。それより古いものは、各月の最初の1回分を1年間保存。</li>
+            <li>元に戻したいときは、Claudeに「backup_auto から ○○テーブルを△月△日の状態に戻して」と頼みます。</li>
+          </ul>
+          <div class="set-h">手動バックアップ（3〜6か月に1回が目安）</div>
+          <ul class="set-ul">
+            <li>共有サーバーの「①〜⑥バックアップ」フォルダにある「バックアップを取る.bat」をダブルクリックします。</li>
+            <li>年度末や、大きな修正の前にも取っておくと安心です。</li>
+            <li>くわしい手順は、フォルダの中の「はじめにお読みください.txt」とマスターファイルを見てください。</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="set-item">
+        <summary>😴 自動休止の対策</summary>
+        <div class="set-body">
+          <ul class="set-ul">
+            <li>データベースは、7日間だれも使わないと自動で休止します。</li>
+            <li>それを防ぐため、3日おきの午前10時ごろに自動で接続しています（非公開の supabase-keepalive で実行。①は「日曜祝日等管理」の表に接続）。</li>
+            <li>下のページで「Scheduled」の緑のチェックが3日おきに並んでいれば正常です。赤い×があればClaudeに相談してください。</li>
+          </ul>
+          <div class="set-row"><a href="https://github.com/marusora8190/supabase-keepalive/actions/workflows/keepalive.yml" target="_blank" rel="noopener">https://github.com/marusora8190/supabase-keepalive/actions/workflows/keepalive.yml</a></div>
+        </div>
+      </details>
+
+      <details class="set-item">
+        <summary>🆘 困ったときは</summary>
+        <div class="set-body">
+          <ul class="set-ul">
+            <li>画面が真っ白・古い表示のまま：まずシークレットウィンドウで開いてみる。「カレンダー」ページの赤い「Update」ボタンでも最新にできます。</li>
+            <li>支障日の一覧や集計が途中で欠けている：1000件対策が消えている可能性があります。Claudeに確認を頼んでください。</li>
+            <li>保存や削除をしても反映されない：ログインの仕組みが消えている可能性があります。Claudeに確認を頼んでください。</li>
+            <li>アップロード後、反映まで数分かかることがあります。GitHubの「Actions」で「pages build and deployment」が緑のチェックになれば公開完了です。</li>
+            <li>心配なときは、Claudeに「1000件対策とログイン機能が残っているか確認してください」と頼めば、変更履歴から確かめられます。</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="set-item">
+        <summary>📋 メモ（このアプリの仕組み）</summary>
+        <div class="set-body">
+          <ul class="set-ul">
+            <li>使っているデータの表：members・annual_plans・annual_roster・roster_decisions・monthly_duty_count_records・duty_count_baseline・festival_duty_counts・honbu_festivals・holidays・chotome_times・unavailable_dates・nye_duty_candidates・nye_duty_past_records。</li>
+            <li>schedules・obstacle_days の2つの表は0件で使っていません。影響が無いため、あえて消さずに残しています。</li>
+            <li>ファイル置き場（app）には、アイコンなどの小さなファイルだけがあります。</li>
+            <li>データの量は約13MB（上限500MB。2026年8月31日時点）で、十分に余裕があります。</li>
+            <li>操作の手順は、このページの上の「使い方ガイド」と、「神殿奉仕当番表作成システム 操作手順書（admin.html用）」を見てください。</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="set-item">
+        <summary>🌐 関連ページ</summary>
+        <div class="set-body">
+          <div class="set-row"><span class="set-label">GitHub（ファイルの置き場所）</span><a href="https://github.com/marusora8190/tobansystem" target="_blank" rel="noopener">https://github.com/marusora8190/tobansystem</a></div>
+          <div class="set-row"><span class="set-label">変更履歴</span><a href="https://github.com/marusora8190/tobansystem/commits/main" target="_blank" rel="noopener">https://github.com/marusora8190/tobansystem/commits/main</a></div>
+          <div class="set-row"><span class="set-label">公開状況（Actions）</span><a href="https://github.com/marusora8190/tobansystem/actions" target="_blank" rel="noopener">https://github.com/marusora8190/tobansystem/actions</a></div>
+          <div class="set-row"><span class="set-label">Supabase（データベースの管理画面。ログインが必要）</span><a href="https://supabase.com/dashboard/project/thwlerletbndqqtrodub" target="_blank" rel="noopener">https://supabase.com/dashboard/project/thwlerletbndqqtrodub</a></div>
+        </div>
+      </details>
+    </div>
+    <!-- ===== ここまで：設定 ===== -->
+
     <div id="page-manual" class="page">
       <div class="section-title">使い方ガイド</div>
       <div class="alert alert-info">このadmin.html（管理者用画面）の使い方をまとめた、入力なし・確認専用のページです。各項目の見出しをクリックすると、詳しい操作手順が開きます。</div>
@@ -1370,7 +1529,7 @@
           <li><strong>member.html（詰員用）</strong>：各詰員が自分の当番日の確認や、支障日の申請を行う画面です。</li>
         </ul>
         <div class="howto-note">当番表の内容は、この画面で「決定」ボタンを押してはじめて、各詰員のmember.html画面に表示されるようになります。決定前の内容は詰員側には表示されません（詳しくは下の「4. 当番表作成〜公開までの基本的な流れ」を参照してください）。</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:0;line-height:1.5">ログイン後の画面は、上部のヘッダー（サイドバーの表示切替・接続状況・設定・ログアウト）、左側のサイドバー（18個のメニュー項目）、右側のメイン表示エリアの3つで構成されています。</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:0;line-height:1.5">ログイン後の画面は、上部のヘッダー（サイドバーの表示切替・接続状況・設定・ログアウト）、左側のサイドバー（19個のメニュー項目）、右側のメイン表示エリアの3つで構成されています。</p>
       </div>
 
       <div class="card">
@@ -1397,6 +1556,7 @@
               <tr><td>出欠管理</td><td>各行事の出欠状況を確認する（annual_rosterで自動判定された当番の詰員は自動的に「当番」として集計される）。出欠状況の表は詰員1名につき1行で、「事前連絡」（詰員がメールなどで事前に連絡してきた場合、管理者が代わりに入力できる）と「当日出欠」（行事当日に実際にいた詰員を記録する）の2つの欄がある。どちらの欄も「出席」「欠席」ボタンで記録し、同じボタンをもう一度押すと未回答／未確認に戻る（「当番」は1名だけのため、annual_rosterで決まった詰員以外を手動で「当番」にすることはできない）。行事名の横の「クリア」ボタンで、その行事の出欠表をまとめて消去できる（勤詰会など毎回使い回す行事で、前回分をリセットしたいときに使う）。ページ上部で、詰員用アプリから現場確認ができる担当者と、担当者のスマホに表示する行事を選択できる</td></tr>
               <tr><td>祭典日当番者記録</td><td>本部祭典日ごとの当番回数を自動集計し、必要に応じて手入力で補正する</td></tr>
               <tr><td>システムの仕組み</td><td>GitHub・Supabase・admin.html・member.htmlのつながりを図で確認する（確認専用）</td></tr>
+              <tr><td>設　定</td><td>このアプリのURL・修正を頼むときの手順・消してはいけない機能・バックアップなど、管理に必要なことを確認する（確認専用）</td></tr>
             </tbody>
           </table>
         </div>
@@ -2373,6 +2533,24 @@ function showConfigModal() {
   document.getElementById('config-modal').style.display = 'flex';
 }
 function closeConfigModal() { document.getElementById('config-modal').style.display = 'none'; }
+
+// 設定・管理メモのコピーボタン（URLなどをクリップボードに写す）
+async function copySettingsText(btn, text) {
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {}
+  if (!ok) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { ok = document.execCommand('copy'); } catch (e2) {}
+    document.body.removeChild(ta);
+  }
+  if (btn) {
+    btn.textContent = ok ? 'コピーしました' : 'コピーできませんでした';
+    setTimeout(() => { btn.textContent = 'コピー'; }, 2000);
+  }
+}
 
 async function saveConfig() {
   const url = document.getElementById('cfg-url').value.trim();
