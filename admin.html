@@ -5147,7 +5147,7 @@ async function loadUnavailable() {
   const daysInMonth = new Date(year, month, 0).getDate();
 
   const head = document.getElementById('unavail-matrix-head');
-  let headHtml = '<tr><th style="text-align:left;width:1px;padding-left:3px;white-space:nowrap;background:var(--bg)">氏名</th><th class="unavail-prev-duty" style="background:var(--bg);font-size:8px" title="前月の当番日">前月<br>当番</th><th class="unavail-vert-th" style="width:20px;min-width:20px;max-width:20px;background:var(--bg)">回数</th><th class="unavail-vert-th" style="width:20px;min-width:20px;max-width:20px;background:var(--bg)">日祝</th>';
+  let headHtml = '<tr><th style="text-align:left;width:1px;padding-left:3px;white-space:nowrap;background:var(--bg)">氏名</th><th class="unavail-prev-duty" style="background:var(--bg);font-size:8px" title="前月の当番日">前月<br>当番</th><th class="unavail-vert-th" style="width:26px;min-width:26px;max-width:26px;background:var(--bg)">回数</th><th class="unavail-vert-th" style="width:26px;min-width:26px;max-width:26px;background:var(--bg)">日祝</th>';
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const dow = new Date(dateStr + 'T00:00:00').getDay();
@@ -5232,8 +5232,8 @@ async function loadUnavailable() {
     bodyHtml += `<tr>
       <td style="white-space:nowrap;width:1px;font-weight:500;text-align:left;padding-left:3px;background:var(--surface);font-size:10px"><button type="button" onclick="goToUnavailCalendarFor(${m.id}, '${mon}')" title="${m.name}さんの支障日を、カレンダーでまとめて登録する画面に移動します" style="border:none;background:none;padding:0 2px 0 0;cursor:pointer;font-size:10px;vertical-align:middle">📅</button>${m.name}</td>
       <td class="unavail-prev-duty" style="background:var(--surface)" title="${m.name}：前月の当番日">${(prevDutyDaysMap[m.id] || []).join(',')}</td>
-      <td style="width:20px;min-width:20px;max-width:20px;text-align:center;background:var(--surface);font-size:9px;color:#2e7d32;font-weight:500">${twiceCell}</td>
-      <td style="width:20px;min-width:20px;max-width:20px;text-align:center;${holCellBg}"></td>`;
+      <td style="width:26px;min-width:26px;max-width:26px;text-align:center;background:var(--surface);font-size:9px;color:#2e7d32;font-weight:500">${twiceCell}</td>
+      <td style="width:26px;min-width:26px;max-width:26px;text-align:center;${holCellBg}"></td>`;
     
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -6737,6 +6737,14 @@ function printUnavailMatrix() {
     th:first-child, td:first-child { text-align:left; white-space:nowrap; width:1px; padding-right:2px; }
     /* 「回数」「日祝」の見出しは、画面と同じく印刷でも縦書きにする */
     th.unavail-vert-th { white-space:normal; word-break:break-all; line-height:1.2; padding:3px 1px; }
+    /* 「前月当番」「回数」「日祝」の3列は、印刷でも同じ幅にそろえる */
+    th:nth-child(2), td:nth-child(2), th:nth-child(3), td:nth-child(3), th:nth-child(4), td:nth-child(4) {
+      width:26px !important; min-width:26px !important; max-width:26px !important; padding:3px 1px !important; text-align:center;
+    }
+    .unavail-prev-duty { font-size:8px; line-height:1.25; }
+    /* 日付のマス（✓）は、横も縦もマスのど真ん中に表示する */
+    td { text-align:center; vertical-align:middle; }
+    td > span { display:inline-block; line-height:1; vertical-align:middle; }
   `;
   openPrintWindow(title, bodyHtml, extraStyle);
 }
