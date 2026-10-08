@@ -853,7 +853,7 @@ async function renderCalendar() {
   const locked = isMonthLocked(calYear, calMonth);
   const first = dayList[0];
   const firstDay = new Date(first.y, first.m - 1, first.d).getDay();
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = (d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`)(new Date()); // 日本時間の今日
 
   let html = '<tr>';
   for (let i = 0; i < firstDay; i++) html += '<td class="empty-cell"></td>';
@@ -1206,7 +1206,7 @@ async function renderRosterCalendar() {
 
   const first = dayList[0];
   const firstDay = new Date(first.y, first.m - 1, first.d).getDay();
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = (d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`)(new Date()); // 日本時間の今日
 
   let html = '<tr>';
   for (let i = 0; i < firstDay; i++) html += '<td class="empty-cell"></td>';
@@ -1300,7 +1300,7 @@ async function loadMyDutyRankMap() {
     if (rosterRes.error) return;
     const baselineCount = (!baselineRes.error && baselineRes.data && baselineRes.data[0])
       ? (baselineRes.data[0].baseline_count || 0) : 0;
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = (d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`)(new Date()); // 日本時間の今日
     const allDates = (rosterRes.data || []).map(r => r.duty_date).sort();
     // 当番表に名前が表示される日（＝「決定」済み、またはすでに終わった過去の日）だけを対象にする。
     // 将来の未決定分をここに含めると、年度計画の入力状況によって通算回数が変動してしまうため除外する。

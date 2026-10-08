@@ -2679,8 +2679,10 @@ async function initApp() {
   await ensureMultiYearsLoaded(getMultiYears('annual2-start-year', 'annual2-year-span')).catch(e => console.warn('[annualPlansMulti]', e.message));
   renderAnnualTable2();
   
-  const next = new Date(); next.setMonth(next.getMonth()+1);
-  const nextStr = next.toISOString().slice(0,7);
+  // 翌月（日本時間で判断。31日でも翌々月にならないよう、今月1日から1か月進める）
+  const nowForNext = new Date();
+  const next = new Date(nowForNext.getFullYear(), nowForNext.getMonth() + 1, 1);
+  const nextStr = `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}`;
   document.getElementById('gen-month').value = nextStr;
   document.getElementById('u-matrix-month').value = nextStr;
   document.getElementById('u-summary-month').value = nextStr;
@@ -5969,7 +5971,7 @@ function renderCalendar() {
   }
   const first = new Date(calYear, calMonth, 1);
   const startDow = first.getDay();
-  const today = new Date().toISOString().slice(0,10);
+  const today = (d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`)(new Date()); // 日本時間の今日
   const serviceDays = getServiceMonthDays(calYear, month);
 
   const body = document.getElementById('cal-body');
@@ -6459,7 +6461,7 @@ async function exportAllHistoryExcel() {
     ws['!cols'] = [{ wch: 18 }, { wch: 6 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 20 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '当番記録');
-    const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const stamp = (d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`)(new Date()).replace(/-/g, ''); // 日本時間の今日
     XLSX.writeFile(wb, `当番記録_全期間_${stamp}.xlsx`);
   } catch (e) {
     alert('書き出しに失敗しました: ' + e.message);
@@ -6787,7 +6789,7 @@ function lastDayOfMonth(monStr) {
 function shiftMonth(inputId, delta) {
   const el = document.getElementById(inputId);
   if (!el) return;
-  const base = el.value || new Date().toISOString().slice(0,7);
+  const base = el.value || (d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`)(new Date()); // 日本時間の今月
   const [y, m] = base.split('-').map(Number);
   const d = new Date(y, m - 1 + delta, 1);
   const nextVal = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
@@ -7428,7 +7430,7 @@ function startApp() {
   appStarted = true;
   const dows = ['日','月','火','水','木','金','土'];
   document.getElementById('cal-dow').innerHTML = dows.map(d => `<div class="cal-dow">${d}</div>`).join('');
-  const curStr = new Date().toISOString().slice(0,7);
+  const curStr = (d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`)(new Date()); // 日本時間の今月
   document.getElementById('u-cal-month').value = curStr;
   populateRecordSelects();
   restoreSidebarState();
