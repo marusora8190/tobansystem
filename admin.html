@@ -5468,8 +5468,10 @@ async function generateSchedule() {
     unavailMap[u.blocked_date].add(u.member_id);
   });
 
+  // 前月1日（日本時間で作る。toISOString は世界の標準時間に直すため、前々月の末日になってしまうのを避ける）
   const prevDate = new Date(year, month - 2, 1);
-  const { data: prevSched } = await sbClient.from('annual_roster').select('duty_date, member_id').gte('duty_date', prevDate.toISOString().slice(0,10)).lt('duty_date', `${year}-${String(month).padStart(2,'0')}-01`);
+  const prevDateStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}-01`;
+  const { data: prevSched } = await sbClient.from('annual_roster').select('duty_date, member_id').gte('duty_date', prevDateStr).lt('duty_date', `${year}-${String(month).padStart(2,'0')}-01`);
   const baseLastAssigned = {};
   (prevSched || []).forEach(s => {
     if (!baseLastAssigned[s.member_id] || s.duty_date > baseLastAssigned[s.member_id]) { baseLastAssigned[s.member_id] = s.duty_date; }
