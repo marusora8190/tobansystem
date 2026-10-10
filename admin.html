@@ -158,6 +158,11 @@
   #page-unavail-list .card { padding: 6px 10px; margin-bottom: 6px; }
   /* 古いデータの整理：閉じているときは文字の幅だけにする（開いたら全幅） */
   #ucleanup-section { width: fit-content; max-width: 100%; }
+  /* 当番開始年月：2つに分けた表を細めにする */
+  .dstart-split > .table-wrap { flex: 0 0 auto; max-width: 100%; }
+  .dstart-table { width: auto; }
+  .dstart-table th, .dstart-table td { padding: 5px 10px; font-size: 13px; }
+  .dstart-table input[type="date"] { width: 140px; padding: 3px 6px; }
   #ucleanup-section[open] { width: auto; }
   /* 閉じているときは「開きます」、開いているときは「閉じます」と表示する */
   #ucleanup-section .ucleanup-hint-close { display: none; }
@@ -1026,11 +1031,20 @@
         </div>
         <div id="dstart-oldest" style="font-size:13px;margin-bottom:8px"></div>
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">「辞退予定年月日」は目安のメモです。入れると自動で保存されます（消すときは日付を空にします）。当番表作成・名簿・削除の境目など、ほかの機能には使いません。辞退した人は、これまでどおり詰員名簿で削除してください。<strong>名簿から外すのは、その人の最後の当番が終わってからにしてください。</strong></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th style="width:60px;text-align:center">番号</th><th>氏名</th><th>当番開始年月</th><th style="width:240px;white-space:nowrap">辞退予定年月日 <span style="font-weight:400;color:var(--text-hint)">（目安のメモ）</span></th></tr></thead>
-            <tbody id="dstart-body"><tr><td colspan="4" style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
-          </table>
+        <!-- 名簿を前半・後半に分け、細めの表を2つ左右に並べる（画面が狭いときは上下に並ぶ） -->
+        <div class="dstart-split" style="display:flex;flex-wrap:wrap;gap:12px 28px;align-items:flex-start">
+          <div class="table-wrap">
+            <table class="dstart-table">
+              <thead><tr><th style="text-align:center;white-space:nowrap">番号</th><th>氏名</th><th style="white-space:nowrap">当番開始年月</th><th style="white-space:nowrap">辞退予定年月日<br><span style="font-weight:400;color:var(--text-hint)">（目安のメモ）</span></th></tr></thead>
+              <tbody id="dstart-body"><tr><td colspan="4" style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
+            </table>
+          </div>
+          <div class="table-wrap" id="dstart-wrap2">
+            <table class="dstart-table">
+              <thead><tr><th style="text-align:center;white-space:nowrap">番号</th><th>氏名</th><th style="white-space:nowrap">当番開始年月</th><th style="white-space:nowrap">辞退予定年月日<br><span style="font-weight:400;color:var(--text-hint)">（目安のメモ）</span></th></tr></thead>
+              <tbody id="dstart-body2"></tbody>
+            </table>
+          </div>
         </div>
       </div>
       <div class="card" style="border-color:var(--danger)">
@@ -3389,6 +3403,10 @@ async function saveDutyStartRetirePlan(memberId, inputEl) {
 
 async function renderDutyStartPage() {
   const body = document.getElementById('dstart-body');
+  const body2 = document.getElementById('dstart-body2');
+  const wrap2 = document.getElementById('dstart-wrap2');
+  if (body2) body2.innerHTML = '';
+  if (wrap2) wrap2.style.display = 'none';
   const oldestEl = document.getElementById('dstart-oldest');
   const monthEl = document.getElementById('dstart-cleanup-month');
   if (!body) return;
@@ -3431,15 +3449,22 @@ async function renderDutyStartPage() {
       } else {
         oldestEl.textContent = '名簿の人の当番の記録はまだありません。';
       }
-      body.innerHTML = members.map(m => {
+      const rowHtml = members.map(m => {
         const first = firstByMember[m.id];
         const staff = (m.staff_id !== null && m.staff_id !== undefined) ? String(m.staff_id) : '';
         const cell = first ? dutyStartYmLabel(first) + 'から' : '<span style="color:var(--text-hint)">記録なし</span>';
         const mark = oldestIds.has(m.id) ? ' style="background:var(--accent-light)"' : '';
         const plan = retirePlans[String(m.id)] || '';
-        const planCell = `<input type="date" value="${escapeHtmlDutyStart(plan)}" style="width:160px" onchange="saveDutyStartRetirePlan('${escapeHtmlDutyStart(m.id)}', this)"><span class="dstart-plan-msg" style="font-size:11px;margin-left:4px"></span>`;
-        return `<tr${mark}><td style="text-align:center">${escapeHtmlDutyStart(staff)}</td><td>${escapeHtmlDutyStart(m.name || '')}</td><td>${cell}</td><td>${planCell}</td></tr>`;
-      }).join('');
+        const planCell = `<input type="date" value="${escapeHtmlDutyStart(plan)}" onchange="saveDutyStartRetirePlan('${escapeHtmlDutyStart(m.id)}', this)"><div class="dstart-plan-msg" style="font-size:11px"></div>`;
+        return `<tr${mark}><td style="text-align:center">${escapeHtmlDutyStart(staff)}</td><td style="white-space:nowrap">${escapeHtmlDutyStart(m.name || '')}</td><td style="white-space:nowrap">${cell}</td><td>${planCell}</td></tr>`;
+      });
+      // 名簿の順のまま、前半を左の表・後半を右の表に入れる
+      const half = Math.ceil(rowHtml.length / 2);
+      body.innerHTML = rowHtml.slice(0, half).join('');
+      if (body2 && rowHtml.length > half) {
+        body2.innerHTML = rowHtml.slice(half).join('');
+        if (wrap2) wrap2.style.display = '';
+      }
     }
   } catch (e) {
     console.error(e);
