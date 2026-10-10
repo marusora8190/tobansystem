@@ -844,7 +844,7 @@
       <div class="card">
         <div class="card-title">登録済み支障日一覧（一覧表形式）</div>
         <p style="font-size:12px;color:var(--text-muted);margin-bottom:4px;line-height:1.3">
-          選択された対象月の支障日が一覧表示されます。[ ✓: 登録済み（クリックで削除） ]。空欄をクリックすると支障日に登録されます。
+          選択された対象月の支障日が一覧表示されます。[ ×: 登録済み（クリックで削除） ]。空欄をクリックすると支障日に登録されます。
           氏名の横の📅ボタンを押すと、その方の支障日を「支障日登録」ページのカレンダーでまとめて登録する画面に移動できます（支障日が多く、空いている日の方が少ない方に便利です）。
         </p>
         <div style="display:flex;gap:8px;margin-bottom:4px;align-items:center">
@@ -861,7 +861,7 @@
           </table>
         </div>
         <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--text-muted)"><span style="color:var(--accent);font-weight:bold">✓</span> 登録済み支障日</span>
+          <span style="font-size:12px;color:var(--text-muted)"><span style="color:var(--accent);font-weight:bold">×</span> 登録済み支障日</span>
           <span style="font-size:12px;color:var(--text-muted)"><span style="background:#fff59d;padding:1px 6px;border-radius:3px">黄</span> 当番日決定済み（生成・保存済み）</span>
           <span style="font-size:12px;color:var(--text-muted)"><span style="background:#e89090;padding:1px 6px;border-radius:3px;color:#fff">塗りつぶし</span> 日祝当番の人</span>
           <span style="font-size:12px;color:var(--text-muted)"><span style="background:#fceaea;padding:1px 6px;border-radius:3px">日祝</span> 日曜・祝日枠</span>
@@ -1667,12 +1667,12 @@
           <div class="howto-body">
             <ol>
               <li>表示月を選ぶと、その月の一覧表（メンバー×日付）が表示されます。氏名と回数の間の「前月当番」列には、その方の前月の当番日が日にちの数字だけで表示されます。前月に2回当番だった方は1行で表示されます（例：1日と12日なら「1,12」）。</li>
-              <li>空欄のセルをクリックすると支障日として登録され、✓が付いたセルをクリックすると削除されます。</li>
+              <li>空欄のセルをクリックすると支障日として登録され、×が付いたセルをクリックすると削除されます。</li>
               <li>「🖨 この一覧表を印刷」で印刷できます。</li>
               <li>氏名の左にある📅ボタンを押すと、その方・その月を選んだ状態で「支障日登録」ページのカレンダーに移動します。支障日が多く、空いている日の方が少ない方は、移動後に空いている日だけをクリックして選び、「選んだ日以外をすべて支障日として登録」ボタンを使うと効率的に登録できます。</li>
               <li>ページのいちばん上の「🗑 古いデータの整理」を開くと、日付を入れて、その日より前の支障日をまとめて削除できます。「対象を確認する」で件数を確かめてから削除してください（削除の直前に、もう一度ログインナンバーの入力が必要です）。当番表や当番回数は消えません。</li>
             </ol>
-            <div class="howto-note">色分け：✓＝登録済みの支障日、黄色＝当番日決定済み、赤塗りつぶし＝日祝当番の人、薄い赤＝日曜・祝日の枠、灰色＝前月の当番から中8日期間。</div>
+            <div class="howto-note">色分け：×＝登録済みの支障日、黄色＝当番日決定済み、赤塗りつぶし＝日祝当番の人、薄い赤＝日曜・祝日の枠、灰色＝前月の当番から中8日期間。</div>
           </div>
         </details>
 
@@ -5288,8 +5288,8 @@ async function loadUnavailable() {
       let clickAction = '';
 
       if (record) {
-        // 登録されている支障日は、背景の塗りつぶしに加えて小さめの✓マークを表示する
-        cellContent = '<span style="font-size:9px;color:var(--accent);font-weight:bold">✓</span>';
+        // 登録されている支障日は、背景の塗りつぶしに加えて小さめの×マークを表示する
+        cellContent = '<span style="font-size:9px;color:var(--accent);font-weight:bold">×</span>';
         cellTitle += ' (登録済み支障日・クリックで削除)';
         clickAction = `onclick="removeMatrixRecord('${record.id}')"`;
         tdBg = '#fff1f1';
@@ -6754,7 +6754,7 @@ function printUnavailMatrix() {
 
   const legendHtml = `
     <div style="display:flex;gap:14px;margin-top:10px;flex-wrap:wrap;font-size:11px">
-      <span><span style="color:var(--accent);font-weight:bold">✓</span> 登録済み支障日</span>
+      <span><span style="color:var(--accent);font-weight:bold">×</span> 登録済み支障日</span>
       <span><span style="background:#fff59d;padding:1px 6px;border-radius:3px;border:1px solid #c8c2b4">黄</span> 当番日決定済み</span>
       <span><span style="background:#e89090;padding:1px 6px;border-radius:3px;border:1px solid #c8c2b4;color:#fff">塗りつぶし</span> 日祝当番の人</span>
       <span><span style="background:#fceaea;padding:1px 6px;border-radius:3px;border:1px solid #c8c2b4">日祝</span> 日曜・祝日枠</span>
@@ -6784,7 +6784,7 @@ function printUnavailMatrix() {
       width:26px !important; min-width:26px !important; max-width:26px !important; padding:3px 1px !important; text-align:center;
     }
     .unavail-prev-duty { font-size:8px; line-height:1.25; }
-    /* 日付のマス（✓）は、横も縦もマスのど真ん中に表示する */
+    /* 日付のマス（×）は、横も縦もマスのど真ん中に表示する */
     td { text-align:center; vertical-align:middle; }
     td > span { display:inline-block; line-height:1; vertical-align:middle; }
   `;
