@@ -3332,7 +3332,7 @@ async function runUnavailCleanup() {
 // ・削除の直前に、ログインナンバーを login-admin で確かめる（支障日の整理と同じ確認を使う）。
 // =============================================
 let dutyStartCleanupTargets = null; // { ym, rosterDates, recordMonths, recordRows, decisionKeys }
-let dutyStartBoundary = null;       // { ym, name } 名簿でいちばん古い人の当番開始年月
+let dutyStartBoundary = null;       // { ym, name } 名簿でいちばん古い人の当番開始年月（同じ月の人が複数いれば name は「〇〇さん・〇〇さん」）
 
 function dutyStartThisMonthStr() {
   const d = new Date();
@@ -3380,14 +3380,17 @@ async function renderDutyStartPage() {
       body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-hint)">先に詰員名簿でメンバーを登録してください</td></tr>';
       oldestEl.textContent = '';
     } else {
-      let oldestMember = null;
+      // いちばん古い当番開始年月（月単位）と、その月から始まっている人全員（名簿の順）
+      let oldestYm = null;
       members.forEach(m => {
         const f = firstByMember[m.id];
-        if (f && (!oldestMember || f < firstByMember[oldestMember.id])) oldestMember = m;
+        if (f && (!oldestYm || f.slice(0, 7) < oldestYm)) oldestYm = f.slice(0, 7);
       });
-      if (oldestMember) {
-        dutyStartBoundary = { ym: firstByMember[oldestMember.id].slice(0, 7), name: oldestMember.name || '' };
-        oldestEl.innerHTML = `名簿でいちばん古い人：<strong>${escapeHtmlDutyStart(dutyStartBoundary.name)}さん（${dutyStartYmLabel(dutyStartBoundary.ym)}から）</strong>　→ 境目は <strong>${dutyStartYmLabel(dutyStartBoundary.ym)}</strong> です。`;
+      const oldestIds = new Set(members.filter(m => firstByMember[m.id] && firstByMember[m.id].slice(0, 7) === oldestYm).map(m => m.id));
+      if (oldestYm) {
+        const names = members.filter(m => oldestIds.has(m.id)).map(m => (m.name || '') + 'さん');
+        dutyStartBoundary = { ym: oldestYm, name: names.join('・') };
+        oldestEl.innerHTML = `名簿でいちばん古い人：<strong>${escapeHtmlDutyStart(dutyStartBoundary.name)}（${dutyStartYmLabel(oldestYm)}から）</strong>　→ 境目は <strong>${dutyStartYmLabel(oldestYm)}</strong> です。`;
       } else {
         oldestEl.textContent = '名簿の人の当番の記録はまだありません。';
       }
@@ -3395,7 +3398,7 @@ async function renderDutyStartPage() {
         const first = firstByMember[m.id];
         const staff = (m.staff_id !== null && m.staff_id !== undefined) ? String(m.staff_id) : '';
         const cell = first ? dutyStartYmLabel(first) + 'から' : '<span style="color:var(--text-hint)">記録なし</span>';
-        const mark = (oldestMember && m.id === oldestMember.id) ? ' style="background:var(--accent-light)"' : '';
+        const mark = oldestIds.has(m.id) ? ' style="background:var(--accent-light)"' : '';
         return `<tr${mark}><td style="text-align:center">${escapeHtmlDutyStart(staff)}</td><td>${escapeHtmlDutyStart(m.name || '')}</td><td>${cell}</td></tr>`;
       }).join('');
     }
@@ -3426,7 +3429,7 @@ async function checkDutyStartCleanupTargets() {
   if (!/^\d{4}-\d{2}$/.test(ym)) { box.textContent = '年月を選んでください。'; return; }
   if (ym > dutyStartThisMonthStr()) { box.textContent = '選べるのは今月までです（これからの当番は消せません）。'; return; }
   if (ym > dutyStartBoundary.ym) {
-    box.textContent = `${dutyStartYmLabel(ym)}は選べません。名簿でいちばん古い ${dutyStartBoundary.name}さんの当番開始年月（${dutyStartYmLabel(dutyStartBoundary.ym)}）までにしてください（名簿に残っている人の記録が消えてしまうため）。`;
+    box.textContent = `${dutyStartYmLabel(ym)}は選べません。名簿でいちばん古い ${dutyStartBoundary.name}の当番開始年月（${dutyStartYmLabel(dutyStartBoundary.ym)}）までにしてください（名簿に残っている人の記録が消えてしまうため）。`;
     return;
   }
   box.textContent = '対象を数えています...';
