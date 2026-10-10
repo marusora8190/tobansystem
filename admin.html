@@ -589,6 +589,7 @@
     <div class="sidebar-item" onclick="showPage('gen-rules')">作成ルール</div>
     <div class="sidebar-item" onclick="showPage('records')">割当確認</div>
     <div class="sidebar-item" onclick="showPage('duty-count-records')">月割当て確認用</div>
+    <div class="sidebar-item" onclick="showPage('duty-start')">当番開始年月</div>
     <div class="sidebar-item" onclick="showPage('holidays')">日曜祝日等管理</div>
     <div class="sidebar-item" onclick="showPage('nye-duty')">年末年始当番予定</div>
     <div class="sidebar-item" onclick="showPage('nye-duty-record')">年末年始当番記録</div>
@@ -1011,6 +1012,41 @@
         <div class="card-title">累計当番回数（システム運用前の記録 ＋ これまでに「決定」済みの全期間の合計）</div>
         <div id="dcr-cumulative-body"></div>
         <div id="dcr-baseline-msg" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <div id="page-duty-start" class="page">
+      <div class="section-title">当番開始年月</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">詰員名簿に載っている人が、何年何月から当番に当たっているかを表示します（当番表に残っている記録の中で、いちばん古い当番の月です）。</div>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+          <div class="card-title" style="margin-bottom:0">詰員ごとの当番開始年月</div>
+          <button type="button" class="btn btn-sm" onclick="renderDutyStartPage()">再読み込み</button>
+        </div>
+        <div id="dstart-oldest" style="font-size:13px;color:var(--text-muted);margin-bottom:8px"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th style="width:60px;text-align:center">番号</th><th>氏名</th><th>当番開始年月</th></tr></thead>
+            <tbody id="dstart-body"><tr><td colspan="3" style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card" style="border-color:var(--danger)">
+        <div class="card-title" style="color:var(--danger)">🗑 古い当番データの削除</div>
+        <div style="font-size:13px;line-height:1.7">
+          <p style="margin-bottom:6px">選んだ年月<strong>より前</strong>の、次のデータをまとめて削除します（選んだ月そのものは残ります）。削除したデータは元に戻せません。</p>
+          <ul style="margin:0 0 6px 20px">
+            <li>当番表（どの日に誰が当番だったか）</li>
+            <li>月ごとの確定記録（「月割当て確認用」の記録）と、その月の決定状況</li>
+          </ul>
+          <p style="margin-bottom:6px;color:var(--text-muted)">消した期間は、カレンダー・割当確認・祭典日当番者記録・年末年始当番記録の回数・Excel出力・累計当番回数に出なくなります。詰員名簿・運用前の回数・支障日・年末年始当番の過去記録などは消しません。これからの当番を消さないよう、選べるのは今月までです。</p>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="month" id="dstart-cleanup-month" style="width:150px" oninput="resetDutyStartCleanupResult()">
+            <span>より前のデータ</span>
+            <button type="button" class="btn btn-sm" onclick="checkDutyStartCleanupTargets()">対象を確認する</button>
+          </div>
+          <div id="dstart-cleanup-result" style="display:none;margin-top:10px;white-space:pre-line" class="alert alert-info"></div>
+        </div>
       </div>
     </div>
 
@@ -1461,6 +1497,7 @@
             <li>これからの支障日を消さないよう、入力できる日付は今日までです。</li>
             <li>「対象を確認する」で件数を見る → ログインナンバーをもう一度入れる → 最終確認 → 削除、の順です。削除したものは元に戻せません。</li>
             <li>当番表・月ごとの確定記録・運用前の回数・詰員名簿などは消しません。当番表は2013年からの記録で、祭典日当番者記録・年末年始当番記録の回数・Excel出力・カレンダーに使っているため残します。</li>
+            <li>当番表と月ごとの確定記録は、別の画面「当番開始年月」（左のメニューの「月割当て確認用」の下）で、選んだ年月より前の分を削除できます（2026年10月10日〜。こちらもログインナンバーの再入力が必要です）。</li>
           </ul>
         </div>
       </details>
@@ -1565,6 +1602,7 @@
               <tr><td>作成ルール</td><td>当番表作成で使われているルールを文章で確認する（確認専用）</td></tr>
               <tr><td>割当確認（表形式）</td><td>決定済み・作成済みの当番表を、複数月・複数年で表形式に並べて確認する</td></tr>
               <tr><td>月割当て確認用</td><td>対象月の予定回数と実際の当番回数を照合し、累計当番回数も確認する</td></tr>
+              <tr><td>当番開始年月</td><td>詰員名簿の人ごとに、何年何月から当番に当たっているかを確認する。選んだ年月より前の当番表・月ごとの確定記録を削除することもできる</td></tr>
               <tr><td>日曜祝日等管理</td><td>祝日・振替休日をまとめて自動登録し、個別の祝日も追加できる</td></tr>
               <tr><td>年末年始当番予定</td><td>年末年始期間（12/28〜1/4）の候補者選びと当番割り当てを行う</td></tr>
               <tr><td>年末年始当番記録</td><td>年度ごとの年末年始当番の記録と、メンバーごとの通算回数を確認する</td></tr>
@@ -3278,6 +3316,182 @@ async function runUnavailCleanup() {
   loadUnavailable();
 }
 // ===== ここまで：古いデータの整理 =====
+
+// =============================================
+// 当番開始年月（サイドバー「月割当て確認用」と「日曜祝日等管理」の間）
+// ・詰員名簿の人ごとに、当番表（annual_roster）に残っているいちばん古い当番の年月を表示する。
+//   member_id が入っていない日でも、手入力の氏名が名簿の氏名と一致すればその人の当番として数える。
+// ・選んだ年月より前の 当番表・月ごとの確定記録・月の決定状況 をまとめて削除できる。
+//   （年末年始シーズンの決定状況・詰員名簿・運用前の回数・支障日などは消さない）
+// ・当番表の読み込みは1000件対策の fetchAllRows を使う。
+// ・削除の直前に、ログインナンバーを login-admin で確かめる（支障日の整理と同じ確認を使う）。
+// =============================================
+let dutyStartCleanupTargets = null; // { ym, rosterDates, recordMonths, recordRows, decisionKeys }
+
+function dutyStartThisMonthStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function dutyStartYmLabel(ym) {
+  const m = /^(\d{4})-(\d{2})/.exec(ym || '');
+  return m ? `${Number(m[1])}年${Number(m[2])}月` : '';
+}
+
+async function renderDutyStartPage() {
+  const body = document.getElementById('dstart-body');
+  const oldestEl = document.getElementById('dstart-oldest');
+  const monthEl = document.getElementById('dstart-cleanup-month');
+  if (monthEl) monthEl.max = dutyStartThisMonthStr();
+  if (!body) return;
+  body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr>';
+  oldestEl.textContent = '';
+  try {
+    if (!members.length) await loadMembers().catch(() => {});
+    const rows = await fetchAllRows('annual_roster', q => q.order('duty_date'));
+    const firstByMember = {};
+    const nameToId = {};
+    members.forEach(m => { const k = normalizeNameForMatch(m.name); if (k) nameToId[k] = m.id; });
+    let oldest = null;
+    rows.forEach(r => {
+      if (!r.duty_date) return;
+      let id = r.member_id;
+      if (id == null) {
+        const k = normalizeNameForMatch(r.manual_assignee);
+        id = k ? nameToId[k] : null;
+      }
+      if (id == null) return;
+      if (!oldest || r.duty_date < oldest) oldest = r.duty_date;
+      if (!firstByMember[id] || r.duty_date < firstByMember[id]) firstByMember[id] = r.duty_date;
+    });
+    oldestEl.textContent = oldest
+      ? `当番表に残っている記録：${dutyStartYmLabel(oldest)}から`
+      : '当番表に当番の記録はまだありません。';
+    if (!members.length) {
+      body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-hint)">先に詰員名簿でメンバーを登録してください</td></tr>';
+      return;
+    }
+    body.innerHTML = members.map(m => {
+      const first = firstByMember[m.id];
+      const staff = (m.staff_id !== null && m.staff_id !== undefined) ? String(m.staff_id) : '';
+      const cell = first ? dutyStartYmLabel(first) + 'から' : '<span style="color:var(--text-hint)">記録なし</span>';
+      return `<tr><td style="text-align:center">${escapeHtmlDutyStart(staff)}</td><td>${escapeHtmlDutyStart(m.name || '')}</td><td>${cell}</td></tr>`;
+    }).join('');
+  } catch (e) {
+    console.error(e);
+    body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--danger)">読み込めませんでした：' + escapeHtmlDutyStart(e.message || String(e)) + '</td></tr>';
+  }
+}
+
+function escapeHtmlDutyStart(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function resetDutyStartCleanupResult() {
+  dutyStartCleanupTargets = null;
+  const box = document.getElementById('dstart-cleanup-result');
+  box.innerHTML = '';
+  box.style.display = 'none';
+}
+
+async function checkDutyStartCleanupTargets() {
+  resetDutyStartCleanupResult();
+  const ym = document.getElementById('dstart-cleanup-month').value;
+  const box = document.getElementById('dstart-cleanup-result');
+  box.style.display = 'block';
+  if (!/^\d{4}-\d{2}$/.test(ym)) { box.textContent = '年月を選んでください。'; return; }
+  if (ym > dutyStartThisMonthStr()) { box.textContent = '選べるのは今月までです（これからの当番は消せません）。'; return; }
+  box.textContent = '対象を数えています...';
+  try {
+    const cutoffDate = ym + '-01';
+    const rosterRows = await fetchAllRows('annual_roster', q => q.lt('duty_date', cutoffDate).order('duty_date'));
+    const rosterDates = rosterRows.map(r => r.duty_date);
+    const assigned = rosterRows.filter(r => r.member_id != null || (r.manual_assignee || '').trim()).length;
+
+    await loadMonthlyDutyCountRecords();
+    const recordMonths = Object.keys(monthlyDutyCountRecords).filter(pk => /^\d{4}-\d{2}$/.test(pk) && pk < ym).sort();
+    const recordRows = recordMonths.reduce((n, pk) => n + Object.keys(monthlyDutyCountRecords[pk].byMember || {}).length, 0);
+
+    const { data: decData, error: decErr } = await sbClient.from('roster_decisions').select('period_key');
+    if (decErr) throw decErr;
+    const decisionKeys = (decData || []).map(r => r.period_key).filter(pk => /^\d{4}-\d{2}$/.test(pk) && pk < ym);
+
+    if (!rosterDates.length && !recordRows && !decisionKeys.length) {
+      box.textContent = `${dutyStartYmLabel(ym)}より前のデータはありません。`;
+      return;
+    }
+    dutyStartCleanupTargets = { ym, rosterDates, recordMonths, recordRows, decisionKeys };
+    box.innerHTML = '';
+    const msg = document.createElement('div');
+    msg.innerHTML = `${dutyStartYmLabel(ym)}より前のデータ：<br>`
+      + `・当番表：<strong>${rosterDates.length}日分</strong>（うち当番者が入っている日 ${assigned}日）<br>`
+      + `・月ごとの確定記録：<strong>${recordMonths.length}か月分</strong>（${recordRows}件）<br>`
+      + `・月の決定状況：<strong>${decisionKeys.length}か月分</strong>`;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-danger btn-sm';
+    btn.style.marginTop = '8px';
+    btn.textContent = 'これらを削除する';
+    btn.onclick = runDutyStartCleanup;
+    box.appendChild(msg);
+    box.appendChild(btn);
+  } catch (e) {
+    console.error(e);
+    dutyStartCleanupTargets = null;
+    box.textContent = '対象を数えられませんでした：' + (e.message || e);
+  }
+}
+
+async function runDutyStartCleanup() {
+  if (!dutyStartCleanupTargets) return;
+  const { ym, rosterDates, recordMonths, recordRows, decisionKeys } = dutyStartCleanupTargets;
+  if (document.getElementById('dstart-cleanup-month').value !== ym) {
+    resetDutyStartCleanupResult();
+    alert('年月が変わったため、もう一度「対象を確認する」を押してください。');
+    return;
+  }
+  // 先にログインナンバーを確かめてから、最後の確認を出す（支障日の整理と同じ確認画面）
+  if (!(await confirmUnavailCleanupLoginNumber())) return;
+  if (!confirm(`${dutyStartYmLabel(ym)}より前の\n・当番表 ${rosterDates.length}日分\n・月ごとの確定記録 ${recordMonths.length}か月分\n・月の決定状況 ${decisionKeys.length}か月分\nを削除します。\n削除したデータは元に戻せません。\n\n本当に削除しますか？`)) return;
+
+  const box = document.getElementById('dstart-cleanup-result');
+  box.textContent = '削除しています...（画面を閉じずにお待ちください）';
+  let delDecisions = 0, delRecordMonths = 0, delRoster = 0, errorMsg = '';
+  try {
+    // 決定状況 → 確定記録 → 当番表 の順に消す
+    // （先に当番表だけ消えて決定状況が残ると、「月割当て確認用」で空の記録が作り直されるため）
+    for (let i = 0; i < decisionKeys.length; i += 100) {
+      const chunk = decisionKeys.slice(i, i + 100);
+      const { data, error } = await sbClient.from('roster_decisions').delete().in('period_key', chunk).select('period_key');
+      if (error) throw error;
+      delDecisions += (data || []).length;
+    }
+    for (const pk of recordMonths) {
+      const { error } = await sbClient.from('monthly_duty_count_records').delete().eq('period_key', pk);
+      if (error) throw error;
+      delRecordMonths++;
+    }
+    for (let i = 0; i < rosterDates.length; i += 100) {
+      const chunk = rosterDates.slice(i, i + 100);
+      const { data, error } = await sbClient.from('annual_roster').delete().in('duty_date', chunk).select('duty_date');
+      if (error) throw error;
+      delRoster += (data || []).length;
+    }
+  } catch (e) {
+    errorMsg = e.message || String(e);
+    console.error(e);
+  }
+  dutyStartCleanupTargets = null;
+  let msg = `削除しました：当番表 ${delRoster}日分・月ごとの確定記録 ${delRecordMonths}か月分・月の決定状況 ${delDecisions}か月分。`;
+  if (errorMsg || delRoster < rosterDates.length || delRecordMonths < recordMonths.length || delDecisions < decisionKeys.length) {
+    msg += '\n一部が削除できませんでした' + (errorMsg ? `（${errorMsg}）` : '') + '。もう一度「対象を確認する」からお試しください。';
+  }
+  box.textContent = msg;
+  await loadSchedules().catch(() => {});
+  await loadRosterDecisions().catch(() => {});
+  await loadMonthlyDutyCountRecords().catch(() => {});
+  await renderDutyStartPage();
+}
+// ===== ここまで：当番開始年月 =====
 
 async function loadSchedules() {
   try {
@@ -6804,6 +7018,7 @@ async function showPage(name) {
   if (name === 'calendar') { await loadSchedules().catch(() => {}); renderCalendar(); }
   if (name === 'records') { await renderRecordTable(); }
   if (name === 'duty-count-records') { await renderDutyCountRecordPage(); }
+  if (name === 'duty-start') { await renderDutyStartPage(); }
   if (name === 'holidays') { populateHolidayYearSelect(); await renderHolidaysTable(); }
   if (name === 'nye-duty') { await renderNyeDutyPage(); }
   if (name === 'nye-duty-record') { await renderNyeDutyRecordPage(); }
