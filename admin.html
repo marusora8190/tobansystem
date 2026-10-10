@@ -1025,10 +1025,11 @@
           <button type="button" class="btn btn-sm" onclick="renderDutyStartPage()">再読み込み</button>
         </div>
         <div id="dstart-oldest" style="font-size:13px;margin-bottom:8px"></div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">「辞退予定年月日」は目安のメモです。入れると自動で保存されます（消すときは日付を空にします）。当番表作成・名簿・削除の境目など、ほかの機能には使いません。辞退した人は、これまでどおり詰員名簿で削除してください。<strong>名簿から外すのは、その人の最後の当番が終わってからにしてください。</strong></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th style="width:60px;text-align:center">番号</th><th>氏名</th><th>当番開始年月</th></tr></thead>
-            <tbody id="dstart-body"><tr><td colspan="3" style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
+            <thead><tr><th style="width:60px;text-align:center">番号</th><th>氏名</th><th>当番開始年月</th><th style="width:240px;white-space:nowrap">辞退予定年月日 <span style="font-weight:400;color:var(--text-hint)">（目安のメモ）</span></th></tr></thead>
+            <tbody id="dstart-body"><tr><td colspan="4" style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1605,7 +1606,7 @@
               <tr><td>作成ルール</td><td>当番表作成で使われているルールを文章で確認する（確認専用）</td></tr>
               <tr><td>割当確認（表形式）</td><td>決定済み・作成済みの当番表を、複数月・複数年で表形式に並べて確認する</td></tr>
               <tr><td>月割当て確認用</td><td>対象月の予定回数と実際の当番回数を照合し、累計当番回数も確認する</td></tr>
-              <tr><td>当番開始年月</td><td>詰員名簿の人ごとに、何年何月から当番に当たっているかを確認する。名簿でいちばん古い人の開始月より前の、全員分の当番表・月ごとの確定記録を削除することもできる（辞退した人を名簿で削除してから使う。名簿から外すのは、その人の最後の当番が終わってからにしてください。）</td></tr>
+              <tr><td>当番開始年月</td><td>詰員名簿の人ごとに、何年何月から当番に当たっているかを確認する。辞退予定年月日を目安のメモとして入れておける（ほかの機能には使わない）。名簿でいちばん古い人の開始月より前の、全員分の当番表・月ごとの確定記録を削除することもできる（辞退した人を名簿で削除してから使う。名簿から外すのは、その人の最後の当番が終わってからにしてください。）</td></tr>
               <tr><td>日曜祝日等管理</td><td>祝日・振替休日をまとめて自動登録し、個別の祝日も追加できる</td></tr>
               <tr><td>年末年始当番予定</td><td>年末年始期間（12/28〜1/4）の候補者選びと当番割り当てを行う</td></tr>
               <tr><td>年末年始当番記録</td><td>年度ごとの年末年始当番の記録と、メンバーごとの通算回数を確認する</td></tr>
@@ -3351,18 +3352,54 @@ function dutyStartMaxYm() {
   return (dutyStartBoundary && dutyStartBoundary.ym < now) ? dutyStartBoundary.ym : now;
 }
 
+// 辞退予定年月日（目安のメモ）。app_settings の1行（key: duty_start_retire_plans）に
+// { "メンバーのid": "YYYY-MM-DD", ... } の形で入れておく。表示するだけで、ほかの機能には使わない。
+const DUTY_START_RETIRE_KEY = 'duty_start_retire_plans';
+async function loadDutyStartRetirePlans() {
+  try {
+    const { data, error } = await sbClient.from('app_settings').select('value').eq('key', DUTY_START_RETIRE_KEY).maybeSingle();
+    if (error) throw error;
+    const obj = data && data.value ? JSON.parse(data.value) : {};
+    return (obj && typeof obj === 'object') ? obj : {};
+  } catch (e) {
+    console.warn('[retirePlans]', e.message || e);
+    return {};
+  }
+}
+async function saveDutyStartRetirePlan(memberId, inputEl) {
+  const msgEl = inputEl.parentElement.querySelector('.dstart-plan-msg');
+  const val = inputEl.value || '';
+  if (msgEl) { msgEl.style.color = 'var(--text-muted)'; msgEl.textContent = '保存中…'; }
+  try {
+    // ほかの人の分を消さないよう、保存の直前に最新の内容を読み直してから1人分だけ書き換える
+    const { data, error } = await sbClient.from('app_settings').select('value').eq('key', DUTY_START_RETIRE_KEY).maybeSingle();
+    if (error) throw error;
+    const plans = data && data.value ? JSON.parse(data.value) : {};
+    if (val) plans[String(memberId)] = val; else delete plans[String(memberId)];
+    const { error: upErr } = await sbClient.from('app_settings')
+      .upsert({ key: DUTY_START_RETIRE_KEY, value: JSON.stringify(plans), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    if (upErr) throw upErr;
+    if (msgEl) { msgEl.style.color = 'var(--accent-dark)'; msgEl.textContent = val ? '保存しました' : '消しました'; setTimeout(() => { msgEl.textContent = ''; }, 2500); }
+  } catch (e) {
+    console.error(e);
+    if (msgEl) { msgEl.style.color = 'var(--danger)'; msgEl.textContent = '保存できませんでした'; }
+    alert('辞退予定年月日を保存できませんでした：' + (e.message || e));
+  }
+}
+
 async function renderDutyStartPage() {
   const body = document.getElementById('dstart-body');
   const oldestEl = document.getElementById('dstart-oldest');
   const monthEl = document.getElementById('dstart-cleanup-month');
   if (!body) return;
-  body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr>';
+  body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr>';
   oldestEl.textContent = '';
   dutyStartBoundary = null;
   resetDutyStartCleanupResult();
   try {
     await loadMembers();
     const rows = await fetchAllRows('annual_roster', q => q.order('duty_date'));
+    const retirePlans = await loadDutyStartRetirePlans();
     const nameToId = {};
     members.forEach(m => { const k = normalizeNameForMatch(m.name); if (k) nameToId[k] = m.id; });
     const firstByMember = {};
@@ -3377,7 +3414,7 @@ async function renderDutyStartPage() {
       if (!firstByMember[id] || r.duty_date < firstByMember[id]) firstByMember[id] = r.duty_date;
     });
     if (!members.length) {
-      body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-hint)">先に詰員名簿でメンバーを登録してください</td></tr>';
+      body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-hint)">先に詰員名簿でメンバーを登録してください</td></tr>';
       oldestEl.textContent = '';
     } else {
       // いちばん古い当番開始年月（月単位）と、その月から始まっている人全員（名簿の順）
@@ -3399,12 +3436,14 @@ async function renderDutyStartPage() {
         const staff = (m.staff_id !== null && m.staff_id !== undefined) ? String(m.staff_id) : '';
         const cell = first ? dutyStartYmLabel(first) + 'から' : '<span style="color:var(--text-hint)">記録なし</span>';
         const mark = oldestIds.has(m.id) ? ' style="background:var(--accent-light)"' : '';
-        return `<tr${mark}><td style="text-align:center">${escapeHtmlDutyStart(staff)}</td><td>${escapeHtmlDutyStart(m.name || '')}</td><td>${cell}</td></tr>`;
+        const plan = retirePlans[String(m.id)] || '';
+        const planCell = `<input type="date" value="${escapeHtmlDutyStart(plan)}" style="width:160px" onchange="saveDutyStartRetirePlan('${escapeHtmlDutyStart(m.id)}', this)"><span class="dstart-plan-msg" style="font-size:11px;margin-left:4px"></span>`;
+        return `<tr${mark}><td style="text-align:center">${escapeHtmlDutyStart(staff)}</td><td>${escapeHtmlDutyStart(m.name || '')}</td><td>${cell}</td><td>${planCell}</td></tr>`;
       }).join('');
     }
   } catch (e) {
     console.error(e);
-    body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--danger)">読み込めませんでした：' + escapeHtmlDutyStart(e.message || String(e)) + '</td></tr>';
+    body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--danger)">読み込めませんでした：' + escapeHtmlDutyStart(e.message || String(e)) + '</td></tr>';
   }
   if (monthEl) {
     monthEl.max = dutyStartMaxYm();
