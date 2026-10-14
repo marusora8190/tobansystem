@@ -295,9 +295,9 @@
   <div id="login-view" class="card" style="max-width:320px;margin:24px auto 0;padding:32px 28px;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
     <div class="card-title">ログインナンバーを入力してください</div>
     <input id="login-code" type="text" inputmode="numeric" pattern="\d*" maxlength="4" autocomplete="off" autocapitalize="off" spellcheck="false" style="display:block;width:50%;margin:0 auto;-webkit-text-security:disc;text-security:disc;" aria-label="ログインナンバー" onkeydown="if(event.key==='Enter'){event.preventDefault();doLogin();}">
-    <div class="checkbox-row">
+    <div class="checkbox-row" style="justify-content:center;">
       <input type="checkbox" id="remember-me">
-      <label for="remember-me" style="margin:0">この端末を記憶する<br>（次回から自動ログイン）</label>
+      <label for="remember-me" style="margin:0;text-align:center;">この端末を記憶する<br>（次回から自動ログイン）</label>
     </div>
     <div class="btn-row" style="justify-content:center;">
       <button id="login-btn" class="btn btn-primary" style="flex:0 0 auto;width:50%;" onclick="doLogin()">ログイン</button>
