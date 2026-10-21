@@ -1011,8 +1011,9 @@
         <div style="display:flex;gap:12px;margin-bottom:10px;flex-wrap:wrap">
           <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:var(--accent-light);color:var(--accent-dark)">✓ 1/1</span> 予定通り</span>
           <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:var(--danger-light);color:var(--danger)">⚠ 1/2</span> 予定と不一致（不足・超過）</span>
+          <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:#fceaea;color:#b03a3a">日祝 1/1</span> その月が日祝当番の人だけ、日祝に当たった回数／予定（1回）</span>
         </div>
-        <div id="dcr-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px">読み込み中...</div>
+        <div id="dcr-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px">読み込み中...</div>
       </div>
       <div class="card">
         <div class="card-title">累計当番回数（システム運用前の記録 ＋ これまでに「決定」済みの全期間の合計）</div>
@@ -1786,6 +1787,7 @@
           <div class="howto-body">
             <ol>
               <li>対象月を選ぶと、メンバーごとの予定回数と実績回数が一覧表示されます（予定通り＝✓、不一致＝⚠）。</li>
+              <li>その月が「日祝当番月」になっている人だけ、右側に「日祝 1/1」（日曜・祝日に当たった回数／予定の1回）も表示されます。日祝当番の月なのに日曜・祝日に当たっていないときは「日祝 ⚠ 0/1」となり、カードが赤くなります。</li>
               <li>「累計当番回数」欄で、システム運用前の記録とこれまでの決定済み全期間の通算回数を確認できます。</li>
             </ol>
             <div class="howto-note">「当番表(当初)決定」を押した時点の数字が確定記録として残ります。決定前の月は、その時点のカレンダー内容をもとにした下書き表示です。</div>
@@ -3731,6 +3733,20 @@ function actualCountsForMonth(year, month) {
   return counts;
 }
 
+// 対象年・月の日祝（日曜・祝日）の当番回数をメンバーIDごとに返す（2026年10月21日〜）
+// 「当番表を作成」と同じ考え方で、その月の当番の日（12月は翌年1月4日まで）のうち
+// 日曜日または祝日に当たっている日を数える
+function holidayActualCountsForMonth(year, month) {
+  const counts = {};
+  getServiceMonthDays(year, month).forEach(({ dateStr }) => {
+    const s = schedules[dateStr];
+    if (!s || s.member_id == null) return;
+    const dow = new Date(dateStr + 'T00:00:00').getDay();
+    if (dow === 0 || holidays[dateStr]) counts[s.member_id] = (counts[s.member_id] || 0) + 1;
+  });
+  return counts;
+}
+
 // 「当番表(当初)決定」を押した瞬間の当番回数を確定記録として保存する
 async function recordMonthlyDutyCounts(year, month) {
   await ensureMultiYearsLoaded([year], true);
@@ -3778,6 +3794,11 @@ async function renderDutyCountRecordPage() {
     record = monthlyDutyCountRecords[periodKey];
   }
 
+  // 日祝当番の予定（日祝当番月の設定）と、日祝に当たった回数。
+  // 日祝当番の回数は確定記録には残していないため、決定済みの月も今の当番表から数える。
+  await ensureMultiYearsLoaded([year]);
+  const holActual = holidayActualCountsForMonth(year, month);
+
   let rowsData;
   if (isDecided && record) {
     statusEl.innerHTML = `<div class="alert alert-success">✓ ${label}は決定済みです（${formatDecidedAt(record.recordedAt)}決定時点の確定記録）</div>`;
@@ -3792,14 +3813,23 @@ async function renderDutyCountRecordPage() {
   // 支障日確認状況（unavail-summary）ページと同じ「名前＋バッジ」のカードを、
   // 同じグリッドレイアウトで並べる形式に統一している
   body.innerHTML = rowsData.map(({ member: m, planned, actual }) => {
-    const ok = actual === planned;
+    const countOk = actual === planned;
+    // 日祝当番：その月が「日祝当番月」になっている人だけ表示する（予定は1回）
+    const isHolMember = getMultiCell(year, m.id).hol.includes(month);
+    const holPlanned = isHolMember ? 1 : 0;
+    const holDone = holActual[m.id] || 0;
+    const holOk = !isHolMember || holDone === holPlanned;
+    const ok = countOk && holOk;
     const bg = ok ? 'var(--accent-light)' : 'var(--danger-light)';
     const border = ok ? '#c8d8b4' : '#f0b8b8';
-    const fg = ok ? 'var(--accent-dark)' : 'var(--danger)';
-    const mark = ok ? '✓' : '⚠';
+    const fg = countOk ? 'var(--accent-dark)' : 'var(--danger)';
+    const mark = countOk ? '✓' : '⚠';
+    const holBadge = isHolMember
+      ? `<span style="background:#fceaea;color:${holOk ? '#b03a3a' : 'var(--danger)'};border:1px solid ${holOk ? '#f0c8c8' : 'var(--danger)'};border-radius:3px;padding:0 4px;font-size:11px;font-weight:600">日祝 ${holOk ? '✓' : '⚠'} ${holDone}/${holPlanned}</span>`
+      : '';
     return `<div style="background:${bg};border:1px solid ${border};border-radius:var(--radius);padding:4px 8px;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:6px;white-space:nowrap">
       <span style="font-weight:600">${m.name}</span>
-      <span style="color:${fg};font-size:11px;font-weight:600">${mark} ${actual}/${planned}</span>
+      <span style="display:flex;align-items:center;gap:6px">${holBadge}<span style="color:${fg};font-size:11px;font-weight:600">${mark} ${actual}/${planned}</span></span>
     </div>`;
   }).join('');
 
