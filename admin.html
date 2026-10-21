@@ -3842,6 +3842,8 @@ async function renderDutyCountRecordPage() {
   // 同じグリッドレイアウトで並べる形式に統一している
   body.innerHTML = rowsData.map(({ member: m, planned, actual }) => {
     const countOk = actual === planned;
+    // 「支障」「日祝」「当番回数」は、カードどうしで縦の列がそろうよう、それぞれ決まった幅の枠に入れる
+    // （日祝が無い人も、同じ幅の空の枠を置く）
     // 日祝当番：その月が「日祝当番月」になっている人だけ表示する（予定は1回）
     const isHolMember = getMultiCell(year, m.id).hol.includes(month);
     const holPlanned = isHolMember ? 1 : 0;
@@ -3864,7 +3866,7 @@ async function renderDutyCountRecordPage() {
         : `<span style="background:var(--danger);color:#fff;border-radius:3px;padding:0 4px;font-size:11px;font-weight:600" title="支障日に当番が当たっている日：${hits.join('、')}">支障 ⚠ ${hits.join('・')}</span>`;
     return `<div style="background:${bg};border:1px solid ${border};border-radius:var(--radius);padding:4px 8px;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:6px;white-space:nowrap">
       <span style="font-weight:600">${m.name}</span>
-      <span style="display:flex;align-items:center;gap:6px">${unavailBadge}${holBadge}<span style="color:${fg};font-size:11px;font-weight:600">${mark} ${actual}/${planned}</span></span>
+      <span style="display:flex;align-items:center;gap:6px"><span style="display:inline-block;min-width:58px;text-align:right">${unavailBadge}</span><span style="display:inline-block;width:76px;text-align:center">${holBadge}</span><span style="display:inline-block;width:46px;text-align:right;color:${fg};font-size:11px;font-weight:600">${mark} ${actual}/${planned}</span></span>
     </div>`;
   }).join('');
 
