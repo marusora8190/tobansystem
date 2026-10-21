@@ -1009,8 +1009,8 @@
       <div id="dcr-status" style="margin:10px 0"></div>
       <div class="card">
         <div style="display:flex;gap:12px;margin-bottom:10px;flex-wrap:wrap">
-          <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:var(--accent-light);color:var(--accent-dark)">✓ 1/1</span> 予定通り</span>
-          <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:var(--danger-light);color:var(--danger)">⚠ 1/2</span> 予定と不一致（不足・超過）</span>
+          <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:var(--accent-light);color:var(--accent-dark)">当番 ✓ 1/1</span> 予定通り</span>
+          <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:var(--danger-light);color:var(--danger)">当番 ⚠ 1/2</span> 予定と不一致（不足・超過）</span>
           <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:#fceaea;color:#b03a3a">日祝 1/1</span> その月が日祝当番の人だけ、日祝に当たった回数／予定（1回）</span>
           <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:var(--bg);color:var(--text-muted)">支障 ✓</span> 支障日に当番が当たっていない</span>
           <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:var(--danger);color:#fff">支障 ⚠ 12/5</span> 支障日に当番が当たっている（その日付）</span>
@@ -3866,7 +3866,7 @@ async function renderDutyCountRecordPage() {
         : `<span style="background:var(--danger);color:#fff;border-radius:3px;padding:0 4px;font-size:11px;font-weight:600" title="支障日に当番が当たっている日：${hits.join('、')}">支障 ⚠ ${hits.join('・')}</span>`;
     return `<div style="background:${bg};border:1px solid ${border};border-radius:var(--radius);padding:4px 8px;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:6px;white-space:nowrap">
       <span style="font-weight:600">${m.name}</span>
-      <span style="display:flex;align-items:center;gap:6px"><span style="display:inline-block;min-width:58px;text-align:right">${unavailBadge}</span><span style="display:inline-block;width:76px;text-align:center">${holBadge}</span><span style="display:inline-block;width:46px;text-align:right;color:${fg};font-size:11px;font-weight:600">${mark} ${actual}/${planned}</span></span>
+      <span style="display:flex;align-items:center;gap:6px"><span style="display:inline-block;min-width:58px;text-align:right">${unavailBadge}</span><span style="display:inline-block;width:76px;text-align:center">${holBadge}</span><span style="display:inline-block;width:68px;text-align:right;color:${fg};font-size:11px;font-weight:600">当番 ${mark} ${actual}/${planned}</span></span>
     </div>`;
   }).join('');
 
