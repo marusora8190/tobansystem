@@ -1788,6 +1788,7 @@
             <ol>
               <li>対象月を選ぶと、メンバーごとの予定回数と実績回数が一覧表示されます（予定通り＝✓、不一致＝⚠）。</li>
               <li>その月が「日祝当番月」になっている人だけ、右側に「日祝 1/1」（日曜・祝日に当たった回数／予定の1回）も表示されます。日祝当番の月なのに日曜・祝日に当たっていないときは「日祝 ⚠ 0/1」となり、カードが赤くなります。</li>
+              <li>回数は、その月の1日〜末日で数えます。12月も12月1日〜31日で数え、1月1日〜4日の分は1月の回数に入ります。</li>
               <li>「累計当番回数」欄で、システム運用前の記録とこれまでの決定済み全期間の通算回数を確認できます。</li>
             </ol>
             <div class="howto-note">「当番表(当初)決定」を押した時点の数字が確定記録として残ります。決定前の月は、その時点のカレンダー内容をもとにした下書き表示です。</div>
@@ -3723,10 +3724,21 @@ function plannedCountForMonth(year, mid, month) {
   return 1;
 }
 
+// 「月割当て確認用」で回数を数える日：その月の1日〜末日（2026年10月21日〜）。
+// 12月も12月1日〜31日で数える（12/1〜翌年1/4 はカレンダーの表示と印刷①などで使う範囲で、
+// 回数の数え方には使わない。1月の回数は1月1日〜31日）
+function calendarMonthDays(year, month) {
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const days = [];
+  const dim = new Date(year, month, 0).getDate();
+  for (let d = 1; d <= dim; d++) days.push({ y: year, m: month, d, dateStr: `${year}-${pad2(month)}-${pad2(d)}` });
+  return days;
+}
+
 // 対象年・月の実績回数（annual_roster／scheduleキャッシュから集計）をメンバーIDごとに返す
 function actualCountsForMonth(year, month) {
   const counts = {};
-  getServiceMonthDays(year, month).forEach(({ dateStr }) => {
+  calendarMonthDays(year, month).forEach(({ dateStr }) => {
     const s = schedules[dateStr];
     if (s && s.member_id != null) counts[s.member_id] = (counts[s.member_id] || 0) + 1;
   });
@@ -3734,11 +3746,10 @@ function actualCountsForMonth(year, month) {
 }
 
 // 対象年・月の日祝（日曜・祝日）の当番回数をメンバーIDごとに返す（2026年10月21日〜）
-// 「当番表を作成」と同じ考え方で、その月の当番の日（12月は翌年1月4日まで）のうち
-// 日曜日または祝日に当たっている日を数える
+// その月の1日〜末日（12月も12月31日まで）のうち、日曜日または祝日に当たっている日を数える
 function holidayActualCountsForMonth(year, month) {
   const counts = {};
-  getServiceMonthDays(year, month).forEach(({ dateStr }) => {
+  calendarMonthDays(year, month).forEach(({ dateStr }) => {
     const s = schedules[dateStr];
     if (!s || s.member_id == null) return;
     const dow = new Date(dateStr + 'T00:00:00').getDay();
