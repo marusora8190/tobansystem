@@ -1012,8 +1012,10 @@
           <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:var(--accent-light);color:var(--accent-dark)">✓ 1/1</span> 予定通り</span>
           <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:var(--danger-light);color:var(--danger)">⚠ 1/2</span> 予定と不一致（不足・超過）</span>
           <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:#fceaea;color:#b03a3a">日祝 1/1</span> その月が日祝当番の人だけ、日祝に当たった回数／予定（1回）</span>
+          <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:var(--bg);color:var(--text-muted)">支障 ✓</span> 支障日に当番が当たっていない</span>
+          <span style="font-size:12px;color:var(--text-muted)"><span class="badge" style="background:var(--danger);color:#fff">支障 ⚠ 12/5</span> 支障日に当番が当たっている（その日付）</span>
         </div>
-        <div id="dcr-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px">読み込み中...</div>
+        <div id="dcr-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:6px">読み込み中...</div>
       </div>
       <div class="card">
         <div class="card-title">累計当番回数（システム運用前の記録 ＋ これまでに「決定」済みの全期間の合計）</div>
@@ -1492,7 +1494,7 @@
         <div class="set-body">
           <p class="set-sub">修正のたびに、Claudeがこれらが修正前と同じ数だけ残っているかを確認します。</p>
           <div class="set-h">1000件対策の部品（admin.html）</div>
-          <div><code class="set-code">fetchAllUnavail</code>（支障日の読み込み3か所＋古いデータの整理＝4か所）／ <code class="set-code">fetchAllRows</code>（5か所）</div>
+          <div><code class="set-code">fetchAllUnavail</code>（支障日の読み込み3か所＋古いデータの整理＋月割当て確認用＝5か所）／ <code class="set-code">fetchAllRows</code>（7か所）</div>
           <p class="set-sub">データベースは1回に1000件までしか返さないため、1000件ずつ区切ってすべて読み込みます。支障日は1年で約7,000件と、いちばん増えるデータです。これが消えると、1000件を超えたときに表示や集計が欠けます。新しく件数が増える読み込みを追加するときも、この部品を使います。</p>
           <div class="set-h">ログイン画面（admin.html）</div>
           <div><code class="set-code">checkLoginPassword</code> ／ <code class="set-code">login-admin</code></div>
@@ -1788,6 +1790,7 @@
             <ol>
               <li>対象月を選ぶと、メンバーごとの予定回数と実績回数が一覧表示されます（予定通り＝✓、不一致＝⚠）。</li>
               <li>その月が「日祝当番月」になっている人だけ、右側に「日祝 1/1」（日曜・祝日に当たった回数／予定の1回）も表示されます。日祝当番の月なのに日曜・祝日に当たっていないときは「日祝 ⚠ 0/1」となり、カードが赤くなります。</li>
+              <li>どの人にも「支障 ✓」（支障日に当番が当たっていない）か「支障 ⚠ 12/5」（支障日に当番が当たっている日付）が出ます。当たっているときはカードが赤くなります。今の当番表と、今登録されている支障日で判断します。</li>
               <li>回数は、その月の1日〜末日で数えます。12月も12月1日〜31日で数え、1月1日〜4日の分は1月の回数に入ります。</li>
               <li>「累計当番回数」欄で、システム運用前の記録とこれまでの決定済み全期間の通算回数を確認できます。</li>
             </ol>
@@ -3810,6 +3813,20 @@ async function renderDutyCountRecordPage() {
   await ensureMultiYearsLoaded([year]);
   const holActual = holidayActualCountsForMonth(year, month);
 
+  // 支障日に当番が当たっているか（2026年10月21日〜）。
+  // その月の1日〜末日の当番の日のうち、当番の人がその日を支障日として登録している日を集める。
+  // 支障日の読み込みは1000件対策の fetchAllUnavail を使う。
+  const monthFirst = `${year}-${String(month).padStart(2, '0')}-01`;
+  const monthLast = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
+  const { data: dcrUnavail, error: dcrUnavailError } = await fetchAllUnavail(q => q.gte('blocked_date', monthFirst).lte('blocked_date', monthLast));
+  const unavailSet = new Set((dcrUnavail || []).map(u => `${u.blocked_date}|${u.member_id}`));
+  const unavailHits = {}; // { memberId: ['M/D', ...] }
+  calendarMonthDays(year, month).forEach(({ m: mm, d, dateStr }) => {
+    const sch = schedules[dateStr];
+    if (!sch || sch.member_id == null) return;
+    if (unavailSet.has(`${dateStr}|${sch.member_id}`)) (unavailHits[sch.member_id] = unavailHits[sch.member_id] || []).push(`${mm}/${d}`);
+  });
+
   let rowsData;
   if (isDecided && record) {
     statusEl.innerHTML = `<div class="alert alert-success">✓ ${label}は決定済みです（${formatDecidedAt(record.recordedAt)}決定時点の確定記録）</div>`;
@@ -3830,7 +3847,9 @@ async function renderDutyCountRecordPage() {
     const holPlanned = isHolMember ? 1 : 0;
     const holDone = holActual[m.id] || 0;
     const holOk = !isHolMember || holDone === holPlanned;
-    const ok = countOk && holOk;
+    const hits = unavailHits[m.id] || [];
+    const unavailOk = hits.length === 0;
+    const ok = countOk && holOk && unavailOk;
     const bg = ok ? 'var(--accent-light)' : 'var(--danger-light)';
     const border = ok ? '#c8d8b4' : '#f0b8b8';
     const fg = countOk ? 'var(--accent-dark)' : 'var(--danger)';
@@ -3838,9 +3857,14 @@ async function renderDutyCountRecordPage() {
     const holBadge = isHolMember
       ? `<span style="background:#fceaea;color:${holOk ? '#b03a3a' : 'var(--danger)'};border:1px solid ${holOk ? '#f0c8c8' : 'var(--danger)'};border-radius:3px;padding:0 4px;font-size:11px;font-weight:600">日祝 ${holOk ? '✓' : '⚠'} ${holDone}/${holPlanned}</span>`
       : '';
+    const unavailBadge = dcrUnavailError
+      ? `<span style="color:var(--text-hint);font-size:11px" title="支障日を読み込めませんでした">支障 ?</span>`
+      : unavailOk
+        ? `<span style="background:var(--bg);color:var(--text-muted);border:1px solid var(--border);border-radius:3px;padding:0 4px;font-size:11px">支障 ✓</span>`
+        : `<span style="background:var(--danger);color:#fff;border-radius:3px;padding:0 4px;font-size:11px;font-weight:600" title="支障日に当番が当たっている日：${hits.join('、')}">支障 ⚠ ${hits.join('・')}</span>`;
     return `<div style="background:${bg};border:1px solid ${border};border-radius:var(--radius);padding:4px 8px;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:6px;white-space:nowrap">
       <span style="font-weight:600">${m.name}</span>
-      <span style="display:flex;align-items:center;gap:6px">${holBadge}<span style="color:${fg};font-size:11px;font-weight:600">${mark} ${actual}/${planned}</span></span>
+      <span style="display:flex;align-items:center;gap:6px">${unavailBadge}${holBadge}<span style="color:${fg};font-size:11px;font-weight:600">${mark} ${actual}/${planned}</span></span>
     </div>`;
   }).join('');
 
