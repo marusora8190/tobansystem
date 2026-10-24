@@ -4924,7 +4924,7 @@ function renderMultiCount2Table(years) {
   
   head.innerHTML = `
     <tr>
-      <th class="mc2-col1" style="width:50px">年度</th>
+      <th class="mc2-col1" style="padding:1px 0;vertical-align:middle;text-align:center"><span style="display:inline-block;height:24px;font-size:11px;line-height:1;writing-mode:vertical-rl;text-orientation:upright">年度</span></th>
       <th class="mc2-col2" style="width:30px">月</th>
       <th class="mc2-col3" style="width:56px">合計/<br>日数</th>
       ${nameRow}
@@ -4937,7 +4937,10 @@ function renderMultiCount2Table(years) {
       // rowspanをsticky(横スクロール固定)列に使うと、ブラウザによって「年度」セルの
       // 縦位置がずれて表示が崩れることがあるため、rowspanは使わず、12ヶ月分すべての行に
       // 同じ背景色のセルを敷いて、1月の行だけ年度を表示することで見た目上の結合を再現する
-      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:2px 1px;${mon < 12 ? 'border-bottom:none;' : ''}">${mon === 1 ? (y + '年') : ''}</td>`;
+      // 年度の列は縦書きにして幅を最小にする（2026年10月24日）。行の高さを変えないよう、
+      // 「2026年」を1文字ずつ、1月の行から下へ1行に1文字ずつ入れて縦に読めるようにする
+      const yearChars = [...(y + '年')];
+      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:0 1px;line-height:1;${mon < 12 ? 'border-bottom:none;' : ''}">${yearChars[mon - 1] || ''}</td>`;
       const memberCellsHtml = members.map(m => {
         const cell = getMultiCell(y, m.id);
         let val = 1;
@@ -4959,7 +4962,7 @@ function renderMultiCount2Table(years) {
       const total = monthlyValsFromCell(getMultiCell(y, m.id));
       return `<td id="mc2-year-total-${m.id}-${y}" style="text-align:center;font-weight:700;font-size:11px">${total}</td>`;
     }).join('');
-    rowsHtml += `<tr class="mc2-total-row"><td class="mc2-col1" colspan="2" style="white-space:nowrap;font-weight:700;padding:4px 4px;font-size:11px">${y}年 年間合計</td><td id="mc2-grand-${y}" class="mc2-col3" style="text-align:center;font-weight:700;font-size:10px;padding:2px 1px"></td>${memberTotalsHtml}</tr>`;
+    rowsHtml += `<tr class="mc2-total-row"><td class="mc2-col1" colspan="2" style="text-align:center;font-weight:700;padding:1px 0;font-size:9px;letter-spacing:-0.5px;line-height:1.15">${y}年<br>年間合計</td><td id="mc2-grand-${y}" class="mc2-col3" style="text-align:center;font-weight:700;font-size:10px;padding:2px 1px"></td>${memberTotalsHtml}</tr>`;
   });
   body.innerHTML = rowsHtml;
 
@@ -5216,7 +5219,7 @@ function renderMultiHolTable2(years) {
 
   head.innerHTML = `
     <tr>
-      <th class="mc2-col1" rowspan="2" style="width:22px">年<br>度</th>
+      <th class="mc2-col1" rowspan="2" style="width:12px;padding:1px 0;vertical-align:middle;text-align:center"><span style="display:inline-block;height:24px;font-size:11px;line-height:1;writing-mode:vertical-rl;text-orientation:upright">年度</span></th>
       <th class="mc2-col2" rowspan="2" style="width:30px">月</th>
       <th class="mc2-col3" rowspan="2" style="width:56px">合計/<br>日祝日数</th>
       ${nameRow}
@@ -5231,7 +5234,10 @@ function renderMultiHolTable2(years) {
       // 縦位置がずれて表示が崩れることがあるため、rowspanは使わず、12ヶ月分すべての行に
       // 同じ背景色のセルを敷いて、1月の行だけ年度を表示することで見た目上の結合を再現する
       // （年度は縦書きにして列幅を最小限に抑える）
-      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:10px;padding:2px 0;${mon < 12 ? 'border-bottom:none;' : ''}">${mon === 1 ? (y + '年') : ''}</td>`;
+      // 年度の列は縦書きにして幅を最小にする（2026年10月24日）。行の高さを変えないよう、
+      // 「2026年」を1文字ずつ、1月の行から下へ1行に1文字ずつ入れて縦に読めるようにする
+      const yearChars = [...(y + '年')];
+      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:0 1px;line-height:1;${mon < 12 ? 'border-bottom:none;' : ''}">${yearChars[mon - 1] || ''}</td>`;
       const memberCellsHtml = members.map(m => {
         const cell = getMultiCell(y, m.id);
         const checked = cell.hol.includes(mon);
@@ -5243,7 +5249,7 @@ function renderMultiHolTable2(years) {
       const total = getMultiCell(y, m.id).hol.length;
       return `<td id="mh2-year-total-${m.id}-${y}" style="text-align:center;font-weight:700;font-size:11px">${total}</td>`;
     }).join('');
-    rowsHtml += `<tr class="mc2-total-row"><td class="mc2-col1" colspan="2" style="white-space:nowrap;font-weight:700;padding:4px 4px;font-size:11px">${y}年 年間合計</td><td id="mh2-grand-${y}" class="mc2-col3" style="text-align:center;font-weight:700;font-size:10px;padding:2px 1px"></td>${memberTotalsHtml}</tr>`;
+    rowsHtml += `<tr class="mc2-total-row"><td class="mc2-col1" colspan="2" style="text-align:center;font-weight:700;padding:1px 0;font-size:9px;letter-spacing:-0.5px;line-height:1.15">${y}年<br>年間合計</td><td id="mh2-grand-${y}" class="mc2-col3" style="text-align:center;font-weight:700;font-size:10px;padding:2px 1px"></td>${memberTotalsHtml}</tr>`;
   });
   body.innerHTML = rowsHtml;
 
