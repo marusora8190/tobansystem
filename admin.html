@@ -270,7 +270,10 @@
   .annual-table-1col .year-group-th { background: #eef3e6; }
 
   /* 月ごとの当番回数②：メンバーを横、月を縦に並べた転置レイアウト用テーブル */
-  .mc2-table th, .mc2-table td { border-right: 1px solid var(--border); }
+  /* 縦の罫線の色（2026年10月24日に濃くした。それまでは --border〔#e4e0d8〕・--border-strong〔#c8c2b4〕）。
+     このクラスは「月ごとの当番回数」「日祝当番月（複数年）」「各メンバーの年間設定」の3つの表だけで使う */
+  .mc2-table { --mc2-vline: #a59d8c; --mc2-vline-strong: #7d7563; }
+  .mc2-table th, .mc2-table td { border-right: 1px solid var(--mc2-vline); }
   .mc2-table th:last-child, .mc2-table td:last-child { border-right: none; }
   .mc2-table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
   .mc2-table thead th {
@@ -319,10 +322,10 @@
        セルが透けて見える不具合を防ぐため、固定列を独立した描画レイヤーにする */
     will-change: transform; backface-visibility: hidden; transform: translateZ(0);
   }
-  .mc2-table .mc2-col1 { position: sticky; left: 0; z-index: 4; background: var(--surface); border-right: 1px solid var(--border-strong); }
-  .mc2-table .mc2-col2 { position: sticky; left: var(--mc2-col2-left, 50px); z-index: 4; background: var(--surface); border-right: 1px solid var(--border); }
-  .mc2-table .mc2-col3 { position: sticky; left: var(--mc2-col3-left, 80px); z-index: 4; background: var(--surface); border-right: 1px solid var(--border-strong); }
-  .mc2-table .mc2-col4 { position: sticky; left: var(--mc2-col4-left, 136px); z-index: 4; background: var(--surface); border-right: 1px solid var(--border-strong); }
+  .mc2-table .mc2-col1 { position: sticky; left: 0; z-index: 4; background: var(--surface); border-right: 1px solid var(--mc2-vline-strong); }
+  .mc2-table .mc2-col2 { position: sticky; left: var(--mc2-col2-left, 50px); z-index: 4; background: var(--surface); border-right: 1px solid var(--mc2-vline); }
+  .mc2-table .mc2-col3 { position: sticky; left: var(--mc2-col3-left, 80px); z-index: 4; background: var(--surface); border-right: 1px solid var(--mc2-vline-strong); }
+  .mc2-table .mc2-col4 { position: sticky; left: var(--mc2-col4-left, 136px); z-index: 4; background: var(--surface); border-right: 1px solid var(--mc2-vline-strong); }
   .mc2-table thead .mc2-col1, .mc2-table thead .mc2-col2, .mc2-table thead .mc2-col3, .mc2-table thead .mc2-col4 { z-index: 11; }
   .mc2-table tr.mc2-total-row td { background: #dbe7f5 !important; color: #1a4971; border-top: 3px double #8a8370; }
 
