@@ -712,9 +712,9 @@
         </select>
         <div class="card-title" style="margin-bottom:0;white-space:nowrap;font-size:11px;">表示年数</div>
         <select id="mc2-year-span" onchange="loadAndRenderMultiCount2()" style="width:80px;padding:2px 6px;font-size:12px;">
-          <option value="1">1年分</option>
+          <option value="1" selected>1年分</option>
           <option value="2">2年分</option>
-          <option value="3" selected>3年分</option>
+          <option value="3">3年分</option>
         </select>
         <button class="btn btn-sm" onclick="loadAndRenderMultiCount2()">再読み込み</button>
         <button id="mc2-save-btn" class="btn btn-primary btn-sm" onclick="saveMultiCountPlans2()">この表示期間をまとめて保存</button>
@@ -749,9 +749,9 @@
         </select>
         <div class="card-title" style="margin-bottom:0;white-space:nowrap;font-size:12px">表示年数</div>
         <select id="mh2-year-span" onchange="loadAndRenderMultiHol2()" style="width:80px;padding:3px 6px;font-size:12px">
-          <option value="1">1年分</option>
+          <option value="1" selected>1年分</option>
           <option value="2">2年分</option>
-          <option value="3" selected>3年分</option>
+          <option value="3">3年分</option>
         </select>
         <button class="btn btn-sm" onclick="loadAndRenderMultiHol2()">再読み込み</button>
         <button id="mh2-save-btn" class="btn btn-primary btn-sm" onclick="saveMultiHolPlans2()">この表示期間をまとめて保存</button>
@@ -766,13 +766,15 @@
     </div>
 
     <div id="page-annual-single2" class="page">
-      <div class="section-title">各メンバーの年間設定（メンバー横並び表示）</div>
-      <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.4">
-        メンバーを横に・月を縦に並べたレイアウトで、年間の当番予定を編集できます。
-      </p>
-      <div class="card" style="padding:6px 14px;margin-bottom:8px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-        <div class="card-title" style="margin-bottom:0;white-space:nowrap;">開始年度</div>
-        <select id="annual2-start-year" onchange="loadAndRenderAnnualTable2()" style="width:110px">
+      <!-- 2026年10月24日：「月ごとの当番回数」「日祝当番月」と表の大きさをそろえ、1年分が1画面に収まるよう、
+           表より上の見出し・ボタンをほかの2つの画面と同じ詰めた形にした（中身・ボタンは同じ） -->
+      <div class="section-title" style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+        <span>各メンバーの年間設定（メンバー横並び表示）</span>
+        <span style="font-size:11px;font-weight:400;color:var(--text-muted)">メンバーを横に・月を縦に並べたレイアウトで、年間の当番予定を編集できます。</span>
+      </div>
+      <div class="card" style="padding:4px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div class="card-title" style="margin-bottom:0;white-space:nowrap;font-size:11px;">開始年度</div>
+        <select id="annual2-start-year" onchange="loadAndRenderAnnualTable2()" style="width:100px;padding:2px 6px;font-size:12px;">
           <option value="2026" selected>2026年</option>
           <option value="2027">2027年</option>
           <option value="2028">2028年</option>
@@ -784,30 +786,25 @@
           <option value="2034">2034年</option>
           <option value="2035">2035年</option>
         </select>
-        <div class="card-title" style="margin-bottom:0;white-space:nowrap;">表示年数</div>
-        <select id="annual2-year-span" onchange="loadAndRenderAnnualTable2()" style="width:90px">
-          <option value="1">1年分</option>
+        <div class="card-title" style="margin-bottom:0;white-space:nowrap;font-size:11px;">表示年数</div>
+        <select id="annual2-year-span" onchange="loadAndRenderAnnualTable2()" style="width:80px;padding:2px 6px;font-size:12px;">
+          <option value="1" selected>1年分</option>
           <option value="2">2年分</option>
-          <option value="3" selected>3年分</option>
+          <option value="3">3年分</option>
         </select>
         <button class="btn btn-sm" onclick="loadAndRenderAnnualTable2()">再読み込み</button>
+        <div class="card-title" style="margin-bottom:0;margin-left:8px;white-space:nowrap;font-size:11px;">保存・自動配分の対象年度</div>
+        <select id="annual2-target-year" style="width:100px;padding:2px 6px;font-size:12px;"></select>
+        <button id="annual2-save-btn" class="btn btn-primary btn-sm" onclick="saveAnnualPlanForYear2()">年間予定を保存</button>
+        <button class="btn btn-sm" onclick="autoDistributeForYear2()">自動均等配分 ↗</button>
       </div>
-      <div class="card" style="padding-bottom:14px;">
-        <div class="card-title" style="margin-bottom:6px;">📌 各メンバーの年間設定</div>
-        <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.4">月ごとの当番回数（0=身上等／1=通常／2=通常または他の人の代わりに当番）と日祝当番の月を設定できます。各行の右端で当番人数合計・日祝当番人数合計が日数と一致しているか自動チェックします（<span style="color:#2e7d32;font-weight:600">✓一致</span> / <span style="color:#e89090;font-weight:600">×不一致</span>）。</p>
-        <div class="annual-wrap annual-wrap-compact">
-          <table class="mc2-table annual2-table">
-            <thead id="annual2-head"></thead>
-            <tbody id="annual2-body"><tr><td style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
-          </table>
-        </div>
-        <div class="btn-row" style="align-items:center">
-          <div class="card-title" style="margin-bottom:0;white-space:nowrap;">保存・自動配分の対象年度</div>
-          <select id="annual2-target-year" style="width:110px"></select>
-          <button id="annual2-save-btn" class="btn btn-primary" onclick="saveAnnualPlanForYear2()">年間予定を保存</button>
-          <button class="btn" onclick="autoDistributeForYear2()">自動均等配分 ↗</button>
-        </div>
-        <div id="annual2-msg" style="margin-top:8px"></div>
+      <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;line-height:1.4">月ごとの当番回数（0=身上等／1=通常／2=通常または他の人の代わりに当番）と日祝当番の月を設定できます。各行の右端で当番人数合計・日祝当番人数合計が日数と一致しているか自動チェックします（<span style="color:#2e7d32;font-weight:600">✓一致</span> / <span style="color:#e89090;font-weight:600">×不一致</span>）。</div>
+      <div id="annual2-msg" style="margin-bottom:2px"></div>
+      <div class="annual-wrap annual-wrap-compact">
+        <table class="mc2-table annual2-table">
+          <thead id="annual2-head"></thead>
+          <tbody id="annual2-body"><tr><td style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
+        </table>
       </div>
     </div>
 
@@ -2625,6 +2622,7 @@ function toggleSidebar() {
       fitYearBlockHeight('annual2-body');
     }
     if (typeof fitAnnual2MemberWidth === 'function') fitAnnual2MemberWidth();
+    if (typeof fitMc2MemberWidth === 'function') fitMc2MemberWidth();
   }, 200);
 }
 function restoreSidebarState() {
@@ -4675,9 +4673,21 @@ function renderAnnualTable2(years) {
 function fitAnnual2MemberWidth(onlyIfOverflow) {
   const head = document.getElementById('annual2-head');
   if (!head) return;
+  fitMemberColsToWidth(head, Array.from(head.querySelectorAll('tr:last-child th')), onlyIfOverflow, 20);
+}
+
+// 月ごとの当番回数（メンバー横並び表示）：名前の列を、表の右端が表示エリアの右端に
+// ちょうど収まるところまで均等に広げる（各メンバーの年間設定と同じ。2026年10月24日）
+function fitMc2MemberWidth(onlyIfOverflow) {
+  const head = document.getElementById('multi-count2-head');
+  if (!head) return;
+  fitMemberColsToWidth(head, Array.from(head.querySelectorAll('tr:first-child th:not(.mc2-col1):not(.mc2-col2):not(.mc2-col3)')), onlyIfOverflow, 40);
+}
+
+// 上の2つの共通の部品：subThs（メンバーの列の見出し）の幅を広げて、表を表示エリアの横幅に合わせる
+function fitMemberColsToWidth(head, subThs, onlyIfOverflow, maxPer) {
   const table = head.closest('table');
   const wrap = head.closest('.annual-wrap');
-  const subThs = Array.from(head.querySelectorAll('tr:last-child th'));
   if (!table || !wrap || !subThs.length) return;
   // 回数・日祝を変えて当番計・日祝計の文字の長さが変わり、広げた表がはみ出したときだけ合わせ直す
   if (onlyIfOverflow && !(subThs[0].style.width && table.getBoundingClientRect().width > wrap.clientWidth)) return;
@@ -4687,8 +4697,9 @@ function fitAnnual2MemberWidth(onlyIfOverflow) {
   const base = subThs.map(th => th.getBoundingClientRect().width);
   const extra = avail - table.getBoundingClientRect().width - 1;
   if (extra <= 0) return;
-  // メンバーが少ないときに列が広がりすぎないよう、広げるのは1列あたり20pxまで
-  let per = Math.min(20, Math.floor(extra / subThs.length * 10) / 10);
+  // メンバーが少ないときに列が広がりすぎないよう、広げるのは1列あたり maxPer（px）まで
+  // （各メンバーの年間設定は1人2列なので20px、月ごとの当番回数は1人1列なので40px）
+  let per = Math.min(maxPer || 20, Math.floor(extra / subThs.length * 10) / 10);
   for (let i = 0; i < 6 && per > 0; i++) {
     subThs.forEach((th, k) => { th.style.boxSizing = 'border-box'; th.style.width = (base[k] + per) + 'px'; });
     if (table.getBoundingClientRect().width <= avail) return;
@@ -4991,6 +5002,8 @@ function renderMultiCount2Table(years) {
   updateMc2HeaderStickyOffset();
   fitYearBlockHeight('multi-count2-body');
   years.forEach(y => updateMc2RowValidationForYear(y));
+  // 名前の列の幅は、高さを合わせて合計/日数の文字が入ったあとで合わせる
+  fitMc2MemberWidth();
 }
 
 function updateMc2HeaderStickyOffset() {
@@ -5036,6 +5049,28 @@ function updateMc2StickyColOffsets() {
 // 表示したいという要望があったため、表示エリアいっぱいに高さを広げ、tbodyの高さを
 // 明示的に指定することで各行の高さも比例して大きくなるようにしている（CSSの表レイアウトが
 // 行の高さに余白がある分だけ自動的に均等配分してくれる）。
+// 表の表示エリア（.annual-wrap）に使える高さを、今の画面の大きさから計算する（2026年10月24日）。
+// 右側の画面（.main）の高さから、表より上にあるもの・表より下にあるもの（ボタンなど）・下の余白を除く。
+// 画面が表示されていないときなどは 0 を返す（呼び出し側で今までの決まった値を使う）
+function calcScreenFitHeight(wrap) {
+  const main = wrap.closest('.main');
+  const page = wrap.closest('.page');
+  if (!main || !page) return 0;
+  const mainRect = main.getBoundingClientRect();
+  const wrapRect = wrap.getBoundingClientRect();
+  if (!mainRect.height || !wrapRect.width) return 0;
+  const topInMain = wrapRect.top - mainRect.top + main.scrollTop;
+  let below = Math.max(0, page.getBoundingClientRect().bottom - wrapRect.bottom);
+  // 表を囲む枠（カード）などの下の外側の余白も足す
+  for (let el = wrap.parentElement; el && el !== main; el = el.parentElement) {
+    below += parseFloat(getComputedStyle(el).marginBottom) || 0;
+    if (el === page) break;
+  }
+  const padBottom = parseFloat(getComputedStyle(main).paddingBottom) || 0;
+  const h = Math.floor(main.clientHeight - topInMain - below - padBottom - 4);
+  return h >= 200 ? h : 0;
+}
+
 function fitYearBlockHeight(bodyId) {
   const body = document.getElementById(bodyId);
   if (!body) return;
@@ -5071,17 +5106,14 @@ function fitYearBlockHeight(bodyId) {
   wrap.style.maxHeight = '';
   body.style.height = '';
   const naturalMax = wrap.getBoundingClientRect().height;
-  const availableMax = parseFloat(getComputedStyle(wrap).maxHeight) || naturalMax;
+  // 画面の高さのうち、表の上（見出し・ボタン）と表の下（ボタンなど）を除いた残りを使う（2026年10月24日）。
+  // それまではCSSの決まった値（画面の高さ−128px など）で、画面によっては表の下が画面の外にはみ出していた
+  const availableMax = calcScreenFitHeight(wrap) || parseFloat(getComputedStyle(wrap).maxHeight) || naturalMax;
   const totalYears = Math.floor(rows.length / 13);
 
   // 1年分だけの表示なら、表示エリアいっぱいに広げ、各行の高さも引き伸ばして見やすくする。
   // ただし「年間合計」行（最終行）は、内容が短く引き伸ばす意味がないため最小の高さのままにし、
   // 余った分は全て月の行（1〜12月）に配分する。
-  // 各メンバーの年間設定は、行の高さを最小のままにするため引き伸ばさない（2026年10月24日）
-  if (totalYears === 1 && bodyId === 'annual2-body') {
-    wrap.style.maxHeight = totalForAllYears <= availableMax ? (totalForAllYears + 'px') : '';
-    return;
-  }
   if (totalYears === 1) {
     if (availableMax > totalForAllYears) {
       wrap.style.maxHeight = availableMax + 'px';
@@ -5099,7 +5131,8 @@ function fitYearBlockHeight(bodyId) {
         body.style.height = targetBodyHeight + 'px';
       }
     } else {
-      wrap.style.maxHeight = '';
+      // 行を最小にしても画面に収まらないときは、画面の高さまでにして、残りは表の中で動かして見る
+      wrap.style.maxHeight = availableMax + 'px';
       body.style.height = '';
     }
     return;
@@ -5130,6 +5163,7 @@ window.addEventListener('resize', () => {
   fitYearBlockHeight('mh2-body');
   fitYearBlockHeight('annual2-body');
   if (typeof fitAnnual2MemberWidth === 'function') fitAnnual2MemberWidth();
+  if (typeof fitMc2MemberWidth === 'function') fitMc2MemberWidth();
 });
 
 // 指定年の各月の行チェック（当番人数合計／その月の日数）と、年間合計行の合計チェックを更新
@@ -5158,6 +5192,7 @@ function updateMc2RowValidationForYear(y) {
     grandEl.style.background = '';
     grandEl.style.color = '';
   }
+  fitMc2MemberWidth(true);
 }
 
 // ②「月ごとの当番回数②」テーブル側のセルを、他画面で行われた変更に合わせてその場で更新する
