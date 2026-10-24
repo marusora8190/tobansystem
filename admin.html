@@ -339,6 +339,21 @@
        右側の空白ができないようにする（列数が多いぶん、1列あたりの広がりはわずかで済む）。 */
   #page-mc2 .mc2-table,
   #page-annual-single2 .mc2-table { min-width: 0; }
+  /* 3つの表の見出しの縦の罫線（2026年10月24日）。見出しはスクロールしても上に残すため
+     1つずつ別に描いており、列の幅に端数があると、となりの見出しの背景が1点の罫線の上に
+     重なって、罫線が1本おきに消えて見えることがあった。そのため見出しだけは、罫線を
+     見出しの中に描く（box-shadow の inset）形にして、となりに隠されないようにする */
+  .mc2-table thead th,
+  .mc2-table thead th.mc2-col1, .mc2-table thead th.mc2-col2,
+  .mc2-table thead th.mc2-col3, .mc2-table thead th.mc2-col4 { border-right-color: transparent; }
+  .mc2-table thead tr th { box-shadow: inset -1px 0 0 var(--mc2-vline), 0 2px 0 var(--border); }
+  .mc2-table thead tr th.mc2-col1, .mc2-table thead tr th.mc2-col3, .mc2-table thead tr th.mc2-col4 { box-shadow: inset -1px 0 0 var(--mc2-vline-strong), 0 2px 0 var(--border); }
+  .mc2-table thead tr th:last-child { box-shadow: 0 2px 0 var(--border); }
+  .annual2-table thead tr:first-child th { box-shadow: inset -1px 0 0 var(--mc2-vline); }
+  .annual2-table thead tr:first-child th.mc2-col1, .annual2-table thead tr:first-child th.mc2-col3, .annual2-table thead tr:first-child th.mc2-col4 { box-shadow: inset -1px 0 0 var(--mc2-vline-strong); }
+  .annual2-table thead tr:first-child th:last-child { box-shadow: none; }
+  .annual2-table thead tr:last-child th { box-shadow: inset -1px 0 0 var(--mc2-vline), 0 2px 0 var(--border); }
+  .annual2-table thead tr:last-child th:last-child { box-shadow: 0 2px 0 var(--border); }
   /* 各メンバーの年間設定：列幅・行の高さを最小にする（2026年10月24日）。
      見出しなど余白を個別に指定していないセルにも、画面全体の表の既定の余白
      （見出し 8px 12px／中身 9px 12px）が付いて列が広がっていたため、この表だけ最小にする */
