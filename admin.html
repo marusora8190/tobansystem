@@ -4587,7 +4587,7 @@ function renderAnnualTable2(years) {
 
   head.innerHTML = `
     <tr>
-      <th class="mc2-col1" rowspan="2" style="padding:1px 0;vertical-align:middle;text-align:center"><span style="display:inline-block;height:24px;font-size:11px;line-height:1;writing-mode:vertical-rl;text-orientation:upright">年度</span></th>
+      <th class="mc2-col1" rowspan="2" style="padding:1px 0;vertical-align:middle;text-align:center"><span style="display:block;margin:0 auto;height:24px;font-size:11px;line-height:1;writing-mode:vertical-rl;text-orientation:upright">年度</span></th>
       <th class="mc2-col2" rowspan="2">月</th>
       <th class="mc2-col3" rowspan="2">当番計/<br>日数</th>
       <th class="mc2-col4" rowspan="2">日祝計/<br>日祝日数</th>
@@ -4603,9 +4603,11 @@ function renderAnnualTable2(years) {
       // 縦位置がずれて表示が崩れることがあるため、rowspanは使わず、12ヶ月分すべての行に
       // 同じ背景色のセルを敷いて、1月の行だけ年度を表示することで見た目上の結合を再現する
       // 年度の列は縦書きにして幅を最小にする（2026年10月24日）。行の高さを変えないよう、
-      // 「2026年」を1文字ずつ、1月の行から下へ1行に1文字ずつ入れて縦に読めるようにする
+      // 「2026年」を1文字ずつ、1行に1文字ずつ入れて縦に読めるようにする。
+      // 12か月の行の上下の真ん中に来るよう、何行目から入れるかを決める（5文字なら4月〜8月）
       const yearChars = [...(y + '年')];
-      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:0 1px;line-height:1;${mon < 12 ? 'border-bottom:none;' : ''}">${yearChars[mon - 1] || ''}</td>`;
+      const yearStart = Math.floor((12 - yearChars.length) / 2);
+      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:0 1px;line-height:1;${mon < 12 ? 'border-bottom:none;' : ''}">${yearChars[mon - 1 - yearStart] || ''}</td>`;
       const cellsHtml = members.map(m => {
         const cell = getMultiCell(y, m.id);
         let val = 1;
@@ -4924,7 +4926,7 @@ function renderMultiCount2Table(years) {
   
   head.innerHTML = `
     <tr>
-      <th class="mc2-col1" style="padding:1px 0;vertical-align:middle;text-align:center"><span style="display:inline-block;height:24px;font-size:11px;line-height:1;writing-mode:vertical-rl;text-orientation:upright">年度</span></th>
+      <th class="mc2-col1" style="padding:1px 0;vertical-align:middle;text-align:center"><span style="display:block;margin:0 auto;height:24px;font-size:11px;line-height:1;writing-mode:vertical-rl;text-orientation:upright">年度</span></th>
       <th class="mc2-col2" style="width:30px">月</th>
       <th class="mc2-col3" style="width:56px">合計/<br>日数</th>
       ${nameRow}
@@ -4938,9 +4940,11 @@ function renderMultiCount2Table(years) {
       // 縦位置がずれて表示が崩れることがあるため、rowspanは使わず、12ヶ月分すべての行に
       // 同じ背景色のセルを敷いて、1月の行だけ年度を表示することで見た目上の結合を再現する
       // 年度の列は縦書きにして幅を最小にする（2026年10月24日）。行の高さを変えないよう、
-      // 「2026年」を1文字ずつ、1月の行から下へ1行に1文字ずつ入れて縦に読めるようにする
+      // 「2026年」を1文字ずつ、1行に1文字ずつ入れて縦に読めるようにする。
+      // 12か月の行の上下の真ん中に来るよう、何行目から入れるかを決める（5文字なら4月〜8月）
       const yearChars = [...(y + '年')];
-      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:0 1px;line-height:1;${mon < 12 ? 'border-bottom:none;' : ''}">${yearChars[mon - 1] || ''}</td>`;
+      const yearStart = Math.floor((12 - yearChars.length) / 2);
+      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:0 1px;line-height:1;${mon < 12 ? 'border-bottom:none;' : ''}">${yearChars[mon - 1 - yearStart] || ''}</td>`;
       const memberCellsHtml = members.map(m => {
         const cell = getMultiCell(y, m.id);
         let val = 1;
@@ -5219,7 +5223,7 @@ function renderMultiHolTable2(years) {
 
   head.innerHTML = `
     <tr>
-      <th class="mc2-col1" rowspan="2" style="width:12px;padding:1px 0;vertical-align:middle;text-align:center"><span style="display:inline-block;height:24px;font-size:11px;line-height:1;writing-mode:vertical-rl;text-orientation:upright">年度</span></th>
+      <th class="mc2-col1" rowspan="2" style="width:12px;padding:1px 0;vertical-align:middle;text-align:center"><span style="display:block;margin:0 auto;height:24px;font-size:11px;line-height:1;writing-mode:vertical-rl;text-orientation:upright">年度</span></th>
       <th class="mc2-col2" rowspan="2" style="width:30px">月</th>
       <th class="mc2-col3" rowspan="2" style="width:56px">合計/<br>日祝日数</th>
       ${nameRow}
@@ -5235,9 +5239,11 @@ function renderMultiHolTable2(years) {
       // 同じ背景色のセルを敷いて、1月の行だけ年度を表示することで見た目上の結合を再現する
       // （年度は縦書きにして列幅を最小限に抑える）
       // 年度の列は縦書きにして幅を最小にする（2026年10月24日）。行の高さを変えないよう、
-      // 「2026年」を1文字ずつ、1月の行から下へ1行に1文字ずつ入れて縦に読めるようにする
+      // 「2026年」を1文字ずつ、1行に1文字ずつ入れて縦に読めるようにする。
+      // 12か月の行の上下の真ん中に来るよう、何行目から入れるかを決める（5文字なら4月〜8月）
       const yearChars = [...(y + '年')];
-      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:0 1px;line-height:1;${mon < 12 ? 'border-bottom:none;' : ''}">${yearChars[mon - 1] || ''}</td>`;
+      const yearStart = Math.floor((12 - yearChars.length) / 2);
+      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:0 1px;line-height:1;${mon < 12 ? 'border-bottom:none;' : ''}">${yearChars[mon - 1 - yearStart] || ''}</td>`;
       const memberCellsHtml = members.map(m => {
         const cell = getMultiCell(y, m.id);
         const checked = cell.hol.includes(mon);
