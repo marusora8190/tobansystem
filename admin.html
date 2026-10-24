@@ -2606,6 +2606,7 @@ function toggleSidebar() {
       fitYearBlockHeight('mh2-body');
       fitYearBlockHeight('annual2-body');
     }
+    if (typeof fitAnnual2MemberWidth === 'function') fitAnnual2MemberWidth();
   }, 200);
 }
 function restoreSidebarState() {
@@ -4586,7 +4587,7 @@ function renderAnnualTable2(years) {
 
   head.innerHTML = `
     <tr>
-      <th class="mc2-col1" rowspan="2">年度</th>
+      <th class="mc2-col1" rowspan="2" style="padding:1px 0;vertical-align:middle;text-align:center"><span style="display:inline-block;height:24px;font-size:11px;line-height:1;writing-mode:vertical-rl;text-orientation:upright">年度</span></th>
       <th class="mc2-col2" rowspan="2">月</th>
       <th class="mc2-col3" rowspan="2">当番計/<br>日数</th>
       <th class="mc2-col4" rowspan="2">日祝計/<br>日祝日数</th>
@@ -4601,7 +4602,10 @@ function renderAnnualTable2(years) {
       // rowspanをsticky(横スクロール固定)列に使うと、ブラウザによって「年度」セルの
       // 縦位置がずれて表示が崩れることがあるため、rowspanは使わず、12ヶ月分すべての行に
       // 同じ背景色のセルを敷いて、1月の行だけ年度を表示することで見た目上の結合を再現する
-      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:1px;${mon < 12 ? 'border-bottom:none;' : ''}">${mon === 1 ? (y + '年') : ''}</td>`;
+      // 年度の列は縦書きにして幅を最小にする（2026年10月24日）。行の高さを変えないよう、
+      // 「2026年」を1文字ずつ、1月の行から下へ1行に1文字ずつ入れて縦に読めるようにする
+      const yearChars = [...(y + '年')];
+      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:0 1px;line-height:1;${mon < 12 ? 'border-bottom:none;' : ''}">${yearChars[mon - 1] || ''}</td>`;
       const cellsHtml = members.map(m => {
         const cell = getMultiCell(y, m.id);
         let val = 1;
@@ -4633,13 +4637,44 @@ function renderAnnualTable2(years) {
       const countTotal = monthlyValsFromCell(cell);
       return `<td id="annual2-total-count-${m.id}-${y}" style="text-align:center;font-weight:700;font-size:11px;padding:1px 0">${countTotal}</td><td id="annual2-total-hol-${m.id}-${y}" style="text-align:center;font-weight:700;font-size:11px;padding:1px 0">${cell.hol.length}</td>`;
     }).join('');
-    bodyHtml += `<tr class="mc2-total-row"><td class="mc2-col1" colspan="2" style="text-align:center;font-weight:700;padding:1px;font-size:11px">${y}年<br>年間合計</td><td id="annual2-grand-count-${y}" class="mc2-col3" style="text-align:center;font-weight:700;font-size:10px;padding:1px"></td><td id="annual2-grand-hol-${y}" class="mc2-col4" style="text-align:center;font-weight:700;font-size:10px;padding:1px"></td>${totalCellsHtml}</tr>`;
+    bodyHtml += `<tr class="mc2-total-row"><td class="mc2-col1" colspan="2" style="text-align:center;font-weight:700;padding:1px 0;font-size:9px;letter-spacing:-0.5px;line-height:1.15">${y}年<br>年間合計</td><td id="annual2-grand-count-${y}" class="mc2-col3" style="text-align:center;font-weight:700;font-size:10px;padding:1px"></td><td id="annual2-grand-hol-${y}" class="mc2-col4" style="text-align:center;font-weight:700;font-size:10px;padding:1px"></td>${totalCellsHtml}</tr>`;
   });
   body.innerHTML = bodyHtml;
 
   updateMc2HeaderStickyOffset();
   fitYearBlockHeight('annual2-body');
   years.forEach(y => updateAnnualTable2ValidationForYear(y));
+  // 高さを合わせると縦のスクロールバーが出て横幅が少し狭くなることがあり、また当番計・日祝計の
+  // 文字が入ると左の列の幅が変わるため、メンバーの列の幅はそのあとで合わせる
+  fitAnnual2MemberWidth();
+}
+
+// 各メンバーの年間設定：メンバーの列（回数・日祝）を、表の右端が表示エリアの右端に
+// ちょうど収まるところまで均等に広げる（2026年10月24日）。
+// 最小の幅でも収まらないとき（メンバーが多い・画面が狭い）は広げずに、今までどおり横に動かして見る。
+function fitAnnual2MemberWidth(onlyIfOverflow) {
+  const head = document.getElementById('annual2-head');
+  if (!head) return;
+  const table = head.closest('table');
+  const wrap = head.closest('.annual-wrap');
+  const subThs = Array.from(head.querySelectorAll('tr:last-child th'));
+  if (!table || !wrap || !subThs.length) return;
+  // 回数・日祝を変えて当番計・日祝計の文字の長さが変わり、広げた表がはみ出したときだけ合わせ直す
+  if (onlyIfOverflow && !(subThs[0].style.width && table.getBoundingClientRect().width > wrap.clientWidth)) return;
+  subThs.forEach(th => { th.style.width = ''; th.style.boxSizing = ''; });
+  const avail = wrap.clientWidth;
+  if (!avail) return; // 画面が表示されていないときは何もしない
+  const base = subThs.map(th => th.getBoundingClientRect().width);
+  const extra = avail - table.getBoundingClientRect().width - 1;
+  if (extra <= 0) return;
+  // メンバーが少ないときに列が広がりすぎないよう、広げるのは1列あたり20pxまで
+  let per = Math.min(20, Math.floor(extra / subThs.length * 10) / 10);
+  for (let i = 0; i < 6 && per > 0; i++) {
+    subThs.forEach((th, k) => { th.style.boxSizing = 'border-box'; th.style.width = (base[k] + per) + 'px'; });
+    if (table.getBoundingClientRect().width <= avail) return;
+    per = Math.max(0, per - 0.5);
+  }
+  subThs.forEach(th => { th.style.width = ''; th.style.boxSizing = ''; });
 }
 
 // 指定年度の各行（月）・年間合計行の 当番人数計/日数・日祝計/日祝日数 チェックを更新
@@ -4687,6 +4722,7 @@ function updateAnnualTable2ValidationForYear(y) {
     grandHolEl.textContent = `${totalAssignedHol}/${totalExpectedHol} ${ok ? '✓' : '×'}`;
     grandHolEl.style.color = ok ? '#2e7d32' : '#8a1f1f';
   }
+  fitAnnual2MemberWidth(true);
 }
 
 // 指定メンバー・年度の②表の年間合計セル（回数・日祝）だけを更新
@@ -5068,6 +5104,7 @@ window.addEventListener('resize', () => {
   fitYearBlockHeight('multi-count2-body');
   fitYearBlockHeight('mh2-body');
   fitYearBlockHeight('annual2-body');
+  if (typeof fitAnnual2MemberWidth === 'function') fitAnnual2MemberWidth();
 });
 
 // 指定年の各月の行チェック（当番人数合計／その月の日数）と、年間合計行の合計チェックを更新
