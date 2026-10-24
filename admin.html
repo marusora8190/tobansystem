@@ -336,6 +336,13 @@
        右側の空白ができないようにする（列数が多いぶん、1列あたりの広がりはわずかで済む）。 */
   #page-mc2 .mc2-table,
   #page-annual-single2 .mc2-table { min-width: 0; }
+  /* 各メンバーの年間設定：列幅・行の高さを最小にする（2026年10月24日）。
+     見出しなど余白を個別に指定していないセルにも、画面全体の表の既定の余白
+     （見出し 8px 12px／中身 9px 12px）が付いて列が広がっていたため、この表だけ最小にする */
+  #page-annual-single2 .annual2-table th,
+  #page-annual-single2 .annual2-table td { padding: 1px; line-height: 1.15; letter-spacing: 0; }
+  #page-annual-single2 .annual2-table select { margin: 0; }
+  #page-annual-single2 .annual2-table input[type="checkbox"] { margin: 0; vertical-align: middle; }
 
   /* Calendar */
   /* カレンダー表示：画面の高さに合わせて、1日〜末日（最大6週分）まで
@@ -4572,15 +4579,17 @@ function renderAnnualTable2(years) {
     return;
   }
 
-  const nameRow = members.map(m => `<th colspan="2" style="padding:0;height:96px;width:28px"><div style="display:table;width:100%;height:100%"><div style="display:table-cell;vertical-align:top;text-align:center;padding-top:10px"><span style="display:inline-block;font-size:11px;white-space:nowrap;writing-mode:vertical-rl;text-orientation:upright;letter-spacing:1px;color:#000">${m.name}</span></div></div></th>`).join('');
-  const subRow = members.map(() => `<th style="font-size:10px;padding:2px 0;width:20px;writing-mode:vertical-rl;text-orientation:upright;height:40px">回数</th><th style="font-size:10px;padding:2px 0;width:22px;writing-mode:vertical-rl;text-orientation:upright;height:40px">日祝</th>`).join('');
+  // 氏名の行の高さは、いちばん長い名前がちょうど入る高さにする（1文字＝約12px）
+  const nameHeadH = Math.max(...members.map(m => [...String(m.name || '')].length)) * 12 + 6;
+  const nameRow = members.map(m => `<th colspan="2" style="padding:3px 0;height:${nameHeadH}px;vertical-align:top;text-align:center"><span style="display:inline-block;height:${[...String(m.name || '')].length * 12}px;font-size:11px;line-height:1.1;white-space:nowrap;writing-mode:vertical-rl;text-orientation:upright;letter-spacing:0;color:#000">${m.name}</span></th>`).join('');
+  const subRow = members.map(() => `<th style="padding:1px 0;height:24px;vertical-align:top;text-align:center"><span style="display:inline-block;height:22px;font-size:10px;line-height:1;white-space:nowrap;writing-mode:vertical-rl;text-orientation:upright">回数</span></th><th style="padding:1px 0;height:24px;vertical-align:top;text-align:center"><span style="display:inline-block;height:22px;font-size:10px;line-height:1;white-space:nowrap;writing-mode:vertical-rl;text-orientation:upright">日祝</span></th>`).join('');
 
   head.innerHTML = `
     <tr>
-      <th class="mc2-col1" rowspan="2" style="width:50px">年度</th>
-      <th class="mc2-col2" rowspan="2" style="width:30px">月</th>
-      <th class="mc2-col3" rowspan="2" style="width:56px">当番計/<br>日数</th>
-      <th class="mc2-col4" rowspan="2" style="width:56px">日祝計/<br>日祝日数</th>
+      <th class="mc2-col1" rowspan="2">年度</th>
+      <th class="mc2-col2" rowspan="2">月</th>
+      <th class="mc2-col3" rowspan="2">当番計/<br>日数</th>
+      <th class="mc2-col4" rowspan="2">日祝計/<br>日祝日数</th>
       ${nameRow}
     </tr>
     <tr>${subRow}</tr>
@@ -4592,7 +4601,7 @@ function renderAnnualTable2(years) {
       // rowspanをsticky(横スクロール固定)列に使うと、ブラウザによって「年度」セルの
       // 縦位置がずれて表示が崩れることがあるため、rowspanは使わず、12ヶ月分すべての行に
       // 同じ背景色のセルを敷いて、1月の行だけ年度を表示することで見た目上の結合を再現する
-      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:2px 1px;${mon < 12 ? 'border-bottom:none;' : ''}">${mon === 1 ? (y + '年') : ''}</td>`;
+      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:1px;${mon < 12 ? 'border-bottom:none;' : ''}">${mon === 1 ? (y + '年') : ''}</td>`;
       const cellsHtml = members.map(m => {
         const cell = getMultiCell(y, m.id);
         let val = 1;
@@ -4601,30 +4610,30 @@ function renderAnnualTable2(years) {
         const bg = val === 0 ? '#fceaea' : '#ffffff';
         const selColor = val === 2 ? 'color:#000;font-weight:700;background:#e89090;' : '';
         const checked = cell.hol.includes(mon) ? 'checked' : '';
-        return `<td style="text-align:center;background:${bg};padding:1px 0">
+        return `<td style="text-align:center;background:${bg};padding:0">
             <select data-mid="${m.id}" data-year="${y}" data-month="${mon}" data-type="count2" onchange="onAnnualCount2Change(this)" style="width:18px;font-size:10px;padding:1px 0;border-radius:4px;text-align:center;text-align-last:center;${selColor}">
               <option value="1" ${val===1?'selected':''}>1</option>
               <option value="2" ${val===2?'selected':''}>2</option>
               <option value="0" ${val===0?'selected':''}>0</option>
             </select>
           </td>
-          <td style="text-align:center;padding:2px 0">
-            <input type="checkbox" data-mid="${m.id}" data-year="${y}" data-month="${mon}" data-type="hol2" ${checked} onchange="onAnnualHol2Change(this)" style="width:14px;height:14px;cursor:pointer;accent-color:#e89090">
+          <td style="text-align:center;padding:0 1px">
+            <input type="checkbox" data-mid="${m.id}" data-year="${y}" data-month="${mon}" data-type="hol2" ${checked} onchange="onAnnualHol2Change(this)" style="width:13px;height:13px;margin:0;cursor:pointer;accent-color:#e89090">
           </td>`;
       }).join('');
       bodyHtml += `<tr>${yearCellHtml}
-        <td class="mc2-col2" style="text-align:center;font-weight:500;font-size:11px;padding:2px 1px">${mon}月</td>
-        <td id="annual2-row-count-${y}-${mon}" class="mc2-col3" style="text-align:center;font-size:10px;font-weight:600;padding:2px 1px"></td>
-        <td id="annual2-row-hol-${y}-${mon}" class="mc2-col4" style="text-align:center;font-size:10px;font-weight:600;padding:2px 1px"></td>
+        <td class="mc2-col2" style="text-align:center;font-weight:500;font-size:11px;padding:1px">${mon}月</td>
+        <td id="annual2-row-count-${y}-${mon}" class="mc2-col3" style="text-align:center;font-size:10px;font-weight:600;padding:1px"></td>
+        <td id="annual2-row-hol-${y}-${mon}" class="mc2-col4" style="text-align:center;font-size:10px;font-weight:600;padding:1px"></td>
         ${cellsHtml}
       </tr>`;
     }
     const totalCellsHtml = members.map(m => {
       const cell = getMultiCell(y, m.id);
       const countTotal = monthlyValsFromCell(cell);
-      return `<td id="annual2-total-count-${m.id}-${y}" style="text-align:center;font-weight:700;font-size:11px">${countTotal}</td><td id="annual2-total-hol-${m.id}-${y}" style="text-align:center;font-weight:700;font-size:11px">${cell.hol.length}</td>`;
+      return `<td id="annual2-total-count-${m.id}-${y}" style="text-align:center;font-weight:700;font-size:11px;padding:1px 0">${countTotal}</td><td id="annual2-total-hol-${m.id}-${y}" style="text-align:center;font-weight:700;font-size:11px;padding:1px 0">${cell.hol.length}</td>`;
     }).join('');
-    bodyHtml += `<tr class="mc2-total-row"><td class="mc2-col1" colspan="2" style="white-space:nowrap;font-weight:700;padding:4px 4px;font-size:11px">${y}年 年間合計</td><td id="annual2-grand-count-${y}" class="mc2-col3" style="text-align:center;font-weight:700;font-size:10px;padding:2px 1px"></td><td id="annual2-grand-hol-${y}" class="mc2-col4" style="text-align:center;font-weight:700;font-size:10px;padding:2px 1px"></td>${totalCellsHtml}</tr>`;
+    bodyHtml += `<tr class="mc2-total-row"><td class="mc2-col1" colspan="2" style="text-align:center;font-weight:700;padding:1px;font-size:11px">${y}年<br>年間合計</td><td id="annual2-grand-count-${y}" class="mc2-col3" style="text-align:center;font-weight:700;font-size:10px;padding:1px"></td><td id="annual2-grand-hol-${y}" class="mc2-col4" style="text-align:center;font-weight:700;font-size:10px;padding:1px"></td>${totalCellsHtml}</tr>`;
   });
   body.innerHTML = bodyHtml;
 
@@ -5007,6 +5016,11 @@ function fitYearBlockHeight(bodyId) {
   // 1年分だけの表示なら、表示エリアいっぱいに広げ、各行の高さも引き伸ばして見やすくする。
   // ただし「年間合計」行（最終行）は、内容が短く引き伸ばす意味がないため最小の高さのままにし、
   // 余った分は全て月の行（1〜12月）に配分する。
+  // 各メンバーの年間設定は、行の高さを最小のままにするため引き伸ばさない（2026年10月24日）
+  if (totalYears === 1 && bodyId === 'annual2-body') {
+    wrap.style.maxHeight = totalForAllYears <= availableMax ? (totalForAllYears + 'px') : '';
+    return;
+  }
   if (totalYears === 1) {
     if (availableMax > totalForAllYears) {
       wrap.style.maxHeight = availableMax + 'px';
