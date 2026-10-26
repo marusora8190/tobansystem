@@ -4604,8 +4604,8 @@ function renderAnnualTable2(years) {
 
   head.innerHTML = `
     <tr>
-      <th class="mc2-col1" rowspan="2" style="padding:1px 0;vertical-align:middle;text-align:center"><span style="display:block;margin:0 auto;height:24px;font-size:11px;line-height:1;writing-mode:vertical-rl;text-orientation:upright">年度</span></th>
-      <th class="mc2-col2" rowspan="2">月</th>
+      <th class="mc2-col1" rowspan="2" style="width:18px;min-width:18px;box-sizing:border-box;padding:1px 0;vertical-align:middle;text-align:center"><span style="display:block;margin:0 auto;height:24px;font-size:11px;line-height:1;writing-mode:vertical-rl;text-orientation:upright">年度</span></th>
+      <th class="mc2-col2" rowspan="2" style="width:18px;min-width:18px;box-sizing:border-box;padding:1px 0">月</th>
       <th class="mc2-col3" rowspan="2">当番計/<br>日数</th>
       <th class="mc2-col4" rowspan="2">日祝計/<br>日祝日数</th>
       ${nameRow}
@@ -4624,7 +4624,7 @@ function renderAnnualTable2(years) {
       // 12か月の行の上下の真ん中に来るよう、何行目から入れるかを決める（5文字なら4月〜8月）
       const yearChars = [...(y + '年')];
       const yearStart = Math.floor((12 - yearChars.length) / 2);
-      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:0 1px;line-height:1;${mon < 12 ? 'border-bottom:none;' : ''}">${yearChars[mon - 1 - yearStart] || ''}</td>`;
+      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:0;line-height:1;${mon < 12 ? 'border-bottom:none;' : ''}">${yearChars[mon - 1 - yearStart] || ''}</td>`;
       const cellsHtml = members.map(m => {
         const cell = getMultiCell(y, m.id);
         let val = 1;
@@ -4645,7 +4645,7 @@ function renderAnnualTable2(years) {
           </td>`;
       }).join('');
       bodyHtml += `<tr>${yearCellHtml}
-        <td class="mc2-col2" style="text-align:center;font-weight:500;font-size:11px;padding:1px">${mon}月</td>
+        <td class="mc2-col2" style="text-align:center;font-weight:500;font-size:11px;padding:1px 0">${mon}</td>
         <td id="annual2-row-count-${y}-${mon}" class="mc2-col3" style="text-align:center;font-size:10px;font-weight:600;padding:1px"></td>
         <td id="annual2-row-hol-${y}-${mon}" class="mc2-col4" style="text-align:center;font-size:10px;font-weight:600;padding:1px"></td>
         ${cellsHtml}
@@ -4956,8 +4956,8 @@ function renderMultiCount2Table(years) {
   
   head.innerHTML = `
     <tr>
-      <th class="mc2-col1" style="padding:1px 0;vertical-align:middle;text-align:center"><span style="display:block;margin:0 auto;height:24px;font-size:11px;line-height:1;writing-mode:vertical-rl;text-orientation:upright">年度</span></th>
-      <th class="mc2-col2" style="width:30px">月</th>
+      <th class="mc2-col1" style="width:18px;min-width:18px;box-sizing:border-box;padding:1px 0;vertical-align:middle;text-align:center"><span style="display:block;margin:0 auto;height:24px;font-size:11px;line-height:1;writing-mode:vertical-rl;text-orientation:upright">年度</span></th>
+      <th class="mc2-col2" style="width:18px;min-width:18px;box-sizing:border-box;padding:1px 0">月</th>
       <th class="mc2-col3" style="width:56px">合計/<br>日数</th>
       ${nameRow}
     </tr>
@@ -4974,7 +4974,7 @@ function renderMultiCount2Table(years) {
       // 12か月の行の上下の真ん中に来るよう、何行目から入れるかを決める（5文字なら4月〜8月）
       const yearChars = [...(y + '年')];
       const yearStart = Math.floor((12 - yearChars.length) / 2);
-      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:0 1px;line-height:1;${mon < 12 ? 'border-bottom:none;' : ''}">${yearChars[mon - 1 - yearStart] || ''}</td>`;
+      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:0;line-height:1;${mon < 12 ? 'border-bottom:none;' : ''}">${yearChars[mon - 1 - yearStart] || ''}</td>`;
       const memberCellsHtml = members.map(m => {
         const cell = getMultiCell(y, m.id);
         let val = 1;
@@ -4990,7 +4990,7 @@ function renderMultiCount2Table(years) {
           </select>
         </td>`;
       }).join('');
-      rowsHtml += `<tr>${yearCellHtml}<td class="mc2-col2" style="text-align:center;font-weight:500;font-size:11px;padding:2px 1px">${mon}月</td><td id="mc2-row-${y}-${mon}" class="mc2-col3" style="text-align:center;font-size:10px;font-weight:600;padding:2px 1px"></td>${memberCellsHtml}</tr>`;
+      rowsHtml += `<tr>${yearCellHtml}<td class="mc2-col2" style="text-align:center;font-weight:500;font-size:11px;padding:2px 0">${mon}</td><td id="mc2-row-${y}-${mon}" class="mc2-col3" style="text-align:center;font-size:10px;font-weight:600;padding:2px 1px"></td>${memberCellsHtml}</tr>`;
     }
     const memberTotalsHtml = members.map(m => {
       const total = monthlyValsFromCell(getMultiCell(y, m.id));
@@ -5277,8 +5277,8 @@ function renderMultiHolTable2(years) {
 
   head.innerHTML = `
     <tr>
-      <th class="mc2-col1" rowspan="2" style="width:12px;padding:1px 0;vertical-align:middle;text-align:center"><span style="display:block;margin:0 auto;height:24px;font-size:11px;line-height:1;writing-mode:vertical-rl;text-orientation:upright">年度</span></th>
-      <th class="mc2-col2" rowspan="2" style="width:30px">月</th>
+      <th class="mc2-col1" rowspan="2" style="width:18px;min-width:18px;box-sizing:border-box;padding:1px 0;vertical-align:middle;text-align:center"><span style="display:block;margin:0 auto;height:24px;font-size:11px;line-height:1;writing-mode:vertical-rl;text-orientation:upright">年度</span></th>
+      <th class="mc2-col2" rowspan="2" style="width:18px;min-width:18px;box-sizing:border-box;padding:1px 0">月</th>
       <th class="mc2-col3" rowspan="2" style="width:56px">合計/<br>日祝日数</th>
       ${nameRow}
     </tr>
@@ -5297,13 +5297,13 @@ function renderMultiHolTable2(years) {
       // 12か月の行の上下の真ん中に来るよう、何行目から入れるかを決める（5文字なら4月〜8月）
       const yearChars = [...(y + '年')];
       const yearStart = Math.floor((12 - yearChars.length) / 2);
-      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:0 1px;line-height:1;${mon < 12 ? 'border-bottom:none;' : ''}">${yearChars[mon - 1 - yearStart] || ''}</td>`;
+      const yearCellHtml = `<td class="mc2-col1" style="text-align:center;font-weight:600;vertical-align:middle;font-size:11px;padding:0;line-height:1;${mon < 12 ? 'border-bottom:none;' : ''}">${yearChars[mon - 1 - yearStart] || ''}</td>`;
       const memberCellsHtml = members.map(m => {
         const cell = getMultiCell(y, m.id);
         const checked = cell.hol.includes(mon);
         return `<td style="text-align:center;padding:1px 0"><input type="checkbox" data-mid="${m.id}" data-year="${y}" data-month="${mon}" ${checked ? 'checked' : ''} onchange="onMultiHol2Change(this)" style="width:14px;height:14px;cursor:pointer;accent-color:#e89090"></td>`;
       }).join('');
-      rowsHtml += `<tr>${yearCellHtml}<td class="mc2-col2" style="text-align:center;font-weight:500;font-size:11px;padding:2px 1px">${mon}月</td><td id="mh2-row-${y}-${mon}" class="mc2-col3" style="text-align:center;font-size:10px;font-weight:600;padding:2px 1px"></td>${memberCellsHtml}</tr>`;
+      rowsHtml += `<tr>${yearCellHtml}<td class="mc2-col2" style="text-align:center;font-weight:500;font-size:11px;padding:2px 0">${mon}</td><td id="mh2-row-${y}-${mon}" class="mc2-col3" style="text-align:center;font-size:10px;font-weight:600;padding:2px 1px"></td>${memberCellsHtml}</tr>`;
     }
     const memberTotalsHtml = members.map(m => {
       const total = getMultiCell(y, m.id).hol.length;
