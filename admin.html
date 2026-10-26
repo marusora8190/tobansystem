@@ -272,7 +272,10 @@
   /* 月ごとの当番回数②：メンバーを横、月を縦に並べた転置レイアウト用テーブル */
   /* 縦の罫線の色（2026年10月24日に濃くした。それまでは --border〔#e4e0d8〕・--border-strong〔#c8c2b4〕）。
      このクラスは「月ごとの当番回数」「日祝当番月（複数年）」「各メンバーの年間設定」の3つの表だけで使う */
-  .mc2-table { --mc2-vline: #a59d8c; --mc2-vline-strong: #7d7563; }
+  .mc2-table { --mc2-vline: #a59d8c; --mc2-vline-strong: #7d7563; --mc2-hline: #a59d8c; }
+  /* 横の罫線（2026年10月26日）。それまでは画面全体の表と同じ薄い色（--border〔#e4e0d8〕）で、
+     合計の欄の緑・ピンクの背景の上ではほとんど見えなかったため、3つの表だけ濃くする */
+  .mc2-table tbody td { border-bottom-color: var(--mc2-hline); }
   .mc2-table th, .mc2-table td { border-right: 1px solid var(--mc2-vline); }
   .mc2-table th:last-child, .mc2-table td:last-child { border-right: none; }
   .mc2-table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
@@ -357,6 +360,15 @@
   /* 年度と月の間の縦の罫線（2026年10月26日）。本体の行でも、となりの月の欄（スクロールしても左に残る列）の
      背景が年度の欄の右の罫線に重なり、行によって線が消えて見えたため、見出しと同じく罫線をマスの内側に描く */
   .mc2-table tbody td.mc2-col1 { border-right-color: transparent; box-shadow: inset -1px 0 0 var(--mc2-vline-strong); }
+  /* 月・合計の欄（スクロールしても左に残る列）は、下の行の背景が横の罫線に重なって消えることがあるため、
+     横の罫線もマスの内側に描く（年度の欄は1年分を1つのマスに見せるため、横の罫線は今までどおり引かない） */
+  /* 最後の「0 1px 0」は、行の境目に1点のすき間ができたときに、そこを白ではなく罫線の色で埋めるため */
+  .mc2-table tbody tr:not(.mc2-total-row) td.mc2-col2 { border-bottom-color: transparent; box-shadow: inset -1px 0 0 var(--mc2-vline), inset 0 -1px 0 var(--mc2-hline), 0 1px 0 var(--mc2-hline); }
+  .mc2-table tbody tr:not(.mc2-total-row) td.mc2-col3,
+  .mc2-table tbody tr:not(.mc2-total-row) td.mc2-col4 { border-bottom-color: transparent; box-shadow: inset -1px 0 0 var(--mc2-vline-strong), inset 0 -1px 0 var(--mc2-hline), 0 1px 0 var(--mc2-hline); }
+  .mc2-table tbody tr:not(.mc2-total-row) td.mc2-col2,
+  .mc2-table tbody tr:not(.mc2-total-row) td.mc2-col3,
+  .mc2-table tbody tr:not(.mc2-total-row) td.mc2-col4 { border-right-color: transparent; }
   /* 各メンバーの年間設定：列幅・行の高さを最小にする（2026年10月24日）。
      見出しなど余白を個別に指定していないセルにも、画面全体の表の既定の余白
      （見出し 8px 12px／中身 9px 12px）が付いて列が広がっていたため、この表だけ最小にする */
