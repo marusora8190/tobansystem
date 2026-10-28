@@ -163,6 +163,9 @@
   .dstart-table { width: auto; }
   .dstart-table th, .dstart-table td { padding: 4px 4px; font-size: 12.5px; }
   .dstart-table input[type="date"] { width: 118px; padding: 2px 3px; font-size: 12px; }
+  /* 辞退予定年月日：「辞退予定年月日の計算」と同じ、年・月・日を選ぶ欄 */
+  .dstart-plan-sel { display: flex; align-items: center; gap: 2px; white-space: nowrap; }
+  .dstart-plan-sel select { width: auto; padding: 2px 2px; font-size: 12px; }
   #ucleanup-section[open] { width: auto; }
   /* 閉じているときは「開きます」、開いているときは「閉じます」と表示する */
   #ucleanup-section .ucleanup-hint-close { display: none; }
@@ -1074,7 +1077,7 @@
           <button type="button" class="btn btn-sm" id="dstart-sort-retire" onclick="setDutyStartSort('retire')">辞退予定年月日の早い順</button>
         </div>
         <div id="dstart-oldest" style="font-size:13px;margin-bottom:8px"></div>
-        <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">「辞退予定年月日」は目安のメモです。入れると自動で保存されます（消すときは日付を空にします）。当番表作成・名簿・削除の境目など、ほかの機能には使いません。辞退した人は、これまでどおり詰員名簿で削除してください。<strong>名簿から外すのは、その人の最後の当番が終わってからにしてください。</strong></div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">「辞退予定年月日」は目安のメモです。年・月・日をすべて選ぶと自動で保存されます（消すときは年・月・日を「--」にします）。当番表作成・名簿・削除の境目など、ほかの機能には使いません。辞退した人は、これまでどおり詰員名簿で削除してください。<strong>名簿から外すのは、その人の最後の当番が終わってからにしてください。</strong></div>
         <!-- 名簿を順に3つに分け、細めの表を3つ左右に並べる（画面が狭いときは下に回る） -->
         <div class="dstart-split" style="display:flex;flex-wrap:wrap;gap:12px 12px;align-items:flex-start">
           <div class="table-wrap">
@@ -3456,6 +3459,54 @@ async function loadDutyStartRetirePlans() {
     return {};
   }
 }
+// 表の「辞退予定年月日」の欄を、「辞退予定年月日の計算」と同じ年・月・日を選ぶ欄で作る。
+// 年は今年の5年前〜50年後（和暦も添える）。保存してある日付がその外なら、その年も選べるようにする
+function dutyStartPlanCellHtml(memberId, plan) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(plan || '');
+  const py = m ? Number(m[1]) : 0, pm = m ? Number(m[2]) : 0, pd = m ? Number(m[3]) : 0;
+  const thisYear = new Date().getFullYear();
+  let y0 = thisYear - 5, y1 = thisYear + 50;
+  if (py && py < y0) y0 = py;
+  if (py && py > y1) y1 = py;
+  let yHtml = '<option value="">--</option>';
+  for (let y = y0; y <= y1; y++) yHtml += `<option value="${y}"${y === py ? ' selected' : ''}>${y}（${dutyStartWarekiLabel(y)}）</option>`;
+  let mHtml = '<option value="">--</option>';
+  for (let k = 1; k <= 12; k++) mHtml += `<option value="${k}"${k === pm ? ' selected' : ''}>${k}</option>`;
+  const max = (py && pm) ? new Date(Date.UTC(py, pm, 0)).getUTCDate() : 31;
+  let dHtml = '<option value="">--</option>';
+  for (let k = 1; k <= max; k++) dHtml += `<option value="${k}"${k === pd ? ' selected' : ''}>${k}</option>`;
+  const id = escapeHtmlDutyStart(memberId);
+  const on = `onchange="onDutyStartPlanSelect('${id}', this)"`;
+  return `<div class="dstart-plan-sel" data-member="${id}">`
+    + `<select class="dsp-y" autocomplete="off" ${on}>${yHtml}</select><span>年</span>`
+    + `<select class="dsp-m" autocomplete="off" ${on}>${mHtml}</select><span>月</span>`
+    + `<select class="dsp-d" autocomplete="off" ${on}>${dHtml}</select><span>日</span>`
+    + `</div><div class="dstart-plan-msg" style="font-size:11px"></div>`;
+}
+// 年・月・日のどれかを選んだとき：日の欄を、その年・月にある日だけにしてから、
+// 3つそろえば保存し、3つとも「--」なら消す。途中のときは保存しない
+function onDutyStartPlanSelect(memberId, selEl) {
+  const box = selEl.closest('.dstart-plan-sel');
+  if (!box) return;
+  const ys = box.querySelector('.dsp-y'), ms = box.querySelector('.dsp-m'), ds = box.querySelector('.dsp-d');
+  const y = Number(ys.value) || 2000, mo = Number(ms.value);
+  const max = mo ? new Date(Date.UTC(y, mo, 0)).getUTCDate() : 31;
+  const cur = Number(ds.value);
+  let html = '<option value="">--</option>';
+  for (let k = 1; k <= max; k++) html += `<option value="${k}">${k}</option>`;
+  ds.innerHTML = html;
+  ds.value = (cur && cur <= max) ? String(cur) : '';
+  const msgEl = box.parentElement.querySelector('.dstart-plan-msg');
+  const yv = ys.value, mv = ms.value, dv = ds.value;
+  if (yv && mv && dv) {
+    saveDutyStartRetirePlan(memberId, { value: `${yv}-${String(mv).padStart(2, '0')}-${String(dv).padStart(2, '0')}`, parentElement: box.parentElement });
+  } else if (!yv && !mv && !dv) {
+    saveDutyStartRetirePlan(memberId, { value: '', parentElement: box.parentElement });
+  } else if (msgEl) {
+    msgEl.style.color = 'var(--text-muted)';
+    msgEl.textContent = '年・月・日をすべて選ぶと保存します';
+  }
+}
 async function saveDutyStartRetirePlan(memberId, inputEl) {
   const msgEl = inputEl.parentElement.querySelector('.dstart-plan-msg');
   const val = inputEl.value || '';
@@ -3647,7 +3698,7 @@ async function renderDutyStartPage() {
         const cell = first ? dutyStartYmLabel(first) : '<span style="color:var(--text-hint)">記録なし</span>';
         const mark = oldestIds.has(m.id) ? ' style="background:var(--accent-light)"' : '';
         const plan = retirePlans[String(m.id)] || '';
-        const planCell = `<input type="date" value="${escapeHtmlDutyStart(plan)}" onchange="saveDutyStartRetirePlan('${escapeHtmlDutyStart(m.id)}', this)"><div class="dstart-plan-msg" style="font-size:11px"></div>`;
+        const planCell = dutyStartPlanCellHtml(m.id, plan);
         return `<tr${mark}><td style="text-align:center">${escapeHtmlDutyStart(staff)}</td><td style="white-space:nowrap">${escapeHtmlDutyStart(m.name || '')}</td><td style="white-space:nowrap">${cell}</td><td>${planCell}</td></tr>`;
       });
       // 名簿の順のまま、3つに分けて左・中・右の表に入れる（割り切れないときは左から1人ずつ多い）
