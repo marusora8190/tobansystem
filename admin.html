@@ -1094,11 +1094,15 @@
           <!-- 辞退予定年月日の計算機：生年月日はどこにも保存しない（データベース・ブラウザのどちらにも残さない） -->
           <div id="dstart-calc" style="flex:0 0 auto;width:230px;max-width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12.5px;background:var(--bg)">
             <div style="font-weight:600;margin-bottom:4px">🧮 辞退予定年月日の計算</div>
-            <div style="font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-bottom:6px">生年月日を入れると、65歳になる年度の年度末（3月31日）を出します。出た日付を表の「辞退予定年月日」に手で入れてください。<br><strong>生年月日はどこにも保存しません</strong>（画面を移ったり開き直したりすると消えます）。</div>
+            <div style="font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-bottom:6px">生年月日の年・月・日を選ぶと、65歳になる年度の年度末（3月31日）を出します。出た日付を表の「辞退予定年月日」に手で入れてください。<br><strong>生年月日はどこにも保存しません</strong>（画面を読み込み直すと消えます。「消す」でもすぐ消せます）。</div>
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
               <span>生年月日</span>
-              <input type="date" id="dstart-calc-birth" autocomplete="off" style="width:130px;padding:2px 3px;font-size:12px" oninput="calcDutyStartRetire()">
               <button type="button" class="btn btn-sm" onclick="clearDutyStartRetireCalc()">消す</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;margin-top:4px">
+              <select id="dstart-calc-y" autocomplete="off" style="width:auto;padding:2px 3px;font-size:12px" onchange="calcDutyStartRetire()"></select><span>年</span>
+              <select id="dstart-calc-m" autocomplete="off" style="width:auto;padding:2px 3px;font-size:12px" onchange="calcDutyStartRetire()"></select><span>月</span>
+              <select id="dstart-calc-d" autocomplete="off" style="width:auto;padding:2px 3px;font-size:12px" onchange="calcDutyStartRetire()"></select><span>日</span>
             </div>
             <div id="dstart-calc-result" style="margin-top:8px;line-height:1.6"></div>
           </div>
@@ -3468,15 +3472,50 @@ async function saveDutyStartRetirePlan(memberId, inputEl) {
 // 辞退予定年月日の計算機（生年月日 → 65歳になる年度の年度末〔3月31日〕）。
 // 生年月日はデータベースにもブラウザにも保存しない（入力欄に入れている間だけ使う）。
 // 法律の数え方（誕生日の前の日に歳をとる）に合わせ、4月1日生まれの人は、65歳の誕生日の前の日の3月31日が年度末になる。
-function calcDutyStartRetire() {
-  const inp = document.getElementById('dstart-calc-birth');
-  const out = document.getElementById('dstart-calc-result');
-  if (!inp || !out) return;
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(inp.value || '');
-  if (!m) { out.innerHTML = ''; return; }
-  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+// 年・月・日の選ぶ欄を作る（年は1930年〜今年。和暦も添える）
+function dutyStartWarekiLabel(y) {
+  if (y >= 2020) return `令和${y - 2018}`;
+  if (y === 2019) return '平成31・令和元';
+  if (y >= 1990) return `平成${y - 1988}`;
+  if (y === 1989) return '昭和64・平成元';
+  if (y >= 1927) return `昭和${y - 1925}`;
+  return '';
+}
+function initDutyStartRetireCalc() {
+  const ys = document.getElementById('dstart-calc-y');
+  const ms = document.getElementById('dstart-calc-m');
+  if (!ys || !ms || ys.options.length) return;
   const thisYear = new Date().getFullYear();
-  if (y < 1900 || y > thisYear) { out.innerHTML = '<span style="color:var(--danger)">生年月日を確かめてください。</span>'; return; }
+  let html = '<option value="">--</option>';
+  for (let y = 1930; y <= thisYear; y++) html += `<option value="${y}">${y}（${dutyStartWarekiLabel(y)}）</option>`;
+  ys.innerHTML = html;
+  html = '<option value="">--</option>';
+  for (let m = 1; m <= 12; m++) html += `<option value="${m}">${m}</option>`;
+  ms.innerHTML = html;
+  fillDutyStartRetireDays();
+}
+// 日の選ぶ欄は、選んだ年・月にある日だけにする（選んでいた日が無くなったら空に戻す）
+function fillDutyStartRetireDays() {
+  const ys = document.getElementById('dstart-calc-y');
+  const ms = document.getElementById('dstart-calc-m');
+  const ds = document.getElementById('dstart-calc-d');
+  if (!ys || !ms || !ds) return;
+  const y = Number(ys.value) || 2000, m = Number(ms.value);
+  const max = m ? new Date(Date.UTC(y, m, 0)).getUTCDate() : 31;
+  const cur = Number(ds.value);
+  let html = '<option value="">--</option>';
+  for (let d = 1; d <= max; d++) html += `<option value="${d}">${d}</option>`;
+  ds.innerHTML = html;
+  ds.value = (cur && cur <= max) ? String(cur) : '';
+}
+function calcDutyStartRetire() {
+  fillDutyStartRetireDays();
+  const out = document.getElementById('dstart-calc-result');
+  if (!out) return;
+  const y = Number((document.getElementById('dstart-calc-y') || {}).value);
+  const mo = Number((document.getElementById('dstart-calc-m') || {}).value);
+  const d = Number((document.getElementById('dstart-calc-d') || {}).value);
+  if (!y || !mo || !d) { out.innerHTML = ''; return; }
   // 65歳になる日（誕生日の前の日）。2月29日生まれでうるう年でない年は2月28日になる
   const reach = new Date(Date.UTC(y + 65, mo - 1, d));
   reach.setUTCDate(reach.getUTCDate() - 1);
@@ -3492,13 +3531,14 @@ function calcDutyStartRetire() {
     + `<div style="font-size:11.5px;color:var(--text-muted)">表には ${endYear}/03/31 と入れます</div>` + past;
 }
 function clearDutyStartRetireCalc() {
-  const inp = document.getElementById('dstart-calc-birth');
+  ['dstart-calc-y', 'dstart-calc-m', 'dstart-calc-d'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  fillDutyStartRetireDays();
   const out = document.getElementById('dstart-calc-result');
-  if (inp) inp.value = '';
   if (out) out.innerHTML = '';
 }
 
 async function renderDutyStartPage() {
+  initDutyStartRetireCalc();
   const body = document.getElementById('dstart-body');
   // 2つ目・3つ目の表（名簿を順に3つに分けて入れる）
   const extraBodies = [document.getElementById('dstart-body2'), document.getElementById('dstart-body3')];
