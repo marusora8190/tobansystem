@@ -183,11 +183,10 @@
   }
   .mchk-close-btn { padding: 6px 14px; font-size: 12px; white-space: nowrap; }
   .mchk-present-count { font-size: 12px; font-weight: 700; color: var(--accent-dark); white-space: nowrap; }
-  /* 電波が無いとき・未送信の記録があるときのお知らせ（見出しの下に1行で出す。2026年10月28日〜） */
+  /* 未送信の記録があるときのお知らせ（見出しの下に出す。2026年10月28日〜） */
   .mchk-net { grid-column: 1 / -1; display: none; }
-  .mchk-net.warn, .mchk-net.info { display: flex; align-items: center; gap: 8px; font-size: 11px; line-height: 1.5; border-radius: var(--radius); padding: 6px 8px; }
+  .mchk-net.warn { display: flex; align-items: center; gap: 8px; font-size: 11px; line-height: 1.5; border-radius: var(--radius); padding: 6px 8px; }
   .mchk-net.warn { background: #fff3e0; color: #8a4b00; border: 1px solid #f0b46a; }
-  .mchk-net.info { background: #eef3f8; color: #3d5a73; border: 1px solid #c6d4e1; }
   .mchk-net span { flex: 1; }
   .mchk-net-btn { flex: none; padding: 5px 10px; border-radius: var(--radius); border: 1px solid #c77a1a; background: #fff; color: #8a4b00; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
 
@@ -1464,14 +1463,8 @@ function chkApplyQueue(eventId, checkinMap) {
   return out;
 }
 
-function chkFmtTime(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (isNaN(d)) return '';
-  return `${d.getMonth() + 1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
-// 見出しの下の「電波・未送信」のお知らせを、今の状態に合わせて書き直す
+// 見出しの下の「未送信」のお知らせを、今の状態に合わせて書き直す（未送信の記録があるときだけ出す。
+// 電波が無いときに控えで表を出していることは、わずらわしくないよう知らせない）
 function chkUpdateNetBar() {
   const el = document.getElementById('mchk-net');
   if (!el) return;
@@ -1480,10 +1473,6 @@ function chkUpdateNetBar() {
     el.className = 'mchk-net warn';
     el.innerHTML = `<span>⚠ 未送信 ${n}件（このスマホに保存済み）。電波が戻ると自動で送ります。画面を読み込み直さないでください。</span>
       <button type="button" class="mchk-net-btn" onclick="chkSendNow()">今すぐ送る</button>`;
-  } else if (chkUsingCache) {
-    const t = chkFmtTime(chkLoadCache().savedAt);
-    el.className = 'mchk-net info';
-    el.innerHTML = `<span>📶 電波が届かないため、${t ? t + ' に' : '前に'}保存した内容を出しています。出席・欠席はこのまま押せます。</span>`;
   } else {
     el.className = 'mchk-net';
     el.innerHTML = '';
