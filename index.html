@@ -183,6 +183,13 @@
   }
   .mchk-close-btn { padding: 6px 14px; font-size: 12px; white-space: nowrap; }
   .mchk-present-count { font-size: 12px; font-weight: 700; color: var(--accent-dark); white-space: nowrap; }
+  /* 電波が無いとき・未送信の記録があるときのお知らせ（見出しの下に1行で出す。2026年10月28日〜） */
+  .mchk-net { grid-column: 1 / -1; display: none; }
+  .mchk-net.warn, .mchk-net.info { display: flex; align-items: center; gap: 8px; font-size: 11px; line-height: 1.5; border-radius: var(--radius); padding: 6px 8px; }
+  .mchk-net.warn { background: #fff3e0; color: #8a4b00; border: 1px solid #f0b46a; }
+  .mchk-net.info { background: #eef3f8; color: #3d5a73; border: 1px solid #c6d4e1; }
+  .mchk-net span { flex: 1; }
+  .mchk-net-btn { flex: none; padding: 5px 10px; border-radius: var(--radius); border: 1px solid #c77a1a; background: #fff; color: #8a4b00; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
 
   /* 出欠確認タブ（現場確認の担当者専用）：詰員全員分の出欠を、氏名・当日出欠を
      1行にまとめた表で一覧表示する。スマホでの誤タップ（隣の詰員のボタンを押してしまう）
@@ -751,9 +758,14 @@ async function enterAsMember(member, token) {
   rosterYear = today.getFullYear();
   rosterMonth = today.getMonth() + 1;
   await renderCalendar();
+  // 現場確認の担当者は、電波のあるうちに出欠確認の内容をこのスマホに控え、未送信の記録があれば送る
+  if (member.is_checkin_operator) { chkPrefetch(); flushCheckinQueue(); }
 }
 
 function doLogout() {
+  if (currentMember && currentMember.is_checkin_operator && chkQueueCount() > 0) {
+    if (!confirm(`まだ送っていない出欠の記録が ${chkQueueCount()}件あります。\nログアウトしても記録はこのスマホに残り、次に現場確認の担当者がログインしたときに送られます。\nログアウトしますか？`)) return;
+  }
   try { localStorage.removeItem(REMEMBER_KEY); } catch (e) {}
   currentMember = null;
   pendingAdd.clear();
@@ -1378,6 +1390,234 @@ function handleNameTouchEnd(e) {
 
 let attendanceEventsCache = [];
 
+// =============================================
+// 出欠確認のオフライン対応（現場確認の担当者専用。2026年10月28日〜）
+// 建物の地階など電波の届かない場所でも「出席」「欠席」を押せるようにする。
+// ・行事・詰員の名前・事前連絡・当日出欠は、電波のあるときに読み込んだ内容を
+// 　このスマホ（localStorage）に控えておき、電波が無いときはその控えで表を出す。
+// ・押した「出席」「欠席」は、まずこのスマホに保存（未送信の記録）してすぐ画面に映し、
+// 　電波が戻ったとき（自動・15秒おき・「今すぐ送る」ボタン）に順番にデータベースへ送る。
+// ・同じ詰員を何度か押し直したときは、最後に押した内容だけを送る。
+// ・送った時刻ではなく、ボタンを押した時刻を checked_at に入れる。
+// =============================================
+const CHK_CACHE_KEY = 'toban_checkin_cache_v1';
+const CHK_QUEUE_KEY = 'toban_checkin_queue_v1';
+const CHK_NET_TIMEOUT = 8000; // 電波が弱いと読み込みが返ってこないことがあるため、8秒で見切る
+let chkUsingCache = false;    // 今の表示が、このスマホの控えによるものかどうか
+let chkLocalOnly = false;     // ボタンを押した直後の描き直しでは、通信せずに控えだけで描く
+let chkFlushing = false;
+
+function chkWithTimeout(p, ms) {
+  let timer;
+  return Promise.race([
+    Promise.resolve(p).finally(() => clearTimeout(timer)),
+    new Promise((_, rej) => { timer = setTimeout(() => rej(new Error('timeout')), ms || CHK_NET_TIMEOUT); })
+  ]);
+}
+// 電波・通信の問題による失敗かどうか（そうでない失敗は、今までどおり読めなかった扱い）
+function chkIsNetError(err, status) {
+  if (status === 0) return true;
+  const msg = String((err && err.message) || err || '');
+  return /timeout|failed to fetch|networkerror|network request failed|load failed|internet/i.test(msg);
+}
+// 読み込みを1つ行う。電波の問題なら例外を投げ、そのほかの失敗は data=null で返す。
+async function chkFetch(builder) {
+  let r;
+  try { r = await chkWithTimeout(builder); } catch (e) { throw new Error('net'); }
+  if (r.error) {
+    if (chkIsNetError(r.error, r.status)) throw new Error('net');
+    return null;
+  }
+  return r.data;
+}
+
+function chkLoadCache() {
+  try {
+    const c = JSON.parse(localStorage.getItem(CHK_CACHE_KEY) || 'null');
+    if (c && currentMember && c.memberId === currentMember.id) { c.perEvent = c.perEvent || {}; return c; }
+  } catch (e) {}
+  return { perEvent: {} };
+}
+function chkSaveCache(c) {
+  if (!currentMember) return;
+  c.memberId = currentMember.id;
+  c.savedAt = new Date().toISOString();
+  try { localStorage.setItem(CHK_CACHE_KEY, JSON.stringify(c)); } catch (e) {}
+}
+function chkLoadQueue() {
+  try { return JSON.parse(localStorage.getItem(CHK_QUEUE_KEY) || '{}') || {}; } catch (e) { return {}; }
+}
+function chkSaveQueue(q) {
+  try { localStorage.setItem(CHK_QUEUE_KEY, JSON.stringify(q)); } catch (e) {}
+}
+function chkQueueCount() { return Object.keys(chkLoadQueue()).length; }
+
+// 当日出欠の記録に、まだ送っていない記録（押した内容）を重ねる
+function chkApplyQueue(eventId, checkinMap) {
+  const out = Object.assign({}, checkinMap || {});
+  const q = chkLoadQueue();
+  Object.keys(q).forEach(k => {
+    const it = q[k];
+    if (it.eventId !== eventId) return;
+    if (it.status) out[it.memberId] = it.status; else delete out[it.memberId];
+  });
+  return out;
+}
+
+function chkFmtTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  return `${d.getMonth() + 1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+// 見出しの下の「電波・未送信」のお知らせを、今の状態に合わせて書き直す
+function chkUpdateNetBar() {
+  const el = document.getElementById('mchk-net');
+  if (!el) return;
+  const n = chkQueueCount();
+  if (n > 0) {
+    el.className = 'mchk-net warn';
+    el.innerHTML = `<span>⚠ 未送信 ${n}件（このスマホに保存済み）。電波が戻ると自動で送ります。画面を読み込み直さないでください。</span>
+      <button type="button" class="mchk-net-btn" onclick="chkSendNow()">今すぐ送る</button>`;
+  } else if (chkUsingCache) {
+    const t = chkFmtTime(chkLoadCache().savedAt);
+    el.className = 'mchk-net info';
+    el.innerHTML = `<span>📶 電波が届かないため、${t ? t + ' に' : '前に'}保存した内容を出しています。出席・欠席はこのまま押せます。</span>`;
+  } else {
+    el.className = 'mchk-net';
+    el.innerHTML = '';
+  }
+  adjustCheckinStickyOffset();
+}
+
+async function chkSendNow() {
+  await flushCheckinQueue(true);
+}
+
+// 記録を1件送る。'ok'＝送れた／'net'＝電波が無い／'auth'＝ログインの期限切れ／'bad'＝そのほかの理由で断られた
+async function chkSendOne(it) {
+  let r;
+  try {
+    if (!it.status) {
+      r = await chkWithTimeout(sbClient.from('event_checkin').delete().eq('event_id', it.eventId).eq('member_id', it.memberId), 10000);
+    } else {
+      r = await chkWithTimeout(sbClient.from('event_checkin')
+        .upsert({ event_id: it.eventId, member_id: it.memberId, status: it.status, checked_at: it.ts }, { onConflict: 'event_id,member_id' }), 10000);
+    }
+  } catch (e) { return 'net'; }
+  if (!r.error) return 'ok';
+  if (chkIsNetError(r.error, r.status)) return 'net';
+  if (r.status === 401 || /jwt/i.test(r.error.message || '') || r.error.code === 'PGRST301' || r.error.code === 'PGRST303') return 'auth';
+  return 'bad';
+}
+
+// ログインの期限（12時間）が切れていたときに、同じ詰員番号で入り直す（画面は変えない）
+async function chkRelogin() {
+  try {
+    const code = memberCodeStr(currentMember);
+    if (!code) return false;
+    const matches = await chkWithTimeout(findMembersByCode(code));
+    const m = (matches || []).find(x => x.member && x.member.id === currentMember.id);
+    if (!m || !m.token) return false;
+    sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      global: { headers: { Authorization: `Bearer ${m.token}` } }
+    });
+    return true;
+  } catch (e) { return false; }
+}
+
+// まだ送っていない記録を、押した順にデータベースへ送る
+async function flushCheckinQueue(byButton) {
+  if (chkFlushing || !currentMember || !currentMember.is_checkin_operator) return;
+  const startKeys = Object.keys(chkLoadQueue());
+  if (!startKeys.length) { chkUpdateNetBar(); return; }
+  chkFlushing = true;
+  let sentAny = false, netFail = false;
+  const rejected = [];
+  try {
+    const q = chkLoadQueue();
+    const items = Object.keys(q).map(k => ({ k, it: q[k] })).sort((a, b) => String(a.it.ts).localeCompare(String(b.it.ts)));
+    for (const { k, it } of items) {
+      let res = await chkSendOne(it);
+      if (res === 'auth') {
+        if (await chkRelogin()) res = await chkSendOne(it);
+        else res = 'net';
+      }
+      if (res === 'net' || res === 'auth') { netFail = true; break; }
+      // 送っている間に同じ詰員がもう一度押されていたら、新しい方を残して次の回に送る
+      const cur = chkLoadQueue();
+      if (cur[k] && cur[k].ts === it.ts) { delete cur[k]; chkSaveQueue(cur); }
+      if (res === 'ok') {
+        sentAny = true;
+        const c = chkLoadCache();
+        const pe = c.perEvent[it.eventId];
+        if (pe) {
+          pe.checkin = pe.checkin || {};
+          if (it.status) pe.checkin[it.memberId] = it.status; else delete pe.checkin[it.memberId];
+          chkSaveCache(c);
+        }
+      } else {
+        rejected.push(it);
+      }
+    }
+  } finally {
+    chkFlushing = false;
+  }
+  if (!netFail && sentAny) chkUsingCache = false;
+  chkUpdateNetBar();
+  if (rejected.length) {
+    alert(`記録できなかったものが ${rejected.length}件ありました（電波以外の理由で断られました）。もう一度押し直してください。`);
+    if (isAttendanceModalOpen()) await chkRerenderLocal();
+  } else if (byButton && netFail) {
+    alert('まだ電波が届かないため、送れませんでした。記録はこのスマホに残っています。電波の届く場所で、もう一度押してください。');
+  }
+  // すべて送れたら、ほかの担当者の記録も反映するため、最新の内容で静かに描き直す
+  if (sentAny && !netFail && chkQueueCount() === 0 && isAttendanceModalOpen()) {
+    await openAttendanceModal(true);
+  }
+}
+
+function isAttendanceModalOpen() {
+  const bg = document.getElementById('attendance-modal-bg');
+  return !!(bg && bg.classList.contains('open'));
+}
+
+// ボタンを押した直後に、通信せずにこのスマホの控えだけで描き直す
+async function chkRerenderLocal() {
+  const body = document.getElementById('attendance-modal-body');
+  if (!body) return;
+  chkLocalOnly = true;
+  try {
+    body.innerHTML = await renderOperatorCheckinSection(attendanceEventsCache);
+  } finally {
+    chkLocalOnly = false;
+  }
+  chkUpdateNetBar();
+}
+
+// 電波のあるうちに、出欠確認に使う内容をこのスマホに控えておく（担当者がログインしたとき）
+async function chkPrefetch() {
+  if (!currentMember || !currentMember.is_checkin_operator) return;
+  try {
+    const events = await chkFetch(sbClient.from('events').select('*').eq('is_open', true).order('event_date', { ascending: true, nullsFirst: false }));
+    if (!events) return;
+    const c = chkLoadCache(); c.events = events; chkSaveCache(c);
+    await loadAllMembersCache();
+    for (const ev of events) await chkGetEventData(ev);
+  } catch (e) { /* 控えが作れなくても、ふだんの画面には影響させない */ }
+}
+
+// 電波が戻ったとき・画面に戻ったとき・15秒おきに、未送信の記録を送る
+window.addEventListener('online', () => { flushCheckinQueue(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') flushCheckinQueue(); });
+setInterval(() => { if (chkQueueCount() > 0) flushCheckinQueue(); }, 15000);
+// 未送信の記録があるときに画面を閉じたり読み込み直したりしようとしたら、確認を出す
+// （記録はこのスマホに残るが、電波の無い場所で読み込み直すと画面そのものが開けなくなるため）
+window.addEventListener('beforeunload', (e) => {
+  if (currentMember && currentMember.is_checkin_operator && chkQueueCount() > 0) { e.preventDefault(); e.returnValue = ''; }
+});
+
 // silent=true のときは、出欠ボタンを押した直後の再読み込みのように「すでに開いていて
 // 中身も表示済みの状態からの更新」であることを示す。この場合は一瞬「読み込み中...」に
 // 差し替えてから最新の内容に置き換える、という表示のちらつき（お知らせ画面のような一瞬の
@@ -1390,19 +1630,43 @@ async function openAttendanceModal(silent) {
   bg.classList.add('open');
   if (!silent) body.innerHTML = '読み込み中...';
   try {
-    const { data: events, error } = await sbClient.from('events').select('*').eq('is_open', true).order('event_date', { ascending: true, nullsFirst: false });
-    if (error) throw error;
     // 表示する行事は、管理画面の「スマホに表示する行事」のチェック（is_open）だけで決める。
     // 終了した行事（今日より前の日付）も自動では除外せず、管理者が手動でチェックを外すまで
     // 表示を続ける（行事が終わった後でも当日出欠の記録・確認ができるようにするため）。
-    attendanceEventsCache = events || [];
+    // 電波が無いときは、このスマホに控えておいた行事の一覧を使う（現場確認の担当者だけ）。
+    let events = null;
+    chkUsingCache = false;
+    try {
+      const { data, error, status } = await chkWithTimeout(sbClient.from('events').select('*').eq('is_open', true).order('event_date', { ascending: true, nullsFirst: false }));
+      if (error) {
+        if (chkIsNetError(error, status)) throw new Error('net');
+        throw error;
+      }
+      events = data || [];
+      if (currentMember.is_checkin_operator) { const c = chkLoadCache(); c.events = events; chkSaveCache(c); }
+    } catch (e) {
+      const c = currentMember.is_checkin_operator ? chkLoadCache() : null;
+      if (e && e.message === 'net' || e && e.message === 'timeout') {
+        if (c && c.events) { events = c.events; chkUsingCache = true; }
+        else if (currentMember.is_checkin_operator) {
+          body.innerHTML = `<div class="mchk-card-header" style="grid-template-columns:1fr auto">
+            <div style="color:var(--danger);font-size:12px">電波が届かず、読み込めませんでした。このスマホにまだ控えがありません。一度、電波の届く場所でこの画面を開いてください。</div>
+            <button type="button" class="btn btn-sm mchk-close-btn" onclick="closeAttendanceModal()">閉じる</button>
+          </div>`;
+          return;
+        } else throw e;
+      } else throw e;
+    }
+    attendanceEventsCache = events;
 
     // 現場確認の担当者（is_checkin_operator）に選ばれた詰員だけ、行事ごとに詰員全員の
     // 出欠を確認・記録できる欄を表示する（担当者以外には表示するものがない）。
     const checkinHtml = currentMember.is_checkin_operator ? await renderOperatorCheckinSection(attendanceEventsCache) : '<p style="font-size:13px;color:var(--text-hint)">現在、表示できる内容はありません。</p>';
 
     body.innerHTML = checkinHtml;
+    chkUpdateNetBar();
     adjustCheckinStickyOffset();
+    if (currentMember.is_checkin_operator && chkQueueCount() > 0 && !chkUsingCache) flushCheckinQueue();
   } catch (e) {
     if (silent) alert('最新の状態の読み込みに失敗しました');
     else body.innerHTML = '<div style="color:var(--danger);font-size:13px">読み込みに失敗しました</div>';
@@ -1432,6 +1696,7 @@ async function renderOperatorCheckinSection(events) {
       inner = `<div class="mchk-card-header" style="grid-template-columns:1fr auto">
         <p style="font-size:13px;color:var(--text-hint);margin:0">現在、確認できる行事はありません。</p>
         <button type="button" class="btn btn-sm mchk-close-btn" onclick="closeAttendanceModal()">閉じる</button>
+        <div class="mchk-net" id="mchk-net"></div>
       </div>`;
     } else {
       if (!allMembersCache.length) await loadAllMembersCache();
@@ -1462,7 +1727,12 @@ async function switchCheckinEvent(eventId) {
   selectedCheckinEventId = eventId;
   const body = document.getElementById('attendance-modal-body');
   if (!body) return;
-  body.innerHTML = await renderOperatorCheckinSection(attendanceEventsCache);
+  // 電波が無いと分かっているときは、通信を待たずに控えで切り替える
+  chkLocalOnly = chkUsingCache;
+  try {
+    body.innerHTML = await renderOperatorCheckinSection(attendanceEventsCache);
+  } finally { chkLocalOnly = false; }
+  chkUpdateNetBar();
   adjustCheckinStickyOffset();
   const modal = body.closest('.attendance-modal');
   if (modal) modal.scrollTop = 0;
@@ -1478,29 +1748,54 @@ function adjustCheckinStickyOffset() {
 let allMembersCache = [];
 async function loadAllMembersCache() {
   try {
-    const { data, error } = await sbClient.from('members').select('id,name').eq('is_active', true).order('display_order', { ascending: true, nullsFirst: false });
-    if (error) throw error;
+    const { data, error, status } = await chkWithTimeout(sbClient.from('members').select('id,name').eq('is_active', true).order('display_order', { ascending: true, nullsFirst: false }));
+    if (error) {
+      if (chkIsNetError(error, status)) throw new Error('net');
+      throw error;
+    }
     allMembersCache = data || [];
-  } catch (e) { allMembersCache = []; }
+    if (currentMember && currentMember.is_checkin_operator) { const c = chkLoadCache(); c.members = allMembersCache; chkSaveCache(c); }
+  } catch (e) {
+    // 電波が無いときなどは、このスマホに控えておいた名前の一覧を使う（担当者だけ）
+    const c = currentMember && currentMember.is_checkin_operator ? chkLoadCache() : null;
+    allMembersCache = (c && c.members) ? c.members : [];
+  }
+}
+
+// 1つの行事の、当番・事前連絡・当日出欠を読み込む。電波があれば読み込んでこのスマホに控え、
+// 電波が無ければ（またはボタンを押した直後の描き直しなら）控えを使う。
+async function chkGetEventData(ev) {
+  const c = chkLoadCache();
+  const old = c.perEvent[ev.id];
+  if (!chkLocalOnly && !chkUsingCache) {
+    try {
+      let onDuty = null;
+      if (ev.event_date) {
+        const d = await chkFetch(sbClient.from('annual_roster').select('member_id').eq('duty_date', ev.event_date).maybeSingle());
+        onDuty = d ? d.member_id : null;
+      }
+      const att = {}, checkin = {};
+      ((await chkFetch(sbClient.from('event_attendance').select('member_id,status').eq('event_id', ev.id))) || []).forEach(r => { att[r.member_id] = r.status; });
+      ((await chkFetch(sbClient.from('event_checkin').select('member_id,status').eq('event_id', ev.id))) || []).forEach(r => { checkin[r.member_id] = r.status; });
+      const data = { onDuty, att, checkin };
+      if (currentMember && currentMember.is_checkin_operator) {
+        const c2 = chkLoadCache(); c2.perEvent[ev.id] = data; chkSaveCache(c2);
+      }
+      return data;
+    } catch (e) {
+      // 電波が無い：ここから先は控えで表示する
+      chkUsingCache = true;
+    }
+  }
+  return old || { onDuty: null, att: {}, checkin: {} };
 }
 
 async function renderCheckinEventCard(ev, switchEvents) {
-  let onDutyMemberId = null;
-  if (ev.event_date) {
-    try {
-      const { data } = await sbClient.from('annual_roster').select('member_id').eq('duty_date', ev.event_date).maybeSingle();
-      onDutyMemberId = data ? data.member_id : null;
-    } catch (e) { /* 突き合わせに失敗しても表示は続ける */ }
-  }
-  let attByMember = {}, checkinByMember = {};
-  try {
-    const { data } = await sbClient.from('event_attendance').select('member_id,status').eq('event_id', ev.id);
-    (data || []).forEach(r => { attByMember[r.member_id] = r.status; });
-  } catch (e) { /* 事前連絡が読めなくても現場確認は続行する */ }
-  try {
-    const { data } = await sbClient.from('event_checkin').select('member_id,status').eq('event_id', ev.id);
-    (data || []).forEach(r => { checkinByMember[r.member_id] = r.status; });
-  } catch (e) { /* 現場確認の初期状態が読めなくても続行する */ }
+  const evData = await chkGetEventData(ev);
+  const onDutyMemberId = evData.onDuty;
+  const attByMember = evData.att || {};
+  // まだ送っていない記録（このスマホに保存した分）も重ねて表示する
+  const checkinByMember = chkApplyQueue(ev.id, evData.checkin);
 
   // 当日出欠で「出席」と記録されている詰員数（当番の詰員も、その場にいるため出席者に含める）
   let presentCount = 0;
@@ -1537,6 +1832,7 @@ async function renderCheckinEventCard(ev, switchEvents) {
       <button type="button" class="btn btn-sm mchk-close-btn" onclick="closeAttendanceModal()">閉じる</button>
       <div class="attendance-event-date">${ev.event_date || '日付未定'}</div>
       <div class="mchk-present-count">出席者：${presentCount}名</div>
+      <div class="mchk-net" id="mchk-net"></div>
     </div>
     <div class="mchk-list"><table class="mchk-table">
       <thead><tr><th>氏名</th><th>当日出欠</th></tr></thead>
@@ -1547,20 +1843,19 @@ async function renderCheckinEventCard(ev, switchEvents) {
 
 // statusは呼び出し側（各ボタンのonclick）ですでに次の状態が計算済みで渡される。
 // 空文字（''）が渡された場合は、記録を削除して未確認に戻す。
+// 押した内容は、まずこのスマホに保存してすぐ画面に映し、そのあとデータベースへ送る
+// （電波が無ければ、電波が戻ったときに送る）。
 async function setMemberCheckin(eventId, memberId, status) {
   try {
-    if (!status) {
-      const { error } = await sbClient.from('event_checkin').delete().eq('event_id', eventId).eq('member_id', memberId);
-      if (error) throw error;
-    } else {
-      const { error } = await sbClient.from('event_checkin')
-        .upsert({ event_id: eventId, member_id: memberId, status, checked_at: new Date().toISOString() }, { onConflict: 'event_id,member_id' });
-      if (error) throw error;
-    }
-    await openAttendanceModal(true); // 選択状態を反映するため再読み込み（「読み込み中」表示は挟まず静かに更新する）
+    const q = chkLoadQueue();
+    q[`${eventId}_${memberId}`] = { eventId, memberId, status: status || '', ts: new Date().toISOString() };
+    chkSaveQueue(q);
   } catch (e) {
     alert('記録に失敗しました');
+    return;
   }
+  await chkRerenderLocal();
+  flushCheckinQueue();
 }
 
 function shiftRosterMonth(delta) {
