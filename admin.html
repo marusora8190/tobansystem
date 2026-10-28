@@ -1068,6 +1068,7 @@
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
           <div class="card-title" style="margin-bottom:0">詰員ごとの当番開始年月</div>
           <button type="button" class="btn btn-sm" onclick="renderDutyStartPage()">再読み込み</button>
+          <button type="button" class="btn btn-sm" onclick="openDutyStartRetireCalc()">🧮 辞退予定年月日の計算</button>
         </div>
         <div id="dstart-oldest" style="font-size:13px;margin-bottom:8px"></div>
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">「辞退予定年月日」は目安のメモです。入れると自動で保存されます（消すときは日付を空にします）。当番表作成・名簿・削除の境目など、ほかの機能には使いません。辞退した人は、これまでどおり詰員名簿で削除してください。<strong>名簿から外すのは、その人の最後の当番が終わってからにしてください。</strong></div>
@@ -1090,21 +1091,6 @@
               <thead><tr><th style="text-align:center;white-space:nowrap">番号</th><th>氏名</th><th style="white-space:nowrap">当番開始年月</th><th style="white-space:nowrap">辞退予定年月日<br><span style="font-weight:400;color:var(--text-hint)">（目安のメモ）</span></th></tr></thead>
               <tbody id="dstart-body3"></tbody>
             </table>
-          </div>
-          <!-- 辞退予定年月日の計算機：生年月日はどこにも保存しない（データベース・ブラウザのどちらにも残さない） -->
-          <div id="dstart-calc" style="flex:0 0 auto;width:230px;max-width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12.5px;background:var(--bg)">
-            <div style="font-weight:600;margin-bottom:4px">🧮 辞退予定年月日の計算</div>
-            <div style="font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-bottom:6px">生年月日の年・月・日を選ぶと、65歳になる年度の年度末（3月31日）を出します。出た日付を表の「辞退予定年月日」に手で入れてください。<br><strong>生年月日はどこにも保存しません</strong>（画面を読み込み直すと消えます。「消す」でもすぐ消せます）。</div>
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-              <span>生年月日</span>
-              <button type="button" class="btn btn-sm" onclick="clearDutyStartRetireCalc()">消す</button>
-            </div>
-            <div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;margin-top:4px">
-              <select id="dstart-calc-y" autocomplete="off" style="width:auto;padding:2px 3px;font-size:12px" onchange="calcDutyStartRetire()"></select><span>年</span>
-              <select id="dstart-calc-m" autocomplete="off" style="width:auto;padding:2px 3px;font-size:12px" onchange="calcDutyStartRetire()"></select><span>月</span>
-              <select id="dstart-calc-d" autocomplete="off" style="width:auto;padding:2px 3px;font-size:12px" onchange="calcDutyStartRetire()"></select><span>日</span>
-            </div>
-            <div id="dstart-calc-result" style="margin-top:8px;line-height:1.6"></div>
           </div>
         </div>
       </div>
@@ -1980,6 +1966,25 @@
   </div>
 </div>
 
+<!-- 辞退予定年月日の計算機（「当番開始年月」の「🧮 辞退予定年月日の計算」ボタンで開く）。
+     生年月日はどこにも保存しない（データベース・ブラウザのどちらにも残さない。閉じると消す） -->
+<div class="modal-bg" id="dstart-calc-modal" onclick="if(event.target===this)closeDutyStartRetireCalc()">
+  <div class="modal" style="width:420px">
+    <h3>🧮 辞退予定年月日の計算</h3>
+    <div style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:10px">生年月日の年・月・日を選ぶと、65歳になる年度の年度末（3月31日）を出します。出た日付を表の「辞退予定年月日」に手で入れてください。<br><strong>生年月日はどこにも保存しません</strong>（閉じると消えます）。</div>
+    <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;font-size:13px">
+      <span style="margin-right:4px">生年月日</span>
+      <select id="dstart-calc-y" autocomplete="off" style="width:auto;padding:3px 4px;font-size:13px" onchange="calcDutyStartRetire()"></select><span>年</span>
+      <select id="dstart-calc-m" autocomplete="off" style="width:auto;padding:3px 4px;font-size:13px" onchange="calcDutyStartRetire()"></select><span>月</span>
+      <select id="dstart-calc-d" autocomplete="off" style="width:auto;padding:3px 4px;font-size:13px" onchange="calcDutyStartRetire()"></select><span>日</span>
+    </div>
+    <div id="dstart-calc-result" style="margin-top:12px;line-height:1.7;min-height:60px;font-size:13px"></div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-sm" onclick="clearDutyStartRetireCalc()">消す</button>
+      <button type="button" class="btn btn-sm" onclick="closeDutyStartRetireCalc()">閉じる</button>
+    </div>
+  </div>
+</div>
 <div class="modal-bg" id="day-modal">
   <div class="modal">
     <h3 id="day-modal-title">当番を設定</h3>
@@ -3530,6 +3535,24 @@ function calcDutyStartRetire() {
     + `<div>辞退予定年月日：<strong style="font-size:15px">${endYear}年3月31日</strong>${wareki}</div>`
     + `<div style="font-size:11.5px;color:var(--text-muted)">表には ${endYear}/03/31 と入れます</div>` + past;
 }
+function openDutyStartRetireCalc() {
+  initDutyStartRetireCalc();
+  clearDutyStartRetireCalc();
+  const md = document.getElementById('dstart-calc-modal');
+  if (md) md.classList.add('open');
+  const ys = document.getElementById('dstart-calc-y');
+  if (ys) ys.focus();
+}
+// 閉じるときは選んだ生年月日も消す
+function closeDutyStartRetireCalc() {
+  clearDutyStartRetireCalc();
+  const md = document.getElementById('dstart-calc-modal');
+  if (md) md.classList.remove('open');
+}
+document.addEventListener('keydown', e => {
+  const md = document.getElementById('dstart-calc-modal');
+  if (e.key === 'Escape' && md && md.classList.contains('open')) closeDutyStartRetireCalc();
+});
 function clearDutyStartRetireCalc() {
   ['dstart-calc-y', 'dstart-calc-m', 'dstart-calc-d'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   fillDutyStartRetireDays();
@@ -3538,7 +3561,6 @@ function clearDutyStartRetireCalc() {
 }
 
 async function renderDutyStartPage() {
-  initDutyStartRetireCalc();
   const body = document.getElementById('dstart-body');
   // 2つ目・3つ目の表（名簿を順に3つに分けて入れる）
   const extraBodies = [document.getElementById('dstart-body2'), document.getElementById('dstart-body3')];
