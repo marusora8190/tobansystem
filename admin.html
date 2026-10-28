@@ -3456,31 +3456,6 @@ async function loadDutyStartRetirePlans() {
     return {};
   }
 }
-// 「辞退予定年月日」が同じ人どうしの「番号」の欄を同じ色にする（2人以上で同じ日付のときだけ）。
-// 今の画面の入力欄の日付で判断するので、日付を入れ直すとすぐ色も変わる。日付の早い順に色を割り当てる
-const DUTY_START_GROUP_COLORS = ['#f9d6d5', '#fde4bf', '#fbf3b5', '#d6efc7', '#c9ece6', '#cfe0f7', '#ddd3f3', '#f5d3ea', '#e7dcc8', '#d9d9d9'];
-function colorDutyStartRetireGroups() {
-  const rows = [];
-  ['dstart-body', 'dstart-body2', 'dstart-body3'].forEach(id => {
-    const b = document.getElementById(id);
-    if (!b) return;
-    b.querySelectorAll('tr').forEach(tr => {
-      const no = tr.querySelector('td.dstart-no');
-      const inp = tr.querySelector('input[type="date"]');
-      if (no && inp) rows.push({ no, val: inp.value || '' });
-    });
-  });
-  const count = {};
-  rows.forEach(r => { if (r.val) count[r.val] = (count[r.val] || 0) + 1; });
-  const groups = Object.keys(count).filter(v => count[v] >= 2).sort();
-  const colorOf = {};
-  groups.forEach((v, i) => { colorOf[v] = DUTY_START_GROUP_COLORS[i % DUTY_START_GROUP_COLORS.length]; });
-  rows.forEach(r => {
-    const c = colorOf[r.val];
-    r.no.style.background = c || '';
-    r.no.style.color = c ? '#333' : '';
-  });
-}
 async function saveDutyStartRetirePlan(memberId, inputEl) {
   const msgEl = inputEl.parentElement.querySelector('.dstart-plan-msg');
   const val = inputEl.value || '';
@@ -3495,7 +3470,6 @@ async function saveDutyStartRetirePlan(memberId, inputEl) {
       .upsert({ key: DUTY_START_RETIRE_KEY, value: JSON.stringify(plans), updated_at: new Date().toISOString() }, { onConflict: 'key' });
     if (upErr) throw upErr;
     if (msgEl) { msgEl.style.color = 'var(--accent-dark)'; msgEl.textContent = val ? '保存しました' : '消しました'; setTimeout(() => { msgEl.textContent = ''; }, 2500); }
-    colorDutyStartRetireGroups();
   } catch (e) {
     console.error(e);
     if (msgEl) { msgEl.style.color = 'var(--danger)'; msgEl.textContent = '保存できませんでした'; }
@@ -3671,9 +3645,10 @@ async function renderDutyStartPage() {
         const first = firstByMember[m.id];
         const staff = (m.staff_id !== null && m.staff_id !== undefined) ? String(m.staff_id) : '';
         const cell = first ? dutyStartYmLabel(first) : '<span style="color:var(--text-hint)">記録なし</span>';
+        const mark = oldestIds.has(m.id) ? ' style="background:var(--accent-light)"' : '';
         const plan = retirePlans[String(m.id)] || '';
         const planCell = `<input type="date" value="${escapeHtmlDutyStart(plan)}" onchange="saveDutyStartRetirePlan('${escapeHtmlDutyStart(m.id)}', this)"><div class="dstart-plan-msg" style="font-size:11px"></div>`;
-        return `<tr><td class="dstart-no" style="text-align:center">${escapeHtmlDutyStart(staff)}</td><td style="white-space:nowrap">${escapeHtmlDutyStart(m.name || '')}</td><td style="white-space:nowrap">${cell}</td><td>${planCell}</td></tr>`;
+        return `<tr${mark}><td style="text-align:center">${escapeHtmlDutyStart(staff)}</td><td style="white-space:nowrap">${escapeHtmlDutyStart(m.name || '')}</td><td style="white-space:nowrap">${cell}</td><td>${planCell}</td></tr>`;
       });
       // 名簿の順のまま、3つに分けて左・中・右の表に入れる（割り切れないときは左から1人ずつ多い）
       const per = Math.ceil(rowHtml.length / 3);
@@ -3685,7 +3660,6 @@ async function renderDutyStartPage() {
           if (extraWraps[i]) extraWraps[i].style.display = '';
         }
       });
-      colorDutyStartRetireGroups();
     }
   } catch (e) {
     console.error(e);
