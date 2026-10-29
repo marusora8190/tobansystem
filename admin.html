@@ -8206,6 +8206,49 @@ function handleCalTitleRightClick(event) {
   return false;
 }
 
+// =============================================
+// 新しい版の確認（2026年10月29日〜）
+// GitHubに新しい版が上がっているときだけ、画面全体を入力できない状態にして「Update」を押してもらう。
+// 開いている画面の「版の印」（APP_FILE_VERSION）と、公開中のファイルの「版の印」をくらべる。
+// ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
+// 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
+// =============================================
+const APP_FILE_VERSION = '2026-10-29-1';
+let appVersionLocked = false;
+let appVersionLastCheck = 0;
+async function checkNewAppVersion() {
+  if (appVersionLocked) return;
+  appVersionLastCheck = Date.now();
+  try {
+    const res = await fetch(location.pathname + '?vcheck=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return;
+    const text = await res.text();
+    // 版の印は英数字・ハイフンだけ（この行の書き方そのものに当たらないよう、カッコは使わない）
+    const m = new RegExp("APP_FILE_" + "VERSION = '([0-9A-Za-z_.-]+)'").exec(text);
+    if (!m || m[1] === APP_FILE_VERSION) return;
+    showAppVersionLock();
+  } catch (e) { /* 電波が無いときなど。今までどおり使える */ }
+}
+function showAppVersionLock() {
+  if (appVersionLocked) return;
+  appVersionLocked = true;
+  const ov = document.createElement('div');
+  ov.id = 'app-version-lock';
+  ov.setAttribute('style', 'position:fixed;inset:0;z-index:2147483000;background:rgba(30,30,30,0.6);display:flex;align-items:center;justify-content:center;padding:16px');
+  ov.innerHTML = '<div style="background:#fff;color:#222;border-radius:10px;max-width:420px;width:100%;padding:20px 18px;text-align:center;line-height:1.6;box-shadow:0 6px 24px rgba(0,0,0,0.3)">'
+    + '<div style="font-size:17px;font-weight:700;margin-bottom:8px">🔄 新しい版があります</div>'
+    + '<div style="font-size:13px;margin-bottom:14px;text-align:left">このアプリの新しい版が上がっています。下の「Update」を押して、読み込み直してから使ってください（ログインはし直さなくて大丈夫です）。<br>まだ保存していない入力は、読み込み直すと消えます。</div>'
+    + '<button type="button" onclick="hardUpdateReload()" style="background:#c0392b;color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:15px;font-weight:700;cursor:pointer">Update</button>'
+    + '</div>';
+  document.body.appendChild(ov);
+}
+// 開いたとき（少し待ってから）・5分おき・画面に戻ったとき（1分以上たっていれば）に確かめる
+setTimeout(checkNewAppVersion, 3000);
+setInterval(checkNewAppVersion, 5 * 60 * 1000);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && Date.now() - appVersionLastCheck > 60 * 1000) checkNewAppVersion();
+});
+
 // カレンダー表示の「Update」ボタン：GitHub Pages側のキャッシュ都合でブラウザに残った
 // 古いファイルがそのまま表示され続けることがあるため、Ctrl+Shift+Rの手動ハードリロードと
 // 同じ効果を1クリックで得られるようにしたもの。末尾に毎回異なるクエリ文字列を付けて
