@@ -2089,6 +2089,11 @@ function ensureSbClient() {
 // 当番表の対象期間を返す共通ヘルパー
 // 通常月：1日〜末日。12月のみ特例で「12/1〜翌年1/4」を対象とする。
 // 戻り値: [{y, m, d, dateStr}, ...]
+// 支障日登録・登録済み支障日一覧で使う、その月の最後の日（12月は翌年1月4日。カレンダーと同じ範囲）
+function unavailServiceLastDate(year, month) {
+  const days = getServiceMonthDays(year, month);
+  return days[days.length - 1].dateStr;
+}
 function getServiceMonthDays(year, month) {
   const pad2 = (n) => String(n).padStart(2, '0');
   const days = [];
@@ -5692,7 +5697,9 @@ async function renderUnavailCalendar() {
   }
   const [year, month] = mon.split('-').map(Number);
   const firstDay = new Date(year, month - 1, 1).getDay();
-  const daysInMonth = new Date(year, month, 0).getDate();
+  // 12月は、カレンダーと同じく12月1日〜翌年1月4日を出す
+  const serviceDays = getServiceMonthDays(year, month);
+  const lastDateStr = serviceDays[serviceDays.length - 1].dateStr;
 
   // DBから直接この月・このメンバーの登録済み支障日を取得（DOM依存をやめて確実に）
   const registeredDates = new Set();
@@ -5702,13 +5709,14 @@ async function renderUnavailCalendar() {
       .select('blocked_date')
       .eq('member_id', parseInt(mid))
       .gte('blocked_date', mon + '-01')
-      .lte('blocked_date', lastDayOfMonth(mon));
+      .lte('blocked_date', lastDateStr);
     (data || []).forEach(r => registeredDates.add(r.blocked_date));
   } catch(e) {
     console.warn('[renderUnavailCalendar]', e.message);
   }
 
   let html = '<style>.unavail-cal{border-collapse:collapse;width:100%}.unavail-cal th{padding:6px;font-size:12px;text-align:center;border:1px solid var(--border)}.unavail-cal td{width:14.28%;padding:4px;text-align:center;border:1px solid var(--border);cursor:pointer;font-size:13px;vertical-align:top;min-height:36px}.unavail-cal td.empty{cursor:default}.unavail-cal td.selected{background:#fee2e2;color:#e89090;font-weight:600}.unavail-cal td.registered{background:#fecaca;color:#e89090;font-weight:600}.unavail-cal td.sunday{color:var(--danger)}.unavail-cal td.saturday{color:var(--info)}</style>';
+  if (month === 12) html += '<p style="font-size:12px;color:var(--text-muted);margin-bottom:4px">12月は、カレンダーと同じく翌年1月4日まで出しています（1/1〜1/4 は翌年1月の日です）。</p>';
   html += '<table class="unavail-cal"><thead><tr>';
   DOW_JP.forEach((d, i) => {
     const color = i===0?'color:var(--danger)':i===6?'color:var(--info)':'';
@@ -5716,9 +5724,11 @@ async function renderUnavailCalendar() {
   });
   html += '</tr></thead><tbody><tr>';
   for (let i = 0; i < firstDay; i++) html += '<td class="empty"></td>';
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const dow = (firstDay + d - 1) % 7;
+  serviceDays.forEach((sd, idx) => {
+    const dateStr = sd.dateStr;
+    const d = sd.d;
+    const dayLabel = sd.m === month ? `${d}` : `${sd.m}/${d}`;
+    const dow = (firstDay + idx) % 7;
     const isSelected = selectedUnavailDates.has(dateStr);
     const isRegistered = registeredDates.has(dateStr);
     const isHol = !!holidays[dateStr];
@@ -5728,9 +5738,9 @@ async function renderUnavailCalendar() {
     else if (dow === 6) cls += ' saturday';
     if (isRegistered) cls += ' registered';
     else if (isSelected) cls += ' selected';
-    html += `<td class="${cls.trim()}" onclick="toggleUnavailDate('${dateStr}', ${isRegistered})" data-date="${dateStr}" title="${isRegistered ? 'クリックでこの支障日を取り消す' : ''}"><div style="display:flex;align-items:center;justify-content:center"><span>${d}</span><span style="display:inline-block;width:36px;text-align:left;margin-left:5px;font-size:9px;white-space:nowrap">${holLabel}</span></div></td>`;
-    if ((firstDay + d) % 7 === 0 && d < daysInMonth) html += '</tr><tr>';
-  }
+    html += `<td class="${cls.trim()}" onclick="toggleUnavailDate('${dateStr}', ${isRegistered})" data-date="${dateStr}" title="${isRegistered ? 'クリックでこの支障日を取り消す' : ''}"><div style="display:flex;align-items:center;justify-content:center"><span>${dayLabel}</span><span style="display:inline-block;width:36px;text-align:left;margin-left:5px;font-size:9px;white-space:nowrap">${holLabel}</span></div></td>`;
+    if ((firstDay + idx + 1) % 7 === 0 && idx < serviceDays.length - 1) html += '</tr><tr>';
+  });
   html += '</tr></tbody></table>';
   wrap.innerHTML = html;
 }
@@ -5771,13 +5781,16 @@ async function clearRegisteredForMonth() {
   const mon = document.getElementById('u-cal-month').value;
   if (!mid || !mon) { showMsg('unavail-msg', 'メンバーと対象月を選択してください', 'error'); return; }
   const memberName = members.find(m => m.id == mid)?.name || '';
-  if (!confirm(`${memberName} さんの ${mon} の登録済み支障日をすべて削除しますか？`)) return;
+  const [cy, cm] = mon.split('-').map(Number);
+  const clearLast = unavailServiceLastDate(cy, cm);
+  const rangeNote = cm === 12 ? `（12月1日〜翌年1月4日）` : '';
+  if (!confirm(`${memberName} さんの ${mon}${rangeNote} の登録済み支障日をすべて削除しますか？`)) return;
 
   const { error } = await sbClient.from('unavailable_dates')
     .delete()
     .eq('member_id', parseInt(mid))
     .gte('blocked_date', mon + '-01')
-    .lte('blocked_date', lastDayOfMonth(mon));
+    .lte('blocked_date', clearLast);
 
   if (error) { showMsg('unavail-msg', '削除エラー: ' + error.message, 'error'); return; }
 
@@ -5841,11 +5854,8 @@ async function addUnavailableInverse() {
   if (!mon) { showMsg('unavail-msg', '対象月を選択してください', 'error'); return; }
 
   const [year, month] = mon.split('-').map(Number);
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const allDates = [];
-  for (let d = 1; d <= daysInMonth; d++) {
-    allDates.push(`${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
-  }
+  // 12月は、カレンダーに出ている12月1日〜翌年1月4日が対象
+  const allDates = getServiceMonthDays(year, month).map(sd => sd.dateStr);
   // 現在選択されている日＝「空いている日（支障日にしない日）」として、登録対象から除外する
   const targetDates = allDates.filter(dt => !selectedUnavailDates.has(dt));
 
@@ -5855,7 +5865,8 @@ async function addUnavailableInverse() {
   }
 
   const memberName = members.find(m => m.id == mid)?.name || '';
-  const keepCount = selectedUnavailDates.size;
+  // 選んだ日のうち、表示中の範囲の日だけを数える
+  const keepCount = allDates.filter(dt => selectedUnavailDates.has(dt)).length;
   const confirmMsg = keepCount > 0
     ? `${memberName} さんの ${mon} について、選択中の${keepCount}日（空いている日）以外の${targetDates.length}日を、まとめて支障日として登録します。よろしいですか？`
     : `${memberName} さんの ${mon} は、日が1つも選択されていません。このまま進めると、月内の${targetDates.length}日すべてが支障日として登録されます。よろしいですか？`;
@@ -5895,12 +5906,14 @@ async function loadUnavailable() {
   const mon = document.getElementById('u-matrix-month').value;
   if (!mon) return;
   const [year, month] = mon.split('-').map(Number);
-  const daysInMonth = new Date(year, month, 0).getDate();
+  // 12月は、カレンダーと同じく12月1日〜翌年1月4日を出す
+  const serviceDays = getServiceMonthDays(year, month);
 
   const head = document.getElementById('unavail-matrix-head');
   let headHtml = '<tr><th style="text-align:left;width:1px;padding-left:3px;white-space:nowrap;background:var(--bg)">氏名</th><th class="unavail-prev-duty" style="background:var(--bg);font-size:8px" title="前月の当番日">前月<br>当番</th><th class="unavail-vert-th" style="width:26px;min-width:26px;max-width:26px;background:var(--bg)">回数</th><th class="unavail-vert-th" style="width:26px;min-width:26px;max-width:26px;background:var(--bg)">日祝</th>';
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  serviceDays.forEach(sd => {
+    const dateStr = sd.dateStr;
+    const d = sd.m === month ? `${sd.d}` : `${sd.m}/${sd.d}`;
     const dow = new Date(dateStr + 'T00:00:00').getDay();
     const isHol = !!holidays[dateStr];
     const isDutyDecided = !!(schedules[dateStr] && schedules[dateStr].member_id);
@@ -5912,13 +5925,13 @@ async function loadUnavailable() {
 
     const thHtml = `<th style="background:${thBg};color:${thColor}" title="${isDutyDecided ? '当番日決定済み' : ''}">${d}<br><span style="font-size:9px">${DOW_JP[dow]}</span></th>`;
     headHtml += thHtml;
-  }
+  });
   headHtml += '</tr>';
   head.innerHTML = headHtml;
 
   const { data, error } = await fetchAllUnavail(q => q
     .gte('blocked_date', mon + '-01')
-    .lte('blocked_date', lastDayOfMonth(mon)));
+    .lte('blocked_date', serviceDays[serviceDays.length - 1].dateStr));
 
   // この年の月2回・0回当番設定を取得（表示中の年間計画の年と異なる場合もあるため直接取得）
   const twiceMonthMap = {};
@@ -5986,10 +5999,8 @@ async function loadUnavailable() {
       <td style="width:26px;min-width:26px;max-width:26px;text-align:center;background:var(--surface);font-size:9px;color:#2e7d32;font-weight:500">${twiceCell}</td>
       <td style="width:26px;min-width:26px;max-width:26px;text-align:center;${holCellBg}"></td>`;
     
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const dow = new Date(dateStr + 'T00:00:00').getDay();
-      const isHol = !!holidays[dateStr];
+    serviceDays.forEach(sd => {
+      const dateStr = sd.dateStr;
       const record = unavailMap[`${m.id}_${dateStr}`];
       
       let tdBg = '#ffffff';
@@ -6024,7 +6035,7 @@ async function loadUnavailable() {
       }
 
       bodyHtml += `<td style="background:${tdBg}" title="${cellTitle}" class="matrix-cell-clickable" data-date-str="${dateStr}" ${clickAction}>${cellContent}</td>`;
-    }
+    });
     bodyHtml += '</tr>';
   });
 
@@ -7460,7 +7471,7 @@ function printUnavailMatrix() {
   let title = '登録済み支障日一覧';
   if (monVal) {
     const [y, m] = monVal.split('-').map(Number);
-    title = `${y}年${m}月 登録済み支障日一覧`;
+    title = m === 12 ? `${y}年12月（〜翌年1/4） 登録済み支障日一覧` : `${y}年${m}月 登録済み支障日一覧`;
   }
 
   const legendHtml = `
