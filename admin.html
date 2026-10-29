@@ -74,7 +74,13 @@
   .sidebar-item.active { color: var(--accent-dark); background: var(--accent-light); border-left-color: var(--accent); font-weight: 500; }
   .sidebar-icon { font-size: 16px; }
   /* サイドバーの小見出し（2026年10月29日〜。押せない見出し。メニューのまとまりを分かりやすくする） */
-  .sidebar-group { padding: 12px 20px 3px; font-size: 11px; font-weight: 700; color: var(--accent-dark); letter-spacing: 0.05em; white-space: nowrap; border-top: 1px solid var(--border); margin-top: 6px; cursor: default; user-select: none; }
+  .sidebar-group { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px 8px 20px; font-size: 12px; font-weight: 700; color: var(--accent-dark); letter-spacing: 0.05em; white-space: nowrap; border-top: 1px solid var(--border); cursor: pointer; user-select: none; }
+  .sidebar-group:hover { background: var(--bg); }
+  .sidebar-group::after { content: '▸'; font-size: 11px; color: var(--text-muted); margin-left: 8px; }
+  .sidebar-group.open::after { content: '▾'; }
+  /* 見出しの下のメニューは、ふだんは隠す（見出しを押すと開く。開いている画面のまとまりは自動で開く） */
+  .sidebar-group-items { display: none; padding-bottom: 6px; }
+  .sidebar-group.open + .sidebar-group-items { display: block; }
   .main { flex: 1; overflow-y: auto; padding: 24px; }
   .page { display: none; }
   .page.active { display: block; }
@@ -592,6 +598,7 @@
     .sidebar-item { padding: 12px 14px; border-left: none; border-bottom: 3px solid transparent; font-size: 12px; }
     .sidebar-item.active { border-left: none; border-bottom-color: var(--accent); }
     .sidebar-group { display: none; }
+    .sidebar-group-items, .sidebar-group.open + .sidebar-group-items { display: contents; }
     .form-grid { grid-template-columns: 1fr; }
     .cal-day { min-height: 60px; }
   }
@@ -629,34 +636,50 @@
 <div class="layout">
   <nav class="sidebar" id="sidebar">
     <div class="sidebar-item" onclick="showPage('manual')">使い方ガイド</div>
-    <div class="sidebar-group">当番表・名簿</div>
-    <div class="sidebar-item active" onclick="showPage('calendar')">カレンダー</div>
-    <div class="sidebar-item" onclick="showPage('members')">詰員名簿</div>
-    <div class="sidebar-group">当番の予定</div>
-    <div class="sidebar-item" onclick="showPage('mc2')">月ごと当番回数</div>
-    <div class="sidebar-item" onclick="showPage('mh2')">日祝当番月（複数年）</div>
-    <div class="sidebar-item" onclick="showPage('annual-single2')">各メンバー年間設定</div>
-    <div class="sidebar-group">支障日</div>
-    <div class="sidebar-item" onclick="showPage('unavailable')">支障日登録</div>
-    <div class="sidebar-item" onclick="showPage('unavail-list')">登録済み支障日一覧</div>
-    <div class="sidebar-group">当番表の作成</div>
-    <div class="sidebar-item" onclick="showPage('generate')">当番表作成</div>
-    <div class="sidebar-item" onclick="showPage('gen-rules')">作成ルール</div>
-    <div class="sidebar-group">確認・記録</div>
-    <div class="sidebar-item" onclick="showPage('records')">割当確認</div>
-    <div class="sidebar-item" onclick="showPage('duty-count-records')">月割当て確認用</div>
-    <div class="sidebar-item" onclick="showPage('duty-start')">当番開始年月</div>
-    <div class="sidebar-group">祝日・年末年始</div>
-    <div class="sidebar-item" onclick="showPage('holidays')">日曜祝日等管理</div>
-    <div class="sidebar-item" onclick="showPage('nye-duty')">年末年始当番予定</div>
-    <div class="sidebar-item" onclick="showPage('nye-duty-record')">年末年始当番記録</div>
-    <div class="sidebar-group">祭典・行事</div>
-    <div class="sidebar-item" onclick="showPage('chotome')">本部祭典日・本部お勤め時間</div>
-    <div class="sidebar-item" onclick="showPage('events')">出欠管理</div>
-    <div class="sidebar-item" onclick="showPage('festival-duty')">祭典日当番者記録</div>
-    <div class="sidebar-group">システム</div>
-    <div class="sidebar-item" onclick="showPage('system-guide')">システムの仕組み</div>
-    <div class="sidebar-item" onclick="showPage('settings')">設　定</div>
+    <div class="sidebar-group open" onclick="toggleSidebarGroup(this)">当番表・名簿</div>
+    <div class="sidebar-group-items">
+      <div class="sidebar-item active" onclick="showPage('calendar')">カレンダー</div>
+      <div class="sidebar-item" onclick="showPage('members')">詰員名簿</div>
+    </div>
+    <div class="sidebar-group" onclick="toggleSidebarGroup(this)">当番の予定</div>
+    <div class="sidebar-group-items">
+      <div class="sidebar-item" onclick="showPage('mc2')">月ごと当番回数</div>
+      <div class="sidebar-item" onclick="showPage('mh2')">日祝当番月（複数年）</div>
+      <div class="sidebar-item" onclick="showPage('annual-single2')">各メンバー年間設定</div>
+    </div>
+    <div class="sidebar-group" onclick="toggleSidebarGroup(this)">支障日</div>
+    <div class="sidebar-group-items">
+      <div class="sidebar-item" onclick="showPage('unavailable')">支障日登録</div>
+      <div class="sidebar-item" onclick="showPage('unavail-list')">登録済み支障日一覧</div>
+    </div>
+    <div class="sidebar-group" onclick="toggleSidebarGroup(this)">当番表の作成</div>
+    <div class="sidebar-group-items">
+      <div class="sidebar-item" onclick="showPage('generate')">当番表作成</div>
+      <div class="sidebar-item" onclick="showPage('gen-rules')">作成ルール</div>
+    </div>
+    <div class="sidebar-group" onclick="toggleSidebarGroup(this)">確認・記録</div>
+    <div class="sidebar-group-items">
+      <div class="sidebar-item" onclick="showPage('records')">割当確認</div>
+      <div class="sidebar-item" onclick="showPage('duty-count-records')">月割当て確認用</div>
+      <div class="sidebar-item" onclick="showPage('duty-start')">当番開始年月</div>
+    </div>
+    <div class="sidebar-group" onclick="toggleSidebarGroup(this)">祝日・年末年始</div>
+    <div class="sidebar-group-items">
+      <div class="sidebar-item" onclick="showPage('holidays')">日曜祝日等管理</div>
+      <div class="sidebar-item" onclick="showPage('nye-duty')">年末年始当番予定</div>
+      <div class="sidebar-item" onclick="showPage('nye-duty-record')">年末年始当番記録</div>
+    </div>
+    <div class="sidebar-group" onclick="toggleSidebarGroup(this)">祭典・行事</div>
+    <div class="sidebar-group-items">
+      <div class="sidebar-item" onclick="showPage('chotome')">本部祭典日・本部お勤め時間</div>
+      <div class="sidebar-item" onclick="showPage('events')">出欠管理</div>
+      <div class="sidebar-item" onclick="showPage('festival-duty')">祭典日当番者記録</div>
+    </div>
+    <div class="sidebar-group" onclick="toggleSidebarGroup(this)">システム</div>
+    <div class="sidebar-group-items">
+      <div class="sidebar-item" onclick="showPage('system-guide')">システムの仕組み</div>
+      <div class="sidebar-item" onclick="showPage('settings')">設　定</div>
+    </div>
   </nav>
 
   <main class="main">
@@ -1672,7 +1695,7 @@
           <li><strong>member.html（詰員用）</strong>：各詰員が自分の当番日の確認や、支障日の申請を行う画面です。</li>
         </ul>
         <div class="howto-note">当番表の内容は、この画面で「決定」ボタンを押してはじめて、各詰員のmember.html画面に表示されるようになります。決定前の内容は詰員側には表示されません（詳しくは下の「4. 当番表作成〜公開までの基本的な流れ」を参照してください）。</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:0;line-height:1.5">ログイン後の画面は、上部のヘッダー（サイドバーの表示切替・接続状況・設定・ログアウト）、左側のサイドバー（19個のメニュー項目。「当番表・名簿」「当番の予定」などの小見出しごとにまとめて並べています）、右側のメイン表示エリアの3つで構成されています。</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:0;line-height:1.5">ログイン後の画面は、上部のヘッダー（サイドバーの表示切替・接続状況・設定・ログアウト）、左側のサイドバー（19個のメニュー項目。「当番表・名簿」「当番の予定」などの小見出しごとにまとめて並べています。ふだんは小見出しだけが出ていて、押すとその下のメニューが開き、もう一度押すと閉じます。開いている画面のまとまりは自動で開きます）、右側のメイン表示エリアの3つで構成されています。</p>
       </div>
 
       <div class="card">
@@ -7588,11 +7611,22 @@ function printUnavailMatrix() {
   openPrintWindow(title, bodyHtml, extraStyle);
 }
 
+// サイドバーの見出しを押すと、その下のメニューを開く・閉じる
+function toggleSidebarGroup(el) {
+  if (el) el.classList.toggle('open');
+}
+// 開いた画面のメニューがある見出しを開く（ほかの見出しの開け閉めはそのまま）
+function openSidebarGroupOf(item) {
+  const box = item && item.closest('.sidebar-group-items');
+  const head = box && box.previousElementSibling;
+  if (head && head.classList.contains('sidebar-group')) head.classList.add('open');
+}
+
 async function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.sidebar-item').forEach(s => { if (s.getAttribute('onclick') === `showPage('${name}')`) s.classList.add('active'); });
+  document.querySelectorAll('.sidebar-item').forEach(s => { if (s.getAttribute('onclick') === `showPage('${name}')`) { s.classList.add('active'); openSidebarGroupOf(s); } });
   if (name === 'unavailable') { await loadUnavailSummary(); await renderUnavailCalendar(); }
   if (name === 'unavail-list') { await loadUnavailable(); }
   if (name === 'mc2') await loadAndRenderMultiCount2();
@@ -8254,7 +8288,7 @@ function handleCalTitleRightClick(event) {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-10-29-3';
+const APP_FILE_VERSION = '2026-10-29-4';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
