@@ -836,7 +836,7 @@
           <input id="u-summary-month" type="month" onchange="onUnavailMonthChange()" style="width:150px">
           <button class="btn btn-sm" onclick="onUnavailMonthChange()">更新</button>
         </div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.4">支障日が登録されている詰員の「確認」ボタンを押すと、その詰員の当月の支障日が「確認済み」になり、詰員本人の画面にも確認済みと表示されます。</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.4">支障日が登録されている詰員の「確認」ボタンを押すと、その詰員の当月の支障日が「確認済み」になり、詰員本人の画面にも確認済みと表示されます。12月は、カレンダーと同じく翌年1月4日までの分を数え、確認します。</p>
         <div id="unavail-summary" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px"></div>
         <div id="unavail-confirm-msg" style="margin-top:8px"></div>
       </div>
@@ -6097,9 +6097,11 @@ async function addMatrixDirect(memberId, dateStr, name) {
 async function loadUnavailSummary() {
   const mon = document.getElementById('u-summary-month').value;
   if (!mon) return;
+  // 12月は、カレンダーと同じく12月1日〜翌年1月4日の分を数える
+  const [sy, sm] = mon.split('-').map(Number);
   const { data } = await fetchAllUnavail(q => q
     .gte('blocked_date', mon + '-01')
-    .lte('blocked_date', lastDayOfMonth(mon)));
+    .lte('blocked_date', unavailServiceLastDate(sy, sm)));
   const container = document.getElementById('unavail-summary');
   // member_id ごとに「支障日の総数」と「確認済みの数」を集計する
   const stats = {};
@@ -6134,7 +6136,7 @@ async function confirmMemberMonth(memberId) {
     .update({ confirmed: true, confirmed_at: new Date().toISOString(), confirmed_by: '管理者' })
     .eq('member_id', memberId)
     .gte('blocked_date', mon + '-01')
-    .lte('blocked_date', lastDayOfMonth(mon));
+    .lte('blocked_date', unavailServiceLastDate(...mon.split('-').map(Number)));
   if (error) { showMsg('unavail-confirm-msg', '確認処理エラー: ' + error.message, 'error'); return; }
   showMsg('unavail-confirm-msg', `${memberName} さんの ${mon} の支障日を確認済みにしました ✓`, 'success');
   await loadUnavailSummary();
@@ -6152,7 +6154,7 @@ async function unconfirmMemberMonth(memberId) {
     .update({ confirmed: false, confirmed_at: null, confirmed_by: null })
     .eq('member_id', memberId)
     .gte('blocked_date', mon + '-01')
-    .lte('blocked_date', lastDayOfMonth(mon));
+    .lte('blocked_date', unavailServiceLastDate(...mon.split('-').map(Number)));
   if (error) { showMsg('unavail-confirm-msg', '取消エラー: ' + error.message, 'error'); return; }
   showMsg('unavail-confirm-msg', `${memberName} さんの ${mon} の確認済みを取り消しました`, 'success');
   await loadUnavailSummary();
