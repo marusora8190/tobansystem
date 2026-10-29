@@ -1708,7 +1708,7 @@
               <li>氏名の横の🔒アイコンでその日だけを個別にロック／解除できます。「🔒 表示中の当番者を一括ロック」で、当番者が決まっていてまだロックされていない日をまとめてロックできます。</li>
               <li>「操作パネルを隠す」で対象年月の選択欄やボタン部分を一時的に隠せます。「CSV出力」（表示中の月のみ）「📊 全期間の当番記録をExcel出力」（annual_rosterに記録されている当番決定済みの全期間を、日付・曜日・当番者のID／氏名／部署／電話までまとめて1つのExcelファイルに書き出す）「🖨 印刷①」「📥 運用前データを読み込む」も利用できます。</li>
               <li>「🖨 印刷①」では、当番表がB5縦1枚（左に1日〜15日、右に16日以降）で印刷されます。各日の部署名・連絡先は、欄の幅に1行で収まるよう文字の大きさが自動で調整されます（短い部署名は通常の大きさのまま、長い部署名ほど小さく印刷されます）。右端の列には、「当番を設定」ウィンドウで入力したメモ（備考）が印刷されます。</li>
-              <li>内容が固まったら「当番表(当初)決定」を押すと、その月の当番表が確定し、各詰員のmember.html画面にも当番者名が表示されるようになります。</li>
+              <li>内容が固まったら「当番表(当初)決定」を押すと、その月の当番表が確定し、各詰員のmember.html画面にも当番者名が表示されるようになります。12月は、12/28〜翌1/4（年末年始）の分も一緒に決定されます（取り消しも一緒）。</li>
             </ol>
             <div class="howto-note">手入力で当番者を選ぶ際、その人がその日を支障日として登録している場合は「この日は支障日です。それでもよろしいですか？」、日曜・祝日なのに日祝当番の設定を持っていない場合は「この日は休日です。それでもよろしいですか？」という確認が表示されます。ロックされた日は、「当番表作成」で自動作成を行っても内容が変わりません。</div>
             <div class="howto-note">見出しの横にある赤い「Update」ボタンは、GitHubに最新ファイルをアップロードした直後などに、ブラウザに残った古いキャッシュを無視してページを強制的に読み込み直すためのボタンです。押してもログイン画面には戻らず、自動で再ログインしてそのままカレンダー表示に留まり、「最新の状態に更新されました」と表示されます。</div>
@@ -2092,14 +2092,14 @@ function ensureSbClient() {
   return sbClient;
 }
 
-// 当番表の対象期間を返す共通ヘルパー
-// 通常月：1日〜末日。12月のみ特例で「12/1〜翌年1/4」を対象とする。
-// 戻り値: [{y, m, d, dateStr}, ...]
 // 支障日登録・登録済み支障日一覧で使う、その月の最後の日（12月は翌年1月4日。カレンダーと同じ範囲）
 function unavailServiceLastDate(year, month) {
   const days = getServiceMonthDays(year, month);
   return days[days.length - 1].dateStr;
 }
+// 当番表の対象期間を返す共通ヘルパー
+// 通常月：1日〜末日。12月のみ特例で「12/1〜翌年1/4」を対象とする。
+// 戻り値: [{y, m, d, dateStr}, ...]
 function getServiceMonthDays(year, month) {
   const pad2 = (n) => String(n).padStart(2, '0');
   const days = [];
@@ -3876,9 +3876,21 @@ async function loadRosterDecisions() {
   (data || []).forEach(r => { rosterDecisions[r.period_key] = r; });
 }
 
+// 12月の決定（カレンダー表示の「○年12月の当番表(当初)決定」）では、年末年始（12/28〜翌1/4）の分も
+// 一緒に決定する（2026年10月29日〜）。その月が12月なら、年末年始の period_key（nye-○○○○）を返す
+function nyeKeyForDecemberKey(periodKey) {
+  const m = /^(\d{4})-12$/.exec(periodKey);
+  return m ? nyePeriodKey(parseInt(m[1])) : null;
+}
 async function decideRosterPeriod(periodKey, confirmLabel) {
-  if (!confirm(`${confirmLabel}の当番表を決定し、詰員へ公開します。よろしいですか？\n（決定後も、当番表の内容自体はこれまでどおり編集できます）`)) return;
-  const { error } = await sbClient.from('roster_decisions').upsert({ period_key: periodKey, decided_at: new Date().toISOString() }, { onConflict: 'period_key' });
+  const withNyeKey = nyeKeyForDecemberKey(periodKey);
+  const nyeNote = withNyeKey ? '\n（12月28日〜翌年1月4日の年末年始の分も、一緒に決定します）' : '';
+  if (!confirm(`${confirmLabel}の当番表を決定し、詰員へ公開します。よろしいですか？${nyeNote}\n（決定後も、当番表の内容自体はこれまでどおり編集できます）`)) return;
+  const nowIso = new Date().toISOString();
+  const decideRows = [{ period_key: periodKey, decided_at: nowIso }];
+  // 年末年始の分がすでに決定済みなら、その決定日時は変えない
+  if (withNyeKey && !rosterDecisions[withNyeKey]) decideRows.push({ period_key: withNyeKey, decided_at: nowIso });
+  const { error } = await sbClient.from('roster_decisions').upsert(decideRows, { onConflict: 'period_key' });
   if (error) { alert('決定に失敗しました: ' + error.message + '\n（「roster_decisions」テーブルが未作成の可能性があります）'); return; }
   await loadRosterDecisions();
   // 月（カレンダー表示）の決定なら、「当番回数記録」用にこの月の当番回数を確定記録として保存する
@@ -3892,8 +3904,12 @@ async function decideRosterPeriod(periodKey, confirmLabel) {
 }
 
 async function undecideRosterPeriod(periodKey, confirmLabel) {
-  if (!confirm(`${confirmLabel}の「決定」を取り消しますか？\n（取り消すと、詰員側では再び当番者名が表示されなくなります）`)) return;
-  const { error } = await sbClient.from('roster_decisions').delete().eq('period_key', periodKey);
+  // 12月の取り消しでは、年末年始（12/28〜翌1/4）の決定も一緒に取り消す（決定と同じ範囲にそろえる）
+  const withNyeKey = nyeKeyForDecemberKey(periodKey);
+  const nyeNote = (withNyeKey && rosterDecisions[withNyeKey]) ? '\n（12月28日〜翌年1月4日の年末年始の分の決定も、一緒に取り消します）' : '';
+  if (!confirm(`${confirmLabel}の「決定」を取り消しますか？${nyeNote}\n（取り消すと、詰員側では再び当番者名が表示されなくなります）`)) return;
+  const undecideKeys = withNyeKey ? [periodKey, withNyeKey] : [periodKey];
+  const { error } = await sbClient.from('roster_decisions').delete().in('period_key', undecideKeys);
   if (error) { alert('取り消しに失敗しました: ' + error.message); return; }
   await loadRosterDecisions();
   // 決定を取り消す場合は、「当番回数記録」の確定記録も一緒に取り消す（下書き扱いに戻す）
@@ -4179,6 +4195,16 @@ function formatDecidedAt(iso) {
 
 // カレンダーページ上部に、表示中の月の決定状態（未決定なら目立つ「決定」ボタン、
 // 決定済みなら決定日時のバナー＋取消リンク）を描画する。
+// 12月のカレンダーの決定済みの表示に、年末年始（12/28〜翌1/4）の決定の状態を書き添える。
+// 2026年10月29日より前に12月だけ決定していたときは、年末年始の分を決定するボタンも出す
+function calDecideNyeNote(periodKey) {
+  const nyeKey = nyeKeyForDecemberKey(periodKey);
+  if (!nyeKey) return '';
+  if (rosterDecisions[nyeKey]) return '（12/28〜翌1/4 の年末年始の分も決定済みです）';
+  const seasonYear = nyeKey.slice(4);
+  const nyeLabel = `${seasonYear}年度（12/28〜翌1/4）`;
+  return `<br><span style="color:var(--danger)">12/28〜翌1/4 の年末年始の分はまだ決定していません。</span> <button class="btn btn-sm" onclick="decideRosterPeriod('${nyeKey}', '${nyeLabel}')">年末年始の分も決定する</button>`;
+}
 function renderCalDecideBar() {
   const el = document.getElementById('cal-decide-bar');
   if (!el) return;
@@ -4188,13 +4214,13 @@ function renderCalDecideBar() {
   if (rec) {
     // 決定済みバナーは行全体を使い切って表示（印刷設定の案内はその下に折り返す）
     el.innerHTML = `<div class="alert alert-success" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;flex:1 1 100%">
-      <span>✓ ${label}の当番表は決定済みです（${formatDecidedAt(rec.decided_at)}決定）。詰員には当番者名が表示されています。</span>
+      <span>✓ ${label}の当番表は決定済みです（${formatDecidedAt(rec.decided_at)}決定）。詰員には当番者名が表示されています。${calDecideNyeNote(periodKey)}</span>
       <button class="btn btn-sm" onclick="undecideRosterPeriod('${periodKey}', '${label}')">決定を取り消す</button>
     </div>`;
   } else {
     // 「決定」ボタン・その説明文・（隣の#print-scale-hintの）印刷設定案内を1行に並べて表示する
     el.innerHTML = `<button class="btn btn-primary" style="font-size:15px;padding:10px 20px;font-weight:700" onclick="decideRosterPeriod('${periodKey}', '${label}')">📢 ${label}の当番表(当初)決定</button>
-      <span style="font-size:12px;color:var(--text-muted)">決定するまで、詰員側の当番表には${label}の当番者名は表示されません。</span>`;
+      <span style="font-size:12px;color:var(--text-muted)">決定するまで、詰員側の当番表には${label}の当番者名は表示されません。${calMonth === 11 ? '12月は、12/28〜翌1/4 の年末年始の分も一緒に決定します。' : ''}</span>`;
   }
 }
 
@@ -4466,7 +4492,7 @@ function renderNyeDecideBar(seasonYear) {
   } else {
     el.innerHTML = `<div>
       <button class="btn btn-primary" style="font-size:15px;padding:10px 20px;font-weight:700" onclick="decideRosterPeriod('${periodKey}', '${label}')">📢 ${label}の当番表(当初)決定</button>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:4px">決定するまで、詰員側の当番表には${label}の当番者名は表示されません。</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:4px">決定するまで、詰員側の当番表には${label}の当番者名は表示されません。カレンダー表示で12月の当番表を決定すると、この年末年始の分も一緒に決定されます。</div>
     </div>`;
   }
 }
