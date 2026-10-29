@@ -833,7 +833,10 @@
       <div class="card">
         <div class="card-title">📊 登録状況・確認</div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+          <button class="btn btn-sm" onclick="shiftMonth('u-summary-month',-1);onUnavailMonthChange()" title="前の月">◀</button>
           <input id="u-summary-month" type="month" onchange="onUnavailMonthChange()" style="width:150px">
+          <button class="btn btn-sm" onclick="shiftMonth('u-summary-month',1);onUnavailMonthChange()" title="次の月">▶</button>
+          <button class="btn btn-sm" onclick="setUnavailNextMonth('u-summary-month');onUnavailMonthChange()" title="今日から見た翌月にします">翌月</button>
           <button class="btn btn-sm" onclick="onUnavailMonthChange()">更新</button>
         </div>
         <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.4">支障日が登録されている詰員の「確認」ボタンを押すと、その詰員の当月の支障日が「確認済み」になり、詰員本人の画面にも確認済みと表示されます。12月は、カレンダーと同じく翌年1月4日までの分を数え、確認します。</p>
@@ -896,7 +899,10 @@
         </p>
         <div style="display:flex;gap:8px;margin-bottom:4px;align-items:center">
           <label style="font-size:12px;color:var(--text-muted);font-weight:500">表示月:</label>
+          <button class="btn btn-sm" onclick="shiftMonth('u-matrix-month',-1);loadUnavailable()" title="前の月">◀</button>
           <input id="u-matrix-month" type="month" onchange="loadUnavailable()" style="width:140px">
+          <button class="btn btn-sm" onclick="shiftMonth('u-matrix-month',1);loadUnavailable()" title="次の月">▶</button>
+          <button class="btn btn-sm" onclick="setUnavailNextMonth('u-matrix-month');loadUnavailable()" title="今日から見た翌月にします">翌月</button>
           <button class="btn btn-sm" onclick="printUnavailMatrix()">🖨 この一覧表を印刷</button>
         </div>
         <div class="table-wrap unavail-matrix-wrap">
@@ -7551,6 +7557,15 @@ function lastDayOfMonth(monStr) {
   return monStr + '-' + String(last).padStart(2,'0');
 }
 
+// 年月の欄を、今日（日本時間）から見た翌月にする（31日でも翌々月にならないよう、今月1日から1か月進める）。
+// （「登録状況・確認」では、このあと onUnavailMonthChange で下の2つの欄もそろえる）
+function setUnavailNextMonth(inputId) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  el.value = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`;
+}
 function shiftMonth(inputId, delta) {
   const el = document.getElementById(inputId);
   if (!el) return;
