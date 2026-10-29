@@ -73,6 +73,8 @@
   .sidebar-item:hover { background: var(--bg); color: var(--text); }
   .sidebar-item.active { color: var(--accent-dark); background: var(--accent-light); border-left-color: var(--accent); font-weight: 500; }
   .sidebar-icon { font-size: 16px; }
+  /* サイドバーの小見出し（2026年10月29日〜。押せない見出し。メニューのまとまりを分かりやすくする） */
+  .sidebar-group { padding: 12px 20px 3px; font-size: 11px; font-weight: 700; color: var(--accent-dark); letter-spacing: 0.05em; white-space: nowrap; border-top: 1px solid var(--border); margin-top: 6px; cursor: default; user-select: none; }
   .main { flex: 1; overflow-y: auto; padding: 24px; }
   .page { display: none; }
   .page.active { display: block; }
@@ -589,6 +591,7 @@
     .sidebar { width: 100%; flex-direction: row; overflow-x: auto; padding: 0; }
     .sidebar-item { padding: 12px 14px; border-left: none; border-bottom: 3px solid transparent; font-size: 12px; }
     .sidebar-item.active { border-left: none; border-bottom-color: var(--accent); }
+    .sidebar-group { display: none; }
     .form-grid { grid-template-columns: 1fr; }
     .cal-day { min-height: 60px; }
   }
@@ -626,24 +629,32 @@
 <div class="layout">
   <nav class="sidebar" id="sidebar">
     <div class="sidebar-item" onclick="showPage('manual')">使い方ガイド</div>
+    <div class="sidebar-group">当番表・名簿</div>
     <div class="sidebar-item active" onclick="showPage('calendar')">カレンダー</div>
     <div class="sidebar-item" onclick="showPage('members')">詰員名簿</div>
+    <div class="sidebar-group">当番の予定</div>
     <div class="sidebar-item" onclick="showPage('mc2')">月ごと当番回数</div>
     <div class="sidebar-item" onclick="showPage('mh2')">日祝当番月（複数年）</div>
     <div class="sidebar-item" onclick="showPage('annual-single2')">各メンバー年間設定</div>
+    <div class="sidebar-group">支障日</div>
     <div class="sidebar-item" onclick="showPage('unavailable')">支障日登録</div>
     <div class="sidebar-item" onclick="showPage('unavail-list')">登録済み支障日一覧</div>
+    <div class="sidebar-group">当番表の作成</div>
     <div class="sidebar-item" onclick="showPage('generate')">当番表作成</div>
     <div class="sidebar-item" onclick="showPage('gen-rules')">作成ルール</div>
+    <div class="sidebar-group">確認・記録</div>
     <div class="sidebar-item" onclick="showPage('records')">割当確認</div>
     <div class="sidebar-item" onclick="showPage('duty-count-records')">月割当て確認用</div>
     <div class="sidebar-item" onclick="showPage('duty-start')">当番開始年月</div>
+    <div class="sidebar-group">祝日・年末年始</div>
     <div class="sidebar-item" onclick="showPage('holidays')">日曜祝日等管理</div>
     <div class="sidebar-item" onclick="showPage('nye-duty')">年末年始当番予定</div>
     <div class="sidebar-item" onclick="showPage('nye-duty-record')">年末年始当番記録</div>
+    <div class="sidebar-group">祭典・行事</div>
     <div class="sidebar-item" onclick="showPage('chotome')">本部祭典日・本部お勤め時間</div>
     <div class="sidebar-item" onclick="showPage('events')">出欠管理</div>
     <div class="sidebar-item" onclick="showPage('festival-duty')">祭典日当番者記録</div>
+    <div class="sidebar-group">システム</div>
     <div class="sidebar-item" onclick="showPage('system-guide')">システムの仕組み</div>
     <div class="sidebar-item" onclick="showPage('settings')">設　定</div>
   </nav>
@@ -1661,7 +1672,7 @@
           <li><strong>member.html（詰員用）</strong>：各詰員が自分の当番日の確認や、支障日の申請を行う画面です。</li>
         </ul>
         <div class="howto-note">当番表の内容は、この画面で「決定」ボタンを押してはじめて、各詰員のmember.html画面に表示されるようになります。決定前の内容は詰員側には表示されません（詳しくは下の「4. 当番表作成〜公開までの基本的な流れ」を参照してください）。</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:0;line-height:1.5">ログイン後の画面は、上部のヘッダー（サイドバーの表示切替・接続状況・設定・ログアウト）、左側のサイドバー（19個のメニュー項目）、右側のメイン表示エリアの3つで構成されています。</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:0;line-height:1.5">ログイン後の画面は、上部のヘッダー（サイドバーの表示切替・接続状況・設定・ログアウト）、左側のサイドバー（19個のメニュー項目。「当番表・名簿」「当番の予定」などの小見出しごとにまとめて並べています）、右側のメイン表示エリアの3つで構成されています。</p>
       </div>
 
       <div class="card">
@@ -8243,7 +8254,7 @@ function handleCalTitleRightClick(event) {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-10-29-2';
+const APP_FILE_VERSION = '2026-10-29-3';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
