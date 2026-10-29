@@ -141,6 +141,10 @@
   .lock-banner { background: #f2e7e5; border: 1px solid #c98b83; color: #7a2e24; border-radius: var(--radius); padding: 6px 10px; font-size: 12.5px; font-weight: 600; margin-bottom: 8px; line-height: 1.35; display: flex; gap: 6px; align-items: flex-start; }
   .lock-banner::before { content: "🔒"; }
   .day-cell.locked { cursor: default; }
+  /* 1月の画面の 1/1〜1/4：12月分（12月1日〜翌年1月4日）の締切を過ぎたら、灰色にして押せないようにする */
+  .day-cell.date-locked { cursor: default; opacity: 0.55; }
+  .day-cell.date-locked.date-locked-free { background: #e0e0e0; border-color: #c4c4c4; color: #888; }
+  .date-lock-note { background: #f0efed; border: 1px solid #c4c4c4; color: #555; border-radius: var(--radius); padding: 5px 10px; font-size: 12px; margin-bottom: 8px; line-height: 1.35; }
 
   .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; font-size: 11px; color: var(--text-muted); }
   .legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 3px; vertical-align: -2px; }
@@ -835,6 +839,18 @@ function getMonthDeadline(year, month) {
 function isMonthLocked(year, month) {
   return Date.now() >= getMonthDeadline(year, month).getTime();
 }
+// 1月の画面の 1/1〜1/4 は、12月の当番表（12月1日〜翌年1月4日）の分のため、
+// 1月分ではなく前の年の12月分の締切（11月7日16時）で閉じる（2026年10月29日〜）。
+// それ以外の日は、表示している月の締切で判断する
+function isNyeCarryDate(dateStr, viewMonth) {
+  if (viewMonth !== 1) return false;
+  const parts = dateStr.split('-');
+  return parseInt(parts[1], 10) === 1 && parseInt(parts[2], 10) <= 4;
+}
+function isDateLocked(dateStr, viewYear, viewMonth) {
+  if (isNyeCarryDate(dateStr, viewMonth)) return isMonthLocked(viewYear - 1, 12);
+  return isMonthLocked(viewYear, viewMonth);
+}
 
 async function renderCalendar() {
   const dayList = getCalendarDayList(calYear, calMonth);
@@ -855,7 +871,7 @@ async function renderCalendar() {
     pendingRemove.clear();
     dayList.forEach(day => {
       const dateStr = `${day.y}-${pad2(day.m)}-${pad2(day.d)}`;
-      if (!registeredDates.has(dateStr)) pendingAdd.add(dateStr);
+      if (!registeredDates.has(dateStr) && !isDateLocked(dateStr, calYear, calMonth)) pendingAdd.add(dateStr);
     });
     availableModeInitializedFor = curMonKey;
     availableModeTouched = false;
@@ -888,6 +904,10 @@ async function renderCalendar() {
     if (inputMode === 'available' && !isRegistered && !isPendingAdd) cls += ' avail-free';
     if (isNextMonth) cls += ' next-month-day';
     if (locked) cls += ' locked';
+    else if (isDateLocked(dateStr, calYear, calMonth)) {
+      cls += ' locked date-locked';
+      if (!isRegistered) cls += ' date-locked-free';
+    }
 
     const checkMark = (isRegistered && !isPendingRemove && isConfirmed) ? '<span class="confirm-check">✓</span>' : '';
     const holBadge = isHol ? '<span class="hol-badge">休日</span>' : '';
@@ -898,6 +918,7 @@ async function renderCalendar() {
   html += '</tr>';
   document.getElementById('cal-body').innerHTML = html;
   applyLockState(locked);
+  applyNyeCarryNote(locked);
   updateConfirmBanner();
   updateSaveButtonState();
 }
@@ -925,6 +946,27 @@ function applyLockState(locked) {
   }
 }
 
+// 1月の画面で、1/1〜1/4 だけが12月分の締切で閉じているときに、そのことを一言出す
+function applyNyeCarryNote(monthLocked) {
+  let note = document.getElementById('date-lock-note');
+  const lockBanner = document.getElementById('lock-banner');
+  if (!note && lockBanner) {
+    note = document.createElement('div');
+    note.id = 'date-lock-note';
+    lockBanner.insertAdjacentElement('afterend', note);
+  }
+  if (!note) return;
+  const show = !monthLocked && calMonth === 1 && isMonthLocked(calYear - 1, 12);
+  if (show) {
+    const dl = getMonthDeadline(calYear - 1, 12);
+    note.className = 'date-lock-note';
+    note.textContent = `1月1日〜4日は12月の当番表の分のため、12月分の締切（${dl.getMonth() + 1}月${dl.getDate()}日 16時）で受付を終了しました（灰色の日）。変更が必要な場合は当番表作成者にご連絡ください。`;
+  } else {
+    note.className = 'hidden';
+    note.textContent = '';
+  }
+}
+
 // 表示中の月について、当番表作成者の確認状況をまとめて上部に表示する。
 // 保存済みの登録状態（registeredDates / confirmedDates）を基準に判定する。
 function updateConfirmBanner() {
@@ -946,6 +988,8 @@ function updateConfirmBanner() {
 function toggleDate(dateStr) {
   // 締切を過ぎた月は変更不可（タップしても何もしない）
   if (isMonthLocked(calYear, calMonth)) return;
+  // 1月の画面の 1/1〜1/4 は、12月分の締切を過ぎたら変更不可
+  if (isDateLocked(dateStr, calYear, calMonth)) return;
   if (inputMode === 'available') availableModeTouched = true;
   if (registeredDates.has(dateStr)) {
     if (pendingRemove.has(dateStr)) pendingRemove.delete(dateStr);
@@ -1015,6 +1059,16 @@ async function saveChanges() {
     showMsg('save-msg', 'この月の支障日の受付は終了しました。変更は当番表作成者にご連絡ください。', 'error');
     return;
   }
+  // 1月の画面の 1/1〜1/4 が12月分の締切を過ぎていたら（ページを開いたまま締切を過ぎた場合など）、その日は保存しない
+  const lockedPending = [...pendingAdd, ...pendingRemove].filter(dt => isDateLocked(dt, calYear, calMonth));
+  if (lockedPending.length) {
+    lockedPending.forEach(dt => { pendingAdd.delete(dt); pendingRemove.delete(dt); });
+    if (pendingAdd.size === 0 && pendingRemove.size === 0) {
+      await renderCalendar();
+      showMsg('save-msg', '1月1日〜4日は12月分の締切を過ぎたため、変更できません。変更は当番表作成者にご連絡ください。', 'error');
+      return;
+    }
+  }
   // 追加登録（pendingAdd）が0件で、既存の登録済み支障日の取り消し（pendingRemove、
   // 二重線表示）だけが選ばれている場合は、その取り消し件数を示して確認する
   // （支障日入力／可能日入力どちらのモードでも、この場合の意味は同じ）。
@@ -1023,7 +1077,11 @@ async function saveChanges() {
   } else if (inputMode === 'available') {
     // 可能日入力モードは、デフォルトで月内のほぼ全日がpendingAddに入っているため、
     // 誤って未確認のまま申請してしまわないよう、件数を示して確認する。
-    const freeCount = getCalendarDayList(calYear, calMonth).length - pendingAdd.size - (registeredDates.size - pendingRemove.size);
+    // 締切で閉じている日（1月の画面の 1/1〜1/4 など）のうち、登録の無い日は「空いている日」として数えない
+    const lockedFree = getCalendarDayList(calYear, calMonth)
+      .map(day => `${day.y}-${pad2(day.m)}-${pad2(day.d)}`)
+      .filter(dt => isDateLocked(dt, calYear, calMonth) && !registeredDates.has(dt)).length;
+    const freeCount = getCalendarDayList(calYear, calMonth).length - lockedFree - pendingAdd.size - (registeredDates.size - pendingRemove.size);
     if (!confirm(`選択していない${pendingAdd.size}日を支障日として申請します（選んだ${freeCount}日は空いている日として残ります）。よろしいですか？`)) return;
   }
 
