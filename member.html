@@ -159,7 +159,7 @@
   }
   .duty-rank-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-  /* 行事の出欠確認モーダル（会員バッジの名前部分：PC=右クリック／スマホ=タップで開く隠し機能。
+  /* 行事の出欠確認モーダル（題名「支障日申請」を押して出る選択の「出欠確認」から開く。
      現場確認の担当者（is_checkin_operator）専用） */
   .attendance-modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; padding: 16px; }
   .attendance-modal-bg.open { display: flex; }
@@ -387,10 +387,7 @@
     <div class="member-badge">
       <div>
         <div class="greeting" id="badge-greeting"></div>
-        <div class="name" id="badge-name"
-          oncontextmenu="return handleNameRightClick(event)"
-          ontouchstart="handleNameTouchStart(event)" ontouchend="handleNameTouchEnd(event)"
-        ></div>
+        <div class="name" id="badge-name"></div>
         <div class="dept" id="badge-dept"></div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:stretch;gap:4px">
@@ -941,7 +938,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-04-6';
+const APP_FILE_VERSION = '2026-11-04-7';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -1613,39 +1610,10 @@ function attachDutyRankLongPress() {
 }
 
 // =============================================
-// 行事の出欠確認（隠し機能・現場確認担当者専用）：会員バッジの名前部分
-// （例：「青木年朗 さん」）専用の操作。PC＝右クリック、スマホ＝タップでモーダルを開く。
-// 現場確認の担当者（is_checkin_operator）以外は、スマホでタップしても何も起きない。
-// 「支障日入力」ボタンの3秒長押し（可能日入力モード切替）とは完全に独立した別の操作。
+// 行事の出欠確認（現場確認担当者専用）は、題名「支障日申請」を押して出る選択の「出欠確認」から開く
+// （openOpAttendance → openAttendanceModal）。2026年11月4日に、名前をタッチ（パソコンは右クリック）
+// して開く仕組みは利用者の希望でなくした。
 // =============================================
-function handleNameRightClick(e) {
-  // 現場確認担当者（is_checkin_operator）以外のPCでは、右クリックしても何も起きないようにする
-  if (!currentMember || !currentMember.is_checkin_operator) return false;
-  openAttendanceModal();
-  return false;
-}
-
-let nameTouchStartX = 0, nameTouchStartY = 0, nameTouchStartTime = 0;
-function handleNameTouchStart(e) {
-  const t = e.touches && e.touches[0];
-  nameTouchStartX = t ? t.clientX : 0;
-  nameTouchStartY = t ? t.clientY : 0;
-  nameTouchStartTime = Date.now();
-}
-function handleNameTouchEnd(e) {
-  // 現場確認担当者（is_checkin_operator）以外のスマホでは、この操作では何も起きないようにする
-  if (!currentMember || !currentMember.is_checkin_operator) return;
-  const t = e.changedTouches && e.changedTouches[0];
-  const dx = t ? Math.abs(t.clientX - nameTouchStartX) : 0;
-  const dy = t ? Math.abs(t.clientY - nameTouchStartY) : 0;
-  const dt = Date.now() - nameTouchStartTime;
-  // スクロール操作などと区別するため、ほぼ動かさずに短時間で指を離した場合だけ反応させる
-  if (dx < 10 && dy < 10 && dt < 800) {
-    e.preventDefault();
-    openAttendanceModal();
-  }
-}
-
 let attendanceEventsCache = [];
 
 // =============================================
@@ -2242,8 +2210,8 @@ function onAppTitleTap() {
   if (!isOperator()) return;
   document.getElementById('op-menu-bg').classList.remove('hidden');
 }
-// 選択の「出欠確認」：名前をタッチ（パソコンは右クリック）したときと同じ出欠確認を開く
-// （2026年11月4日〜。名前のタッチでも今までどおり開く。電波の無い場所でも開ける）
+// 選択の「出欠確認」：行事の出欠確認を開く（2026年11月4日〜。電波の無い場所でも開ける。
+// 名前をタッチして開く仕組みは同日になくした）
 function openOpAttendance() {
   closeOpMenu();
   if (!isOperator()) return;
