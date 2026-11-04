@@ -371,7 +371,7 @@
   <!-- ログイン画面（admin.htmlのログイン画面とカードの大きさを揃えている） -->
   <div id="login-view" class="card" style="max-width:320px;margin:24px auto 0;padding:32px 28px;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
     <div class="card-title">ログインナンバーを入力してください</div>
-    <input id="login-code" type="text" inputmode="numeric" pattern="\d*" maxlength="4" autocomplete="off" autocapitalize="off" spellcheck="false" style="display:block;width:50%;margin:0 auto;-webkit-text-security:disc;text-security:disc;" aria-label="ログインナンバー" onkeydown="if(event.key==='Enter'){event.preventDefault();doLogin();}">
+    <input id="login-code" onfocus="warmLoginMember()" type="text" inputmode="numeric" pattern="\d*" maxlength="4" autocomplete="off" autocapitalize="off" spellcheck="false" style="display:block;width:50%;margin:0 auto;-webkit-text-security:disc;text-security:disc;" aria-label="ログインナンバー" onkeydown="if(event.key==='Enter'){event.preventDefault();doLogin();}">
     <div class="checkbox-row" style="justify-content:center;">
       <input type="checkbox" id="remember-me">
       <label for="remember-me" style="margin:0;text-align:center;">この端末を記憶する<br>（次回から自動ログイン）</label>
@@ -949,7 +949,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-04-2';
+const APP_FILE_VERSION = '2026-11-04-3';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -2672,6 +2672,40 @@ async function opaSave() {
 window.addEventListener('beforeunload', e => {
   if (opActiveTab === 'opannual' && opaDirtyCount() > 0) { e.preventDefault(); e.returnValue = ''; }
 });
+
+// =============================================
+// ログインの受け付け口（login-member）を先に起こしておく（2026年11月4日〜）
+// login-member は、しばらく使われないと休んだ状態になり、次の1回目だけ起き上がるのに
+// 時間がかかる（朝いちばんなどで数秒）。ログイン画面が出たとき・ナンバーの欄を押したとき・
+// ログイン画面のままスマホに戻ったときに、中身の無いお知らせを1回送って先に起こしておく。
+// 中身が無いので、受け付け口はデータベースを見ずに「ナンバーが違います」と返すだけ（ログインはしない）。
+// 1分以内に起こしたばかりなら送らない。失敗しても何もしない（ログインには影響しない）。
+// =============================================
+let loginWarmAt = 0;
+function warmLoginMember() {
+  const lv = document.getElementById('login-view');
+  if (!lv || lv.classList.contains('hidden')) return;
+  if (Date.now() - loginWarmAt < 60000) return;
+  loginWarmAt = Date.now();
+  try {
+    fetch(`${SUPABASE_URL}/functions/v1/login-member`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+      body: '{}'
+    }).catch(() => {});
+  } catch (e) {}
+}
+window.addEventListener('DOMContentLoaded', () => {
+  // 自動ログイン（Update のあと・URLの番号・この端末を記憶）のときは、すぐ本当のログインをするので送らない
+  let auto = false;
+  try {
+    auto = sessionStorage.getItem('member_update_pending') === '1' ||
+      !!new URLSearchParams(location.search).get('k') ||
+      !!localStorage.getItem(REMEMBER_KEY);
+  } catch (e) {}
+  if (!auto) warmLoginMember();
+});
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') warmLoginMember(); });
 </script>
 </body>
 </html>
