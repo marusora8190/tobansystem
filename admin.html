@@ -1747,7 +1747,7 @@
             </ol>
             <div class="howto-note">手入力で当番者を選ぶ際、その人がその日を支障日として登録している場合は「この日は支障日です。それでもよろしいですか？」、日曜・祝日なのに日祝当番の設定を持っていない場合は「この日は休日です。それでもよろしいですか？」という確認が表示されます。ロックされた日は、「当番表作成」で自動作成を行っても内容が変わりません。</div>
             <div class="howto-note">見出しの横にある赤い「Update」ボタンは、GitHubに最新ファイルをアップロードした直後などに、ブラウザに残った古いキャッシュを無視してページを強制的に読み込み直すためのボタンです。押してもログイン画面には戻らず、自動で再ログインしてそのままカレンダー表示に留まり、「最新の状態に更新されました」と表示されます。</div>
-            <div class="howto-note">GitHubに新しい版が上がっているときは、どの画面を開いていても「🔄 新しい版があります」というお知らせが画面全体に出て、入力できなくなります。お知らせの中の「Update」を押して読み込み直してください（ログインはし直さなくて大丈夫です）。まだ保存していない入力は、読み込み直すと消えます。アップロードした直後は、反映されるまで1〜2分かかることがあるため、何度も出るときは少し待ってからもう一度押してください。電波がないときなどは、お知らせは出ません。詰員用アプリ（member.html）にも同じ仕組みがあります。</div>
+            <div class="howto-note">GitHubに新しい版が上がっているときは、どの画面を開いていても「🔄 新しい版があります」というお知らせが画面全体に出て、入力できなくなります。お知らせの中の「Update」を押して読み込み直してください（ログインはし直さなくて大丈夫です）。入力の途中で、まだ保存していないときは、お知らせの中の「先に保存する」を押してください。お知らせがいったん閉じて、右下に小さな「Update」の知らせが出るので、保存を済ませてからそちらの「Update」を押してください（読み込み直すと、保存していない入力は消えます。10分たつと、もう一度お知らせが出ます）。アップロードした直後は、反映されるまで1〜2分かかることがあるため、何度も出るときは少し待ってからもう一度押してください。電波がないときなどは、お知らせは出ません。詰員用アプリ（member.html）にも同じ仕組みがあります（詰員用アプリでは、まだ申請していない支障日の選択や、保存していない年間設定があるときだけ「先に保存する」が出て、小さな知らせは画面のいちばん上に出ます）。</div>
           </div>
         </details>
 
@@ -8304,7 +8304,7 @@ function handleCalTitleRightClick(event) {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-05-1';
+const APP_FILE_VERSION = '2026-11-05-2';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -8320,18 +8320,46 @@ async function checkNewAppVersion() {
     showAppVersionLock();
   } catch (e) { /* 電波が無いときなど。今までどおり使える */ }
 }
+// まだ保存していない入力があるかどうか（あるときは「先に保存する」のボタンを出す）
+function appVersionHasUnsaved() {
+  try { return true; } catch (e) { return true; }
+}
+let appVersionRemindTimer = null;
 function showAppVersionLock() {
-  if (appVersionLocked) return;
+  if (document.getElementById('app-version-lock')) return;
   appVersionLocked = true;
+  const bar = document.getElementById('app-version-bar');
+  if (bar) bar.remove();
+  const unsaved = appVersionHasUnsaved();
   const ov = document.createElement('div');
   ov.id = 'app-version-lock';
   ov.setAttribute('style', 'position:fixed;inset:0;z-index:2147483000;background:rgba(30,30,30,0.6);display:flex;align-items:center;justify-content:center;padding:16px');
   ov.innerHTML = '<div style="background:#fff;color:#222;border-radius:10px;max-width:420px;width:100%;padding:20px 18px;text-align:center;line-height:1.6;box-shadow:0 6px 24px rgba(0,0,0,0.3)">'
     + '<div style="font-size:17px;font-weight:700;margin-bottom:8px">🔄 新しい版があります</div>'
-    + '<div style="font-size:13px;margin-bottom:14px;text-align:left">このアプリの新しい版が上がっています。下の「Update」を押して、読み込み直してから使ってください（ログインはし直さなくて大丈夫です）。<br>まだ保存していない入力は、読み込み直すと消えます。</div>'
+    + '<div style="font-size:13px;margin-bottom:14px;text-align:left">このアプリの新しい版が上がっています。下の「Update」を押して、読み込み直してから使ってください（ログインはし直さなくて大丈夫です）。'
+    + (unsaved ? '<br><span style="color:#c0392b;font-weight:700">入力の途中で、まだ保存していないときは</span>「先に保存する」を押すと、この知らせがいったん閉じます。保存を済ませてから、右下の「Update」を押してください（読み込み直すと、保存していない入力は消えます）。' : '')
+    + '</div>'
+    + '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">'
+    + (unsaved ? '<button type="button" onclick="appVersionPostpone()" style="background:#fff;color:#c0392b;border:2px solid #c0392b;border-radius:8px;padding:8px 18px;font-size:15px;font-weight:700;cursor:pointer">先に保存する</button>' : '')
     + '<button type="button" onclick="hardUpdateReload()" style="background:#c0392b;color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:15px;font-weight:700;cursor:pointer">Update</button>'
-    + '</div>';
+    + '</div></div>';
   document.body.appendChild(ov);
+}
+// 「先に保存する」：知らせをいったん閉じ、画面の右下に小さな「Update」の知らせを出す。
+// 10分たつと、もう一度画面全体の知らせを出す（そのときも、保存していない入力があれば同じように選べる）
+function appVersionPostpone() {
+  const ov = document.getElementById('app-version-lock');
+  if (ov) ov.remove();
+  if (!document.getElementById('app-version-bar')) {
+    const bar = document.createElement('div');
+    bar.id = 'app-version-bar';
+    bar.setAttribute('style', 'position:fixed;bottom:10px;right:10px;z-index:2147483000;background:#fff;color:#222;border:2px solid #c0392b;border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 16px rgba(0,0,0,0.25);max-width:calc(100vw - 20px);font-size:12px;line-height:1.4');
+    bar.innerHTML = '<span>🔄 新しい版があります。保存が終わったら押してください</span>'
+      + '<button type="button" onclick="hardUpdateReload()" style="background:#c0392b;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex:0 0 auto">Update</button>';
+    document.body.appendChild(bar);
+  }
+  clearTimeout(appVersionRemindTimer);
+  appVersionRemindTimer = setTimeout(showAppVersionLock, 10 * 60 * 1000);
 }
 // 開いたとき（少し待ってから）・5分おき・画面に戻ったとき（1分以上たっていれば）に確かめる
 setTimeout(checkNewAppVersion, 3000);
