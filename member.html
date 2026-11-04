@@ -326,6 +326,37 @@
   .op-chip.ok { background: #eef6e6; border-color: #9cc47a; color: #2e5a14; }
   .op-chip.none { background: #f2f0ea; color: var(--text-muted); }
   .op-chip .op-chip-note { font-size: 10px; font-weight: 400; margin-left: 3px; }
+  /* 各メンバーの年間設定（スマホ用。月を選ぶと、その月の全員を縦に並べる。2026年11月4日〜） */
+  .opa-months { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 10px; }
+  .opa-mbtn { border: 1.5px solid var(--border); border-radius: 10px; background: #fff; padding: 5px 2px; font-family: inherit; font-size: 14px; font-weight: 600; color: var(--text); cursor: pointer; line-height: 1.2; }
+  .opa-mbtn .opa-mst { display: block; font-size: 10px; font-weight: 700; margin-top: 1px; }
+  .opa-mbtn .opa-mst.ok { color: #2e7d32; }
+  .opa-mbtn .opa-mst.ng { color: #b3261e; }
+  .opa-mbtn.sel { background: var(--accent-dark); border-color: var(--accent-dark); color: #fff; }
+  .opa-mbtn.sel .opa-mst.ok { color: #c8f0c0; }
+  .opa-mbtn.sel .opa-mst.ng { color: #ffc4c4; }
+  .opa-mbtn.dirty { border-color: #d4af00; }
+  .opa-check { display: flex; justify-content: center; gap: 8px; margin: 2px 0 8px; flex-wrap: wrap; }
+  .opa-check span { font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 12px; }
+  .opa-check .ok { background: #eaf7ea; color: #2e7d32; }
+  .opa-check .ng { background: #f3c4c4; color: #8a1f1f; }
+  .opa-row { display: flex; align-items: center; gap: 6px; padding: 6px 4px; border-bottom: 1px solid var(--border); }
+  .opa-row.changed { background: #fffbe0; }
+  .opa-row .opa-nm { flex: 1 1 auto; min-width: 0; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .opa-row .opa-nm small { display: block; font-size: 10px; font-weight: 400; color: var(--text-muted); }
+  .opa-seg { display: flex; flex: 0 0 auto; }
+  .opa-seg button { width: 34px; height: 34px; border: 1px solid var(--border-strong); background: #fff; font-family: inherit; font-size: 15px; font-weight: 600; color: var(--text-muted); cursor: pointer; padding: 0; }
+  .opa-seg button:first-child { border-radius: 8px 0 0 8px; }
+  .opa-seg button:last-child { border-radius: 0 8px 8px 0; }
+  .opa-seg button + button { border-left: 0; }
+  .opa-seg button.on0 { background: #fceaea; color: #a33; border-color: #e0a0a0; }
+  .opa-seg button.on1 { background: var(--accent-dark); color: #fff; border-color: var(--accent-dark); }
+  .opa-seg button.on2 { background: #e89090; color: #fff; border-color: #d07070; }
+  .opa-hol { flex: 0 0 auto; width: 58px; height: 34px; padding: 0 4px; border-radius: 8px; border: 1px solid var(--border-strong); background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: var(--text-hint); cursor: pointer; white-space: nowrap; }
+  .opa-hol.on { background: #fff3b0; border-color: #d4af00; color: #6b5200; }
+  .opa-savebar { position: sticky; bottom: 0; background: rgba(255,255,255,0.97); border-top: 1px solid var(--border); margin: 8px -16px -14px; padding: 10px 16px; display: flex; gap: 8px; align-items: center; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+  .opa-savebar .opa-dirty { flex: 1 1 auto; font-size: 12px; color: var(--text-muted); }
+  .opa-savebar .btn { padding: 10px 12px; white-space: nowrap; flex: 0 0 auto; }
 </style>
 </head>
 <body>
@@ -512,6 +543,31 @@
       </div>
     </div>
 
+    <!-- 現場確認の担当者専用：各メンバーの年間設定（admin.html の「各メンバー年間設定」と同じ内容を、
+         スマホでは月ごとに全員を縦に並べて直す。保存は変えた人の分だけ。2026年11月4日〜） -->
+    <div id="tab-panel-opannual" class="hidden">
+      <div class="card">
+        <div class="card-title" style="text-align:center">各メンバーの年間設定</div>
+        <div class="month-nav">
+          <button onclick="opaShiftYear(-1)" aria-label="前の年">◀</button>
+          <div>
+            <div class="month-label" id="opa-year-label"></div>
+            <div class="op-month-btns"><button onclick="opaSetThisYear()">今年</button><button onclick="opaRefresh()">更新</button></div>
+          </div>
+          <button onclick="opaShiftYear(1)" aria-label="次の年">▶</button>
+        </div>
+        <div id="opa-msg" style="font-size:13px;text-align:center;margin-bottom:6px"></div>
+        <div id="opa-months" class="opa-months"></div>
+        <div id="opa-detail"></div>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">0＝身上等でその月は当番に入らない／1＝通常／2＝通常またはほかの人の代わりに当番。「日祝」は、その月の日曜・祝日の当番に入る人です。当番の合計がその月の日数と、日祝の人数がその月の日曜・祝日の数と同じなら ✓ が出ます。</p>
+        <div class="opa-savebar">
+          <div class="opa-dirty" id="opa-dirty">変更はありません</div>
+          <button class="btn" id="opa-undo-btn" onclick="opaUndo()" disabled>元に戻す</button>
+          <button class="btn btn-primary" id="opa-save-btn" onclick="opaSave()" disabled>保存する</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 現場確認の担当者専用：登録済み支障日一覧（日付を選ぶと、支障日の人・支障日でない人を出す。見るだけ） -->
     <div id="tab-panel-opdays" class="hidden">
       <div class="card">
@@ -545,6 +601,7 @@
       <div class="op-menu-title">現場確認の担当者用</div>
       <button class="btn btn-primary" onclick="openOpView('opstatus')">支障日登録（登録状況・確認）</button>
       <button class="btn btn-primary" onclick="openOpView('opdays')">登録済み支障日一覧</button>
+      <button class="btn btn-primary" onclick="openOpView('opannual')">各メンバーの年間設定</button>
       <button class="btn" style="margin-bottom:0" onclick="closeOpMenu()">閉じる</button>
     </div>
   </div>
@@ -860,6 +917,10 @@ function doLogout() {
   if (currentMember && currentMember.is_checkin_operator && chkQueueCount() > 0) {
     if (!confirm(`まだ送っていない出欠の記録が ${chkQueueCount()}件あります。\nログアウトしても記録はこのスマホに残り、次に現場確認の担当者がログインしたときに送られます。\nログアウトしますか？`)) return;
   }
+  if (opActiveTab === 'opannual' && opaDirtyCount() > 0) {
+    if (!confirm('年間設定に保存していない変更があります。保存せずにログアウトしますか？（変更は消えます）')) return;
+    opaDiscard();
+  }
   try { localStorage.removeItem(REMEMBER_KEY); } catch (e) {}
   closeOpMenu();
   if (opActiveTab) switchTab('input');
@@ -888,7 +949,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-04-1';
+const APP_FILE_VERSION = '2026-11-04-2';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -1260,6 +1321,11 @@ async function saveChanges() {
 // タブ切り替え（支障日入力／当番表）
 // =============================================
 function switchTab(tab) {
+  // 年間設定で保存していない変更があるときは、ほかの画面へ移る前に確かめる
+  if (typeof opActiveTab !== 'undefined' && opActiveTab === 'opannual' && tab !== 'opannual' && opaDirtyCount() > 0) {
+    if (!confirm('年間設定に保存していない変更があります。保存せずに移りますか？（変更は消えます）')) return;
+    opaDiscard();
+  }
   document.getElementById('tab-btn-input').classList.toggle('active', tab === 'input');
   document.getElementById('tab-btn-roster').classList.toggle('active', tab === 'roster');
   document.getElementById('tab-btn-chotome').classList.toggle('active', tab === 'chotome');
@@ -1269,7 +1335,8 @@ function switchTab(tab) {
   // 現場確認の担当者専用の2つの画面（題名「支障日申請」を押して開く）
   document.getElementById('tab-panel-opstatus').classList.toggle('hidden', tab !== 'opstatus');
   document.getElementById('tab-panel-opdays').classList.toggle('hidden', tab !== 'opdays');
-  opActiveTab = (tab === 'opstatus' || tab === 'opdays') ? tab : null;
+  document.getElementById('tab-panel-opannual').classList.toggle('hidden', tab !== 'opannual');
+  opActiveTab = (tab === 'opstatus' || tab === 'opdays' || tab === 'opannual') ? tab : null;
   if (tab === 'roster') {
     // データの再取得は初回のみ。ただし文字サイズの再調整は毎回行う（画面回転などに対応するため）
     if (!rosterLoadedOnce) {
@@ -2196,8 +2263,17 @@ function opDefaultMonth() {
 function openOpView(tab) {
   closeOpMenu();
   if (!isOperator()) return;
+  if (tab === 'opannual') {
+    if (opActiveTab === 'opannual') return;
+    switchTab(tab);
+    if (opActiveTab !== 'opannual') return;
+    window.scrollTo(0, 0);
+    opaOpen();
+    return;
+  }
   if (opYear == null) opDefaultMonth();
   switchTab(tab);
+  if (opActiveTab !== tab) return; // 年間設定の変更を残すことを選んだとき
   window.scrollTo(0, 0);
   opReload();
 }
@@ -2391,6 +2467,211 @@ function opRenderDayDetail(byDate) {
     `<div class="op-day-sec" style="color:#2e5a14">支障日でない人（${ok.length + none.length}人）</div>` + chips(ok, 'ok') +
     (none.length ? `<div style="font-size:11px;color:var(--text-muted);margin:8px 0 4px">このうち、この月の支障日を1日も登録していない人（${none.length}人）</div>` + chips(none, 'none') : '');
 }
+
+// =============================================
+// 各メンバーの年間設定（現場確認の担当者専用。2026年11月4日〜）
+// admin.html の「各メンバー年間設定」と同じデータ（annual_plans：年ごと・詰員ごとに、
+// 当番2回の月〔monthly_twice_months〕・0回の月〔monthly_zero_months〕・日祝当番の月〔holiday_months〕）。
+// スマホでは月を選び、その月の全員を縦に並べて 0／1／2 と日祝を直す。
+// ・読むのは、担当者だけ全員の分を読める決まり checkin_operator_select_annual_plans。
+// ・保存は仕組み operator_save_annual_plans で、変えた人の分だけを書き込む（削除はしない）。
+// ・「自動均等配分」は載せていない（admin.html で行う）。
+// =============================================
+let opaYear = null, opaMonth = null;
+let opaOrig = {};   // { memberId: { twice:[], zero:[], hol:[] } } 読み込んだときの値
+let opaEdit = {};   // 画面で直している値
+let opaLoaded = false;
+let opaSaving = false;
+
+function opaCell(map, mid) {
+  if (!map[mid]) map[mid] = { twice: [], zero: [], hol: [] };
+  return map[mid];
+}
+function opaVal(c, mon) { return c.zero.includes(mon) ? 0 : (c.twice.includes(mon) ? 2 : 1); }
+function opaYearTotal(c) { let t = 0; for (let m = 1; m <= 12; m++) t += opaVal(c, m); return t; }
+function opaSame(a, b) {
+  const k = x => [...x].sort((p, q) => p - q).join(',');
+  return k(a.twice) === k(b.twice) && k(a.zero) === k(b.zero) && k(a.hol) === k(b.hol);
+}
+function opaDirtyIds() {
+  return (opMembers || []).map(m => m.id).filter(id => !opaSame(opaCell(opaEdit, id), opaCell(opaOrig, id)));
+}
+function opaDirtyCount() { return opaLoaded ? opaDirtyIds().length : 0; }
+function opaDiscard() {
+  opaEdit = JSON.parse(JSON.stringify(opaOrig));
+}
+function opaHolCount(y, mon) {
+  const dim = new Date(y, mon, 0).getDate();
+  let n = 0;
+  for (let d = 1; d <= dim; d++) {
+    const ds = `${y}-${pad2(mon)}-${pad2(d)}`;
+    if (new Date(y, mon - 1, d).getDay() === 0 || holidays[ds]) n++;
+  }
+  return n;
+}
+function opaMonthCheck(mon) {
+  const days = new Date(opaYear, mon, 0).getDate();
+  const hols = opaHolCount(opaYear, mon);
+  let cnt = 0, hol = 0;
+  (opMembers || []).forEach(m => {
+    const c = opaCell(opaEdit, m.id);
+    cnt += opaVal(c, mon);
+    if (c.hol.includes(mon)) hol++;
+  });
+  return { days, hols, cnt, hol, okCnt: cnt === days, okHol: hol === hols };
+}
+function opaOpen() {
+  if (opaYear == null) {
+    const d = new Date();
+    opaYear = d.getFullYear();
+    opaMonth = d.getMonth() + 1;
+  }
+  opaReload();
+}
+function opaSetThisYear() {
+  const y = new Date().getFullYear();
+  if (y === opaYear) return;
+  if (opaDirtyCount() > 0 && !confirm('保存していない変更があります。保存せずに年を変えますか？（変更は消えます）')) return;
+  opaYear = y;
+  opaReload();
+}
+function opaShiftYear(delta) {
+  if (opaDirtyCount() > 0 && !confirm('保存していない変更があります。保存せずに年を変えますか？（変更は消えます）')) return;
+  opaYear += delta;
+  opaReload();
+}
+function opaRefresh() {
+  if (opaDirtyCount() > 0 && !confirm('保存していない変更があります。読み込み直すと変更は消えます。よろしいですか？')) return;
+  opaReload();
+}
+let opaLoadSeq = 0;
+async function opaReload(keepMsg) {
+  if (!isOperator()) return;
+  document.getElementById('opa-year-label').textContent = `${opaYear}年（立教${toTenrikyoYear(opaYear)}年）`;
+  const seq = ++opaLoadSeq;
+  opaLoaded = false;
+  if (!keepMsg) showMsg('opa-msg', '読み込み中...', 'info');
+  document.getElementById('opa-detail').innerHTML = '';
+  document.getElementById('opa-months').innerHTML = '';
+  opaUpdateSaveBar();
+  try {
+    if (!opMembers) await opLoadMembers();
+    const r = await opCall(() => sbClient.from('annual_plans')
+      .select('member_id,year,monthly_twice_months,monthly_zero_months,holiday_months')
+      .eq('year', opaYear));
+    if (r.error) throw r.error;
+    if (seq !== opaLoadSeq) return;
+    opaOrig = {};
+    (r.data || []).forEach(p => {
+      opaOrig[parseInt(p.member_id)] = {
+        twice: (p.monthly_twice_months || []).map(Number),
+        zero: (p.monthly_zero_months || []).map(Number),
+        hol: (p.holiday_months || []).map(Number)
+      };
+    });
+    (opMembers || []).forEach(m => opaCell(opaOrig, m.id));
+    opaDiscard();
+    opaLoaded = true;
+    if (!keepMsg) showMsg('opa-msg', (r.data || []).length ? '' : `${opaYear}年の年間設定はまだ保存されていません（全員1回・日祝なしで出しています）。`, (r.data || []).length ? '' : 'info');
+    opaRender();
+  } catch (e) {
+    if (seq !== opaLoadSeq) return;
+    showMsg('opa-msg', '読み込めませんでした。電波のある場所で「更新」を押してください。（' + opEsc(e.message || e) + '）', 'error');
+  }
+}
+function opaRender() {
+  if (!opaLoaded) return;
+  opaRenderMonths();
+  opaRenderDetail();
+  opaUpdateSaveBar();
+}
+function opaRenderMonths() {
+  const dirtyMonths = new Set();
+  opaDirtyIds().forEach(id => {
+    const a = opaCell(opaEdit, id), b = opaCell(opaOrig, id);
+    for (let m = 1; m <= 12; m++) if (opaVal(a, m) !== opaVal(b, m) || a.hol.includes(m) !== b.hol.includes(m)) dirtyMonths.add(m);
+  });
+  let html = '';
+  for (let m = 1; m <= 12; m++) {
+    const c = opaMonthCheck(m);
+    const ok = c.okCnt && c.okHol;
+    html += `<button class="opa-mbtn${m === opaMonth ? ' sel' : ''}${dirtyMonths.has(m) ? ' dirty' : ''}" onclick="opaSelectMonth(${m})">${m}月<span class="opa-mst ${ok ? 'ok' : 'ng'}">${ok ? '✓' : '×'}</span></button>`;
+  }
+  document.getElementById('opa-months').innerHTML = html;
+}
+function opaSelectMonth(m) {
+  opaMonth = m;
+  opaRender();
+}
+function opaRenderDetail() {
+  const mon = opaMonth;
+  const c = opaMonthCheck(mon);
+  const head = `<div class="op-day-title">${opaYear}年${mon}月（${c.days}日・日曜祝日${c.hols}日）</div>` +
+    `<div class="opa-check"><span class="${c.okCnt ? 'ok' : 'ng'}">当番 ${c.cnt}/${c.days} ${c.okCnt ? '✓' : '×'}</span>` +
+    `<span class="${c.okHol ? 'ok' : 'ng'}">日祝 ${c.hol}/${c.hols} ${c.okHol ? '✓' : '×'}</span></div>`;
+  const rows = (opMembers || []).map(m => {
+    const e = opaCell(opaEdit, m.id), o = opaCell(opaOrig, m.id);
+    const v = opaVal(e, mon), hol = e.hol.includes(mon);
+    const changed = v !== opaVal(o, mon) || hol !== o.hol.includes(mon);
+    const seg = [0, 1, 2].map(n => `<button class="${v === n ? 'on' + n : ''}" onclick="opaSetVal(${m.id},${n})">${n}</button>`).join('');
+    return `<div class="opa-row${changed ? ' changed' : ''}"><div class="opa-nm">${opEsc(m.name)}<small>年間 ${opaYearTotal(e)}回・日祝 ${e.hol.length}か月</small></div>` +
+      `<div class="opa-seg">${seg}</div>` +
+      `<button class="opa-hol${hol ? ' on' : ''}" onclick="opaToggleHol(${m.id})">${hol ? '✓日祝' : '日祝'}</button></div>`;
+  }).join('');
+  document.getElementById('opa-detail').innerHTML = head + rows;
+}
+function opaSetVal(mid, n) {
+  if (opaSaving) return;
+  const c = opaCell(opaEdit, mid), mon = opaMonth;
+  c.twice = c.twice.filter(x => x !== mon);
+  c.zero = c.zero.filter(x => x !== mon);
+  if (n === 2) c.twice.push(mon);
+  if (n === 0) c.zero.push(mon);
+  opaRender();
+}
+function opaToggleHol(mid) {
+  if (opaSaving) return;
+  const c = opaCell(opaEdit, mid), mon = opaMonth;
+  if (c.hol.includes(mon)) c.hol = c.hol.filter(x => x !== mon); else c.hol.push(mon);
+  opaRender();
+}
+function opaUpdateSaveBar() {
+  const n = opaDirtyCount();
+  document.getElementById('opa-dirty').textContent = n ? `${n}人分の変更があります（まだ保存していません）` : '変更はありません';
+  document.getElementById('opa-save-btn').disabled = !n || opaSaving;
+  document.getElementById('opa-undo-btn').disabled = !n || opaSaving;
+}
+function opaUndo() {
+  if (!opaDirtyCount()) return;
+  if (!confirm('保存していない変更をすべて元に戻しますか？')) return;
+  opaDiscard();
+  opaRender();
+}
+async function opaSave() {
+  const ids = opaDirtyIds();
+  if (!ids.length || opaSaving || !isOperator()) return;
+  const rows = ids.map(id => {
+    const c = opaCell(opaEdit, id);
+    return { member_id: id, twice: c.twice, zero: c.zero, hol: c.hol };
+  });
+  opaSaving = true;
+  opaUpdateSaveBar();
+  showMsg('opa-msg', '保存しています...', 'info');
+  try {
+    const r = await opCall(() => sbClient.rpc('operator_save_annual_plans', { p_year: opaYear, p_rows: rows }));
+    if (r.error) throw r.error;
+    opaSaving = false;
+    showMsg('opa-msg', `${opaYear}年の年間設定（${ids.length}人分）を保存しました ✓`, 'success');
+    await opaReload(true);
+  } catch (e) {
+    opaSaving = false;
+    opaUpdateSaveBar();
+    showMsg('opa-msg', '保存できませんでした。変更は画面に残っています。電波のある場所でもう一度「保存する」を押してください。（' + opEsc(e.message || e) + '）', 'error');
+  }
+}
+window.addEventListener('beforeunload', e => {
+  if (opActiveTab === 'opannual' && opaDirtyCount() > 0) { e.preventDefault(); e.returnValue = ''; }
+});
 </script>
 </body>
 </html>
