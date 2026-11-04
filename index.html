@@ -327,15 +327,6 @@
   .op-chip.none { background: #f2f0ea; color: var(--text-muted); }
   .op-chip .op-chip-note { font-size: 10px; font-weight: 400; margin-left: 3px; }
   /* 各メンバーの年間設定（スマホ用。月を選ぶと、その月の全員を縦に並べる。2026年11月4日〜） */
-  .opa-months { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 10px; }
-  .opa-mbtn { border: 1.5px solid var(--border); border-radius: 10px; background: #fff; padding: 5px 2px; font-family: inherit; font-size: 14px; font-weight: 600; color: var(--text); cursor: pointer; line-height: 1.2; }
-  .opa-mbtn .opa-mst { display: block; font-size: 10px; font-weight: 700; margin-top: 1px; }
-  .opa-mbtn .opa-mst.ok { color: #2e7d32; }
-  .opa-mbtn .opa-mst.ng { color: #b3261e; }
-  .opa-mbtn.sel { background: var(--accent-dark); border-color: var(--accent-dark); color: #fff; }
-  .opa-mbtn.sel .opa-mst.ok { color: #c8f0c0; }
-  .opa-mbtn.sel .opa-mst.ng { color: #ffc4c4; }
-  .opa-mbtn.dirty { border-color: #d4af00; }
   .opa-check { display: flex; justify-content: center; gap: 8px; margin: 2px 0 8px; flex-wrap: wrap; }
   .opa-check span { font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 12px; }
   .opa-check .ok { background: #eaf7ea; color: #2e7d32; }
@@ -549,15 +540,15 @@
       <div class="card">
         <div class="card-title" style="text-align:center">各メンバーの年間設定</div>
         <div class="month-nav">
-          <button onclick="opaShiftYear(-1)" aria-label="前の年">◀</button>
+          <button onclick="opaShiftMonth(-1)" aria-label="前の月">◀</button>
           <div>
             <div class="month-label" id="opa-year-label"></div>
-            <div class="op-month-btns"><button onclick="opaSetThisYear()">今年</button><button onclick="opaRefresh()">更新</button></div>
+            <div id="opa-year-sub" style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:2px"></div>
+            <div class="op-month-btns"><button onclick="opaSetThisMonth()">今月</button><button onclick="opaRefresh()">更新</button></div>
           </div>
-          <button onclick="opaShiftYear(1)" aria-label="次の年">▶</button>
+          <button onclick="opaShiftMonth(1)" aria-label="次の月">▶</button>
         </div>
         <div id="opa-msg" style="font-size:13px;text-align:center;margin-bottom:6px"></div>
-        <div id="opa-months" class="opa-months"></div>
         <div id="opa-detail"></div>
         <p style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5">0＝身上等でその月は当番に入らない／1＝通常／2＝通常またはほかの人の代わりに当番。「日祝」は、その月の日曜・祝日の当番に入る人です。当番の合計がその月の日数と、日祝の人数がその月の日曜・祝日の数と同じなら ✓ が出ます。</p>
         <div class="opa-savebar">
@@ -949,7 +940,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-04-3';
+const APP_FILE_VERSION = '2026-11-04-4';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -2528,17 +2519,29 @@ function opaOpen() {
   }
   opaReload();
 }
-function opaSetThisYear() {
-  const y = new Date().getFullYear();
-  if (y === opaYear) return;
-  if (opaDirtyCount() > 0 && !confirm('保存していない変更があります。保存せずに年を変えますか？（変更は消えます）')) return;
-  opaYear = y;
-  opaReload();
+// 年をまたいで月を動かすときは、その年の設定を読み込み直す（保存していない変更があれば確かめる）
+function opaGoTo(y, m) {
+  if (y !== opaYear) {
+    if (opaDirtyCount() > 0 && !confirm(`${opaYear}年の保存していない変更があります。保存せずに${y}年へ移りますか？（変更は消えます）`)) return;
+    opaYear = y; opaMonth = m;
+    opaReload();
+    return;
+  }
+  opaMonth = m;
+  opaRender();
 }
-function opaShiftYear(delta) {
-  if (opaDirtyCount() > 0 && !confirm('保存していない変更があります。保存せずに年を変えますか？（変更は消えます）')) return;
-  opaYear += delta;
-  opaReload();
+function opaShiftMonth(delta) {
+  let y = opaYear, m = opaMonth + delta;
+  if (m < 1) { m = 12; y--; } else if (m > 12) { m = 1; y++; }
+  opaGoTo(y, m);
+}
+function opaSetThisMonth() {
+  const d = new Date();
+  opaGoTo(d.getFullYear(), d.getMonth() + 1);
+}
+function opaSetLabel() {
+  document.getElementById('opa-year-label').textContent = `${opaYear}年${opaMonth}月`;
+  document.getElementById('opa-year-sub').textContent = `立教${toTenrikyoYear(opaYear)}年`;
 }
 function opaRefresh() {
   if (opaDirtyCount() > 0 && !confirm('保存していない変更があります。読み込み直すと変更は消えます。よろしいですか？')) return;
@@ -2547,12 +2550,11 @@ function opaRefresh() {
 let opaLoadSeq = 0;
 async function opaReload(keepMsg) {
   if (!isOperator()) return;
-  document.getElementById('opa-year-label').textContent = `${opaYear}年（立教${toTenrikyoYear(opaYear)}年）`;
+  opaSetLabel();
   const seq = ++opaLoadSeq;
   opaLoaded = false;
   if (!keepMsg) showMsg('opa-msg', '読み込み中...', 'info');
   document.getElementById('opa-detail').innerHTML = '';
-  document.getElementById('opa-months').innerHTML = '';
   opaUpdateSaveBar();
   try {
     if (!opMembers) await opLoadMembers();
@@ -2581,32 +2583,14 @@ async function opaReload(keepMsg) {
 }
 function opaRender() {
   if (!opaLoaded) return;
-  opaRenderMonths();
+  opaSetLabel();
   opaRenderDetail();
   opaUpdateSaveBar();
-}
-function opaRenderMonths() {
-  const dirtyMonths = new Set();
-  opaDirtyIds().forEach(id => {
-    const a = opaCell(opaEdit, id), b = opaCell(opaOrig, id);
-    for (let m = 1; m <= 12; m++) if (opaVal(a, m) !== opaVal(b, m) || a.hol.includes(m) !== b.hol.includes(m)) dirtyMonths.add(m);
-  });
-  let html = '';
-  for (let m = 1; m <= 12; m++) {
-    const c = opaMonthCheck(m);
-    const ok = c.okCnt && c.okHol;
-    html += `<button class="opa-mbtn${m === opaMonth ? ' sel' : ''}${dirtyMonths.has(m) ? ' dirty' : ''}" onclick="opaSelectMonth(${m})">${m}月<span class="opa-mst ${ok ? 'ok' : 'ng'}">${ok ? '✓' : '×'}</span></button>`;
-  }
-  document.getElementById('opa-months').innerHTML = html;
-}
-function opaSelectMonth(m) {
-  opaMonth = m;
-  opaRender();
 }
 function opaRenderDetail() {
   const mon = opaMonth;
   const c = opaMonthCheck(mon);
-  const head = `<div class="op-day-title">${opaYear}年${mon}月（${c.days}日・日曜祝日${c.hols}日）</div>` +
+  const head = `<div style="font-size:12px;color:var(--text-muted);text-align:center;margin-bottom:4px">${c.days}日・日曜祝日${c.hols}日</div>` +
     `<div class="opa-check"><span class="${c.okCnt ? 'ok' : 'ng'}">当番 ${c.cnt}/${c.days} ${c.okCnt ? '✓' : '×'}</span>` +
     `<span class="${c.okHol ? 'ok' : 'ng'}">日祝 ${c.hol}/${c.hols} ${c.okHol ? '✓' : '×'}</span></div>`;
   const rows = (opMembers || []).map(m => {
