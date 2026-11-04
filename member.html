@@ -290,12 +290,48 @@
     .day-cell .duty-name { font-size: 6.6px; }
     .day-cell .duty-name.name-long { font-size: 5.3px; letter-spacing: -0.4px; }
   }
+  /* =============================================
+     現場確認の担当者（is_checkin_operator）専用：題名「支障日申請」を押すと出る選択と、
+     「支障日登録（登録状況・確認）」「登録済み支障日一覧（日付ごと）」の2つの画面（2026年11月4日〜）
+     ============================================= */
+  header.app-header h1.op-tappable { cursor: pointer; }
+  header.app-header h1.op-tappable::after { content: " ▾"; font-size: 11px; opacity: 0.75; }
+  .op-menu-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 3000; display: flex; align-items: flex-start; justify-content: center; padding-top: 70px; }
+  .op-menu-bg.hidden { display: none; }
+  .op-menu { background: #fff; border-radius: var(--radius-lg); padding: 16px; width: calc(100% - 40px); max-width: 320px; box-shadow: 0 8px 30px rgba(0,0,0,0.25); }
+  .op-menu .op-menu-title { font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 10px; }
+  .op-menu .btn { width: 100%; margin-bottom: 8px; font-size: 15px; padding: 14px 16px; }
+  .op-month-btns { display: flex; justify-content: center; gap: 6px; margin-top: 4px; }
+  .op-month-btns button { width: auto; height: auto; border-radius: 12px; padding: 2px 12px; font-size: 11px; color: var(--accent-dark); border: 1px solid var(--border-strong); background: #fff; cursor: pointer; font-family: inherit; }
+  .op-sum-head { font-size: 12px; color: var(--text-muted); text-align: center; margin-bottom: 8px; }
+  .op-sum-list { display: flex; flex-direction: column; gap: 5px; }
+  .op-sum-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-radius: var(--radius); padding: 7px 10px; font-size: 14px; border: 1px solid var(--border); background: var(--bg); }
+  .op-sum-item .op-nm { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .op-sum-item .op-st { display: flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 12px; font-weight: 600; }
+  .op-sum-item.st-none { color: var(--text-hint); }
+  .op-sum-item.st-none .op-nm { font-weight: 500; color: var(--text-muted); }
+  .op-sum-item.st-wait { background: #fff7e6; border-color: #e0b45a; }
+  .op-sum-item.st-wait .op-st { color: #a86a00; }
+  .op-sum-item.st-done { background: #eef6e6; border-color: #9cc47a; }
+  .op-sum-item.st-done .op-st { color: #3d7a1e; }
+  .op-sum-item .btn { padding: 6px 12px; font-size: 13px; }
+  .day-cell .op-cnt { font-size: 9px; line-height: 1; margin-top: 2px; color: #a33; font-weight: 700; white-space: nowrap; }
+  .day-cell.op-sel { background: var(--accent-dark); border-color: var(--accent-dark); color: #fff; }
+  .day-cell.op-sel .op-cnt { color: #ffd0d0; }
+  .op-day-title { font-size: 15px; font-weight: 700; color: var(--accent-dark); text-align: center; margin: 4px 0 8px; }
+  .op-day-sec { font-size: 13px; font-weight: 700; margin: 10px 0 6px; }
+  .op-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .op-chip { font-size: 13px; padding: 3px 9px; border-radius: 14px; border: 1px solid var(--border-strong); background: #fff; white-space: nowrap; }
+  .op-chip.ng { background: var(--danger-light); border-color: var(--danger); color: #a33; font-weight: 600; }
+  .op-chip.ok { background: #eef6e6; border-color: #9cc47a; color: #2e5a14; }
+  .op-chip.none { background: #f2f0ea; color: var(--text-muted); }
+  .op-chip .op-chip-note { font-size: 10px; font-weight: 400; margin-left: 3px; }
 </style>
 </head>
 <body>
 
 <header class="app-header">
-  <h1>支障日申請</h1>
+  <h1 id="app-title" onclick="onAppTitleTap()">支障日申請</h1>
   <div class="subtitle">神殿奉仕当番表作成システム（勤務者用）</div>
 </header>
 
@@ -455,9 +491,63 @@
       </div>
     </div>
 
+    <!-- 現場確認の担当者専用：支障日登録（登録状況・確認）。admin.html の「支障日登録」の
+         「📊 登録状況・確認」と同じ確認・取り消しができる（支障日の登録・削除はできない） -->
+    <div id="tab-panel-opstatus" class="hidden">
+      <div class="card">
+        <div class="card-title" style="text-align:center">支障日登録（登録状況・確認）</div>
+        <div class="month-nav">
+          <button onclick="opShiftMonth(-1)" aria-label="前の月">◀</button>
+          <div>
+            <div class="month-label" id="opstatus-month-label"></div>
+            <div id="opstatus-month-sub" style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:2px"></div>
+            <div class="op-month-btns"><button onclick="opSetMonth(0)">今月</button><button onclick="opSetMonth(1)">翌月</button><button onclick="opReload()">更新</button></div>
+          </div>
+          <button onclick="opShiftMonth(1)" aria-label="次の月">▶</button>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;line-height:1.5">「確認」を押すと、その人のこの月の支障日が「確認済み」になり、本人の画面にも確認済みと出ます。12月は翌年1月4日までの分です。</p>
+        <div id="opstatus-head" class="op-sum-head"></div>
+        <div id="opstatus-list" class="op-sum-list"></div>
+        <div id="opstatus-msg" style="margin-top:8px;font-size:13px"></div>
+      </div>
+    </div>
+
+    <!-- 現場確認の担当者専用：登録済み支障日一覧（日付を選ぶと、支障日の人・支障日でない人を出す。見るだけ） -->
+    <div id="tab-panel-opdays" class="hidden">
+      <div class="card">
+        <div class="card-title" style="text-align:center">登録済み支障日一覧</div>
+        <div class="month-nav">
+          <button onclick="opShiftMonth(-1)" aria-label="前の月">◀</button>
+          <div>
+            <div class="month-label" id="opdays-month-label"></div>
+            <div id="opdays-month-sub" style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:2px"></div>
+            <div class="op-month-btns"><button onclick="opSetMonth(0)">今月</button><button onclick="opSetMonth(1)">翌月</button><button onclick="opReload()">更新</button></div>
+          </div>
+          <button onclick="opShiftMonth(1)" aria-label="次の月">▶</button>
+        </div>
+        <div id="opdays-msg" style="font-size:13px;text-align:center"></div>
+        <table class="cal">
+          <thead><tr id="opdays-dow-row"></tr></thead>
+          <tbody id="opdays-cal-body"></tbody>
+        </table>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5">日付の下の赤い数字は、その日を支障日にしている人数です。日付を押すと、下に名前が出ます。</p>
+        <div id="opdays-detail" style="margin-top:6px"></div>
+      </div>
+    </div>
+
   </div>
 
   <div id="duty-rank-toast" class="duty-rank-toast"></div>
+
+  <!-- 現場確認の担当者専用：題名「支障日申請」を押すと出る選択 -->
+  <div id="op-menu-bg" class="op-menu-bg hidden" onclick="if(event.target===this)closeOpMenu()">
+    <div class="op-menu">
+      <div class="op-menu-title">現場確認の担当者用</div>
+      <button class="btn btn-primary" onclick="openOpView('opstatus')">支障日登録（登録状況・確認）</button>
+      <button class="btn btn-primary" onclick="openOpView('opdays')">登録済み支障日一覧</button>
+      <button class="btn" style="margin-bottom:0" onclick="closeOpMenu()">閉じる</button>
+    </div>
+  </div>
 
   <div class="attendance-modal-bg" id="attendance-modal-bg">
     <div class="attendance-modal">
@@ -763,6 +853,7 @@ async function enterAsMember(member, token) {
   await renderCalendar();
   // 現場確認の担当者は、電波のあるうちに出欠確認の内容をこのスマホに控え、未送信の記録があれば送る
   if (member.is_checkin_operator) { chkPrefetch(); flushCheckinQueue(); }
+  updateAppTitleTappable();
 }
 
 function doLogout() {
@@ -770,7 +861,11 @@ function doLogout() {
     if (!confirm(`まだ送っていない出欠の記録が ${chkQueueCount()}件あります。\nログアウトしても記録はこのスマホに残り、次に現場確認の担当者がログインしたときに送られます。\nログアウトしますか？`)) return;
   }
   try { localStorage.removeItem(REMEMBER_KEY); } catch (e) {}
+  closeOpMenu();
+  if (opActiveTab) switchTab('input');
+  opMembers = null;
   currentMember = null;
+  updateAppTitleTappable();
   pendingAdd.clear();
   pendingRemove.clear();
   // 同じ端末で別の詰員が続けてログインすることもあるため、可能日入力モードは
@@ -793,7 +888,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-10-29-1';
+const APP_FILE_VERSION = '2026-11-04-1';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -1171,6 +1266,10 @@ function switchTab(tab) {
   document.getElementById('tab-panel-input').classList.toggle('hidden', tab !== 'input');
   document.getElementById('tab-panel-roster').classList.toggle('hidden', tab !== 'roster');
   document.getElementById('tab-panel-chotome').classList.toggle('hidden', tab !== 'chotome');
+  // 現場確認の担当者専用の2つの画面（題名「支障日申請」を押して開く）
+  document.getElementById('tab-panel-opstatus').classList.toggle('hidden', tab !== 'opstatus');
+  document.getElementById('tab-panel-opdays').classList.toggle('hidden', tab !== 'opdays');
+  opActiveTab = (tab === 'opstatus' || tab === 'opdays') ? tab : null;
   if (tab === 'roster') {
     // データの再取得は初回のみ。ただし文字サイズの再調整は毎回行う（画面回転などに対応するため）
     if (!rosterLoadedOnce) {
@@ -2059,6 +2158,239 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   document.getElementById('login-code').focus();
 });
+
+// =============================================
+// 現場確認の担当者（is_checkin_operator）専用（2026年11月4日〜）
+// 題名「支障日申請」を押すと「支障日登録（登録状況・確認）」と「登録済み支障日一覧」を選べる。
+// ・データベースは、担当者だけ全員の支障日を「見る」ことができる（決まり checkin_operator_select_unavailable）。
+// ・「確認」「取消」は仕組み operator_set_unavail_confirmed で行う（担当者だけ。確認の印だけを変え、
+//   支障日の登録・削除はできない）。
+// ・支障日の読み込みは1000件ずつに分けて全部読む（12月は翌年1月4日までのため、1000件を超えることがある）。
+// ・担当者以外の人が題名を押しても、何も起きない。
+// =============================================
+let opActiveTab = null;   // 'opstatus' / 'opdays' / null
+let opYear = null, opMonth = null;
+let opMembers = null;     // 在籍中の詰員（名簿の順）
+let opRows = [];          // 表示している月の支障日 { member_id, blocked_date, confirmed }
+let opSelDate = null;     // 一覧で選んでいる日付
+
+function isOperator() { return !!(currentMember && currentMember.is_checkin_operator); }
+function updateAppTitleTappable() {
+  const t = document.getElementById('app-title');
+  if (t) t.classList.toggle('op-tappable', isOperator());
+}
+function onAppTitleTap() {
+  if (!isOperator()) return;
+  document.getElementById('op-menu-bg').classList.remove('hidden');
+}
+function closeOpMenu() {
+  const bg = document.getElementById('op-menu-bg');
+  if (bg) bg.classList.add('hidden');
+}
+function opDefaultMonth() {
+  const d = new Date();
+  let y = d.getFullYear(), m = d.getMonth() + 2; // 翌月
+  if (m > 12) { m = 1; y++; }
+  opYear = y; opMonth = m;
+}
+function openOpView(tab) {
+  closeOpMenu();
+  if (!isOperator()) return;
+  if (opYear == null) opDefaultMonth();
+  switchTab(tab);
+  window.scrollTo(0, 0);
+  opReload();
+}
+function opShiftMonth(delta) {
+  let m = opMonth + delta, y = opYear;
+  if (m < 1) { m = 12; y--; } else if (m > 12) { m = 1; y++; }
+  opYear = y; opMonth = m; opSelDate = null;
+  opReload();
+}
+function opSetMonth(offset) {
+  const d = new Date();
+  let y = d.getFullYear(), m = d.getMonth() + 1 + offset;
+  if (m > 12) { m = 1; y++; }
+  opYear = y; opMonth = m; opSelDate = null;
+  opReload();
+}
+function opEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function opRange() {
+  const days = getCalendarDayList(opYear, opMonth);
+  const f = days[0], l = days[days.length - 1];
+  return { days, from: `${f.y}-${pad2(f.m)}-${pad2(f.d)}`, to: `${l.y}-${pad2(l.m)}-${pad2(l.d)}` };
+}
+function opIsAuthError(error, status) {
+  return status === 401 || /jwt/i.test((error && error.message) || '') || (error && (error.code === 'PGRST301' || error.code === 'PGRST303'));
+}
+// 読み込み・書き込みを1回行い、ログインの期限（12時間）切れなら入り直してもう一度行う
+async function opCall(fn) {
+  let r = await fn();
+  if (r && r.error && opIsAuthError(r.error, r.status)) {
+    if (await chkRelogin()) r = await fn();
+  }
+  return r;
+}
+async function opLoadMembers() {
+  const r = await opCall(() => sbClient.from('members').select('id,name').eq('is_active', true).order('display_order', { ascending: true, nullsFirst: false }));
+  if (r.error) throw r.error;
+  opMembers = r.data || [];
+}
+// その月（12月は翌年1月4日まで）の全員の支障日を、1000件ずつに分けて全部読む
+async function opFetchMonthRows() {
+  const { from, to } = opRange();
+  const all = [];
+  const size = 1000;
+  for (let start = 0; ; start += size) {
+    const r = await opCall(() => sbClient.from('unavailable_dates')
+      .select('id,member_id,blocked_date,confirmed')
+      .gte('blocked_date', from).lte('blocked_date', to)
+      .order('id').range(start, start + size - 1));
+    if (r.error) throw r.error;
+    const rows = r.data || [];
+    all.push(...rows);
+    if (rows.length < size) break;
+  }
+  return all;
+}
+function opSetMonthLabels() {
+  ['opstatus', 'opdays'].forEach(k => {
+    document.getElementById(k + '-month-label').textContent = getMonthLabel(opYear, opMonth);
+    document.getElementById(k + '-month-sub').textContent = getMonthSubNote(opYear, opMonth);
+  });
+}
+let opLoadSeq = 0;
+async function opReload() {
+  if (!isOperator() || !opActiveTab) return;
+  opSetMonthLabels();
+  const seq = ++opLoadSeq;
+  const msgId = opActiveTab === 'opstatus' ? 'opstatus-msg' : 'opdays-msg';
+  showMsg(msgId, '読み込み中...', 'info');
+  if (opActiveTab === 'opstatus') { document.getElementById('opstatus-list').innerHTML = ''; document.getElementById('opstatus-head').textContent = ''; }
+  try {
+    if (!opMembers) await opLoadMembers();
+    const rows = await opFetchMonthRows();
+    if (seq !== opLoadSeq) return; // 月を続けて切り替えたときは、最後の分だけ出す
+    opRows = rows;
+    showMsg(msgId, '', '');
+    if (opActiveTab === 'opstatus') opRenderStatus(); else opRenderDays();
+  } catch (e) {
+    if (seq !== opLoadSeq) return;
+    showMsg(msgId, '読み込めませんでした。電波のある場所で「更新」を押してください。（' + opEsc(e.message || e) + '）', 'error');
+  }
+}
+
+// ---- 支障日登録（登録状況・確認）----
+function opRenderStatus() {
+  const stats = {};
+  opRows.forEach(r => {
+    const s = stats[r.member_id] || (stats[r.member_id] = { total: 0, confirmed: 0 });
+    s.total++;
+    if (r.confirmed) s.confirmed++;
+  });
+  let nWait = 0, nDone = 0, nNone = 0;
+  const html = (opMembers || []).map(m => {
+    const s = stats[m.id];
+    const nm = `<span class="op-nm">${opEsc(m.name)}</span>`;
+    if (!s || s.total === 0) {
+      nNone++;
+      return `<div class="op-sum-item st-none">${nm}<span class="op-st" style="font-weight:400">登録なし</span></div>`;
+    }
+    if (s.confirmed >= s.total) {
+      nDone++;
+      return `<div class="op-sum-item st-done">${nm}<span class="op-st">✓確認済 ${s.total}件<button class="btn" onclick="opSetConfirmed(${m.id}, false)">取消</button></span></div>`;
+    }
+    nWait++;
+    return `<div class="op-sum-item st-wait">${nm}<span class="op-st">未確認 ${s.total - s.confirmed}/${s.total}件<button class="btn btn-primary" onclick="opSetConfirmed(${m.id}, true)">確認</button></span></div>`;
+  }).join('');
+  document.getElementById('opstatus-head').textContent = `未確認 ${nWait}人 ／ 確認済 ${nDone}人 ／ 登録なし ${nNone}人`;
+  document.getElementById('opstatus-list').innerHTML = html;
+}
+let opConfirmBusy = false;
+async function opSetConfirmed(memberId, toConfirmed) {
+  if (opConfirmBusy || !isOperator()) return;
+  const m = (opMembers || []).find(x => x.id === memberId);
+  const name = m ? m.name : '';
+  const label = getMonthLabel(opYear, opMonth);
+  if (!toConfirmed && !confirm(`${name} さんの ${label} の「確認済み」を取り消しますか？`)) return;
+  const { from, to } = opRange();
+  opConfirmBusy = true;
+  showMsg('opstatus-msg', toConfirmed ? '確認しています...' : '取り消しています...', 'info');
+  try {
+    const r = await opCall(() => sbClient.rpc('operator_set_unavail_confirmed', { p_member_id: memberId, p_from: from, p_to: to, p_confirmed: toConfirmed }));
+    if (r.error) throw r.error;
+    await opReload();
+    showMsg('opstatus-msg', toConfirmed ? `${opEsc(name)} さんの ${label} の支障日を確認済みにしました ✓` : `${opEsc(name)} さんの ${label} の確認済みを取り消しました`, 'success');
+  } catch (e) {
+    showMsg('opstatus-msg', (toConfirmed ? '確認できませんでした。' : '取り消せませんでした。') + '電波のある場所でもう一度押してください。（' + opEsc(e.message || e) + '）', 'error');
+  } finally {
+    opConfirmBusy = false;
+  }
+}
+
+// ---- 登録済み支障日一覧（日付ごと）----
+function opRenderDays() {
+  const { days } = opRange();
+  const byDate = {};
+  opRows.forEach(r => { (byDate[r.blocked_date] || (byDate[r.blocked_date] = [])).push(r); });
+  if (opSelDate && !days.some(d => `${d.y}-${pad2(d.m)}-${pad2(d.d)}` === opSelDate)) opSelDate = null;
+  const dowRow = document.getElementById('opdays-dow-row');
+  dowRow.innerHTML = DOW_JP.map((d, i) => `<th style="${i===0?'color:#c0392b':i===6?'color:var(--info)':''}">${d}</th>`).join('');
+  const first = days[0];
+  const firstDay = new Date(first.y, first.m - 1, first.d).getDay();
+  const todayStr = (d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`)(new Date());
+  let html = '<tr>';
+  for (let i = 0; i < firstDay; i++) html += '<td class="empty-cell"></td>';
+  days.forEach((day, idx) => {
+    const dateStr = `${day.y}-${pad2(day.m)}-${pad2(day.d)}`;
+    const dow = (firstDay + idx) % 7;
+    const isHol = !!holidays[dateStr];
+    const isNextMonth = day.m !== opMonth;
+    let cls = 'day-cell';
+    if (dow === 0 || isHol) cls += ' sunday-col';
+    else if (dow === 6) cls += ' saturday-col';
+    if (dateStr === todayStr) cls += ' today-cell';
+    if (isNextMonth) cls += ' next-month-day';
+    if (dateStr === opSelDate) cls += ' op-sel';
+    const n = (byDate[dateStr] || []).length;
+    const cnt = n ? `<span class="op-cnt">${n}人</span>` : '';
+    const dayLabel = isNextMonth ? `${day.m}/${day.d}` : `${day.d}日`;
+    html += `<td><div class="${cls}" onclick="opSelectDate('${dateStr}')"><span class="day-num">${dayLabel}</span>${cnt}</div></td>`;
+    if ((firstDay + idx + 1) % 7 === 0 && idx < days.length - 1) html += '</tr><tr>';
+  });
+  html += '</tr>';
+  document.getElementById('opdays-cal-body').innerHTML = html;
+  opRenderDayDetail(byDate);
+}
+function opSelectDate(dateStr) {
+  opSelDate = dateStr;
+  opRenderDays();
+  const el = document.getElementById('opdays-detail');
+  if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function opRenderDayDetail(byDate) {
+  const box = document.getElementById('opdays-detail');
+  if (!opSelDate) { box.innerHTML = ''; return; }
+  const [y, m, d] = opSelDate.split('-').map(Number);
+  const dow = DOW_JP[new Date(y, m - 1, d).getDay()];
+  const hol = holidays[opSelDate] ? `・${opEsc(holidays[opSelDate])}` : '';
+  const ngIds = new Set((byDate[opSelDate] || []).map(r => r.member_id));
+  const hasAny = new Set(opRows.map(r => r.member_id)); // この月に支障日を1日でも登録している人
+  const ng = [], ok = [], none = [];
+  (opMembers || []).forEach(mem => {
+    if (ngIds.has(mem.id)) ng.push(mem);
+    else if (hasAny.has(mem.id)) ok.push(mem);
+    else none.push(mem);
+  });
+  const chips = (list, cls, note) => list.length
+    ? `<div class="op-chips">${list.map(x => `<span class="op-chip ${cls}">${opEsc(x.name)}${note ? `<span class="op-chip-note">${note}</span>` : ''}</span>`).join('')}</div>`
+    : '<div style="font-size:12px;color:var(--text-hint)">いません</div>';
+  box.innerHTML =
+    `<div class="op-day-title">${m}月${d}日（${dow}${hol}）</div>` +
+    `<div class="op-day-sec" style="color:#a33">支障日の人（${ng.length}人）</div>` + chips(ng, 'ng') +
+    `<div class="op-day-sec" style="color:#2e5a14">支障日でない人（${ok.length + none.length}人）</div>` + chips(ok, 'ok') +
+    (none.length ? `<div style="font-size:11px;color:var(--text-muted);margin:8px 0 4px">このうち、この月の支障日を1日も登録していない人（${none.length}人）</div>` + chips(none, 'none') : '');
+}
 </script>
 </body>
 </html>
