@@ -593,6 +593,7 @@
       <button class="btn btn-primary" onclick="openOpView('opstatus')">支障日登録（登録状況・確認）</button>
       <button class="btn btn-primary" onclick="openOpView('opdays')">登録済み支障日一覧</button>
       <button class="btn btn-primary" onclick="openOpView('opannual')">各メンバーの年間設定</button>
+      <button class="btn btn-primary" onclick="openOpAttendance()">行事の出欠確認</button>
       <button class="btn" style="margin-bottom:0" onclick="closeOpMenu()">閉じる</button>
     </div>
   </div>
@@ -940,7 +941,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-04-4';
+const APP_FILE_VERSION = '2026-11-04-5';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -2240,6 +2241,13 @@ function updateAppTitleTappable() {
 function onAppTitleTap() {
   if (!isOperator()) return;
   document.getElementById('op-menu-bg').classList.remove('hidden');
+}
+// 選択の「行事の出欠確認」：名前をタッチ（パソコンは右クリック）したときと同じ出欠確認を開く
+// （2026年11月4日〜。名前のタッチでも今までどおり開く。電波の無い場所でも開ける）
+function openOpAttendance() {
+  closeOpMenu();
+  if (!isOperator()) return;
+  openAttendanceModal();
 }
 function closeOpMenu() {
   const bg = document.getElementById('op-menu-bg');
