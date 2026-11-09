@@ -1069,7 +1069,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-09-2';
+const APP_FILE_VERSION = '2026-11-09-3';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -2717,6 +2717,8 @@ function opxIsHol(dateStr) { return new Date(dateStr + 'T00:00:00').getDay() ===
 
 async function opxShow(tab) {
   if (!isOperator() || opActiveTab !== tab) return;
+  // 管理者画面で当番表・決定・支障日が変わっても古いまま出ないよう、毎回読み直す（2026年11月9日〜）
+  opxClear();
   const seq = ++opxSeq;
   const msgId = tab + '-msg';
   if (tab === 'opcount') opxCountLabel();
@@ -2741,9 +2743,12 @@ async function opxShow(tab) {
 }
 function opxRefresh() {
   if (!opActiveTab || !opxTabList().includes(opActiveTab)) return;
-  opxClear();
   opxShow(opActiveTab);
 }
+// ほかのアプリから戻ってきたときも、開いている画面を読み直す
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && opActiveTab && opxTabList().includes(opActiveTab)) opxShow(opActiveTab);
+});
 function opxShift(tab, delta) {
   if (tab === 'opcount') {
     let { y, m } = opxCountYM;
