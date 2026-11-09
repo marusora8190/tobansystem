@@ -956,7 +956,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-05-4';
+const APP_FILE_VERSION = '2026-11-09-1';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -2265,8 +2265,8 @@ function openOpAttendance() {
 }
 // 選択の「その他」：詰員名簿の在籍中の人を、ID（staff_id）の順に ID・ログインナンバー・氏名で出す
 // （admin.html の詰員名簿と同じ並び。見出しの行は出さない。2026年11月5日〜）
-// 氏名は「菊田睦治」→「菊田睦」・「深谷忠直」→「深谷忠」とし、睦・忠を小さい文字で出す（OP_OTHER_SHORT）
-const OP_OTHER_SHORT = { '菊田睦治': ['菊田', '睦'], '深谷忠直': ['深谷', '忠'] };
+// 氏名は名簿のまま、ほかの人と同じ大きさで出す（2026年11月9日〜。それまでは「菊田睦治」「深谷忠直」を短くし、睦・忠を小さくしていた）
+const OP_OTHER_SHORT = {};
 function opOtherEsc(v) {
   return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
