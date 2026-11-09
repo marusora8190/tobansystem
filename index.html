@@ -366,17 +366,19 @@
   .opx-status.done { background: #eef6e6; color: #2e5a14; border: 1px solid #9cc47a; }
   .opx-status.draft { background: #fff7e6; color: #8a5a00; border: 1px solid #e0b45a; }
   .opx-list { display: flex; flex-direction: column; gap: 5px; }
-  .opx-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; border-radius: var(--radius); padding: 7px 10px; border: 1px solid #c8d8b4; background: var(--accent-light); }
+  /* 割当確認の1行：氏名・支障・日祝・当番を決まった幅の列に並べ、全員の「支障」「日祝」「当番」の位置をそろえる
+     （日祝当番でない人は日祝の列を空ける。支障日に当たっている日付は2行目に出す。2026年11月10日〜） */
+  .opx-row { display: grid; grid-template-columns: minmax(0, 1fr) 50px 70px 70px; align-items: center; gap: 4px; border-radius: var(--radius); padding: 7px 8px 7px 10px; border: 1px solid #c8d8b4; background: var(--accent-light); }
   .opx-row.ng { border-color: #f0b8b8; background: var(--danger-light); }
-  .opx-row .opx-nm { flex: 1 1 auto; font-size: 15px; font-weight: 700; white-space: nowrap; }
-  .opx-badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; margin-left: auto; }
-  .opx-b { font-size: 12px; font-weight: 700; border-radius: 4px; padding: 2px 6px; white-space: nowrap; }
+  .opx-row .opx-nm { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .opx-row .opx-un-dates { grid-column: 1 / -1; font-size: 12px; font-weight: 700; color: var(--danger); text-align: right; }
+  .opx-b { font-size: 12px; font-weight: 700; border-radius: 4px; padding: 2px 0; white-space: nowrap; text-align: center; box-sizing: border-box; border: 1px solid transparent; }
   .opx-b.cnt-ok { color: var(--accent-dark); background: #fff; border: 1px solid #c8d8b4; }
   .opx-b.cnt-ng { color: #fff; background: var(--danger); }
   .opx-b.hol-ok { color: #b03a3a; background: #fceaea; border: 1px solid #f0c8c8; }
   .opx-b.hol-ng { color: #fff; background: #c0504d; }
   .opx-b.un-ok { color: var(--text-muted); background: #fff; border: 1px solid var(--border); font-weight: 500; }
-  .opx-b.un-ng { color: #fff; background: var(--danger); white-space: normal; }
+  .opx-b.un-ng { color: #fff; background: var(--danger); }
   .opx-sec { font-size: 14px; font-weight: 700; color: var(--accent-dark); margin: 16px 0 8px; text-align: center; }
   .opx-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
   .opx-cell { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 6px 9px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); font-size: 14px; }
@@ -1073,7 +1075,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-10-1';
+const APP_FILE_VERSION = '2026-11-10-2';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -2881,10 +2883,11 @@ function opxRenderCount(base, ex) {
     const ok = cntOk && holOk && unOk;
     const un = ex.unavail == null
       ? '<span class="opx-b un-ok">支障 ?</span>'
-      : (unOk ? '<span class="opx-b un-ok">支障 ✓</span>' : `<span class="opx-b un-ng">支障 ⚠ ${h.join('・')}</span>`);
-    const hol = isHol ? `<span class="opx-b ${holOk ? 'hol-ok' : 'hol-ng'}">日祝 ${holOk ? '✓' : '⚠'} ${hd}/1</span>` : '';
+      : (unOk ? '<span class="opx-b un-ok">支障 ✓</span>' : '<span class="opx-b un-ng">支障 ⚠</span>');
+    const hol = isHol ? `<span class="opx-b ${holOk ? 'hol-ok' : 'hol-ng'}">日祝 ${holOk ? '✓' : '⚠'} ${hd}/1</span>` : '<span></span>';
+    const unDates = (ex.unavail != null && !unOk) ? `<div class="opx-un-dates">支障日に当番：${h.join('・')}</div>` : '';
     return `<div class="opx-row${ok ? '' : ' ng'}"><span class="opx-nm">${opEsc(mm.name)}</span>` +
-      `<span class="opx-badges">${un}${hol}<span class="opx-b ${cntOk ? 'cnt-ok' : 'cnt-ng'}">当番 ${cntOk ? '✓' : '⚠'} ${a}/${p}</span></span></div>`;
+      `${un}${hol}<span class="opx-b ${cntOk ? 'cnt-ok' : 'cnt-ng'}">当番 ${cntOk ? '✓' : '⚠'} ${a}/${p}</span>${unDates}</div>`;
   }).join('');
   // 累計当番回数（運用前の記録＋決定済みの全期間）
   const sys = {};
