@@ -391,8 +391,7 @@
   .opx-tbl td.opx-n { font-weight: 700; }
   .opx-tbl td.opx-r { text-align: right; white-space: nowrap; }
   .opx-tbl tr.opx-oldest td { background: var(--accent-light); }
-  .opx-tbl td.opx-rt { text-align: right; white-space: nowrap; font-size: 14px; line-height: 1.25; }
-  .opx-tbl td.opx-rt small { display: block; font-size: 11px; color: var(--text-muted); font-weight: 400; }
+  .opx-tbl td.opx-rt { text-align: right; white-space: nowrap; font-size: 14px; }
   #tab-panel-opstart .opx-tbl td { padding: 8px 3px; }
   #tab-panel-opstart .opx-tbl th { padding: 4px 3px; }
   #tab-panel-opstart .opx-tbl td.opx-n { white-space: nowrap; }
@@ -1081,7 +1080,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-11-1';
+const APP_FILE_VERSION = '2026-11-11-2';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -2918,18 +2917,10 @@ async function opxLoadRetire() {
     return {};
   }
 }
-function opxWareki(y, mo, d) {
-  const v = y * 10000 + mo * 100 + d;
-  if (v >= 20190501) return '令和' + (y === 2019 ? '元' : (y - 2018)) + '年';
-  if (v >= 19890108) return '平成' + (y === 1989 ? '元' : (y - 1988)) + '年';
-  return '';
-}
 function opxRetireCell(plan) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(plan || '');
   if (!m) return '<span style="color:var(--text-hint)">—</span>';
-  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
-  const wk = opxWareki(y, mo, d);
-  return `${y}年${mo}月${d}日` + (wk ? `<small>（${wk}）</small>` : '');
+  return `${Number(m[1])}年${Number(m[2])}月${Number(m[3])}日`;
 }
 function opxRenderStart(base, plans) {
   plans = plans || {};
