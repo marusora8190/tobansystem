@@ -660,15 +660,15 @@
     <!-- 現場確認の担当者専用：当番開始年月（admin.html の「当番開始年月」の表を見るだけ。2026年11月9日〜） -->
     <div id="tab-panel-opstart" class="hidden">
       <div class="card">
-        <div class="card-title" style="text-align:center">当番開始年月</div>
+        <div class="card-title" style="text-align:center">当番開始・辞退予定年月</div>
         <div class="op-month-btns" style="margin-bottom:8px"><button onclick="opxRefresh()">更新</button></div>
         <div id="opstart-msg" style="font-size:13px;text-align:center"></div>
         <div id="opstart-oldest" style="font-size:13px;line-height:1.6;margin-bottom:8px"></div>
         <table class="opx-tbl">
-          <thead><tr><th style="text-align:center">番号</th><th>氏名</th><th style="text-align:right">当番開始年月</th><th style="text-align:right;line-height:1.3">辞退予定年月日<br>（目安のメモ）</th></tr></thead>
+          <thead><tr><th style="text-align:center">番号</th><th>氏名</th><th style="text-align:right">当番開始年月</th><th style="text-align:right;line-height:1.3">辞退年月<br>（目安のメモ）</th></tr></thead>
           <tbody id="opstart-body"></tbody>
         </table>
-        <p style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.6">当番表に残っている記録の中で、いちばん古い当番の月です。色の付いた行は、名簿でいちばん古い人です。辞退予定年月日は、当番表作成者が管理画面の「当番開始年月」に入れた目安のメモです（入っていない人は「—」）。見るだけの画面です。</p>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.6">当番表に残っている記録の中で、いちばん古い当番の月です。色の付いた行は、名簿でいちばん古い人です。辞退年月は、当番表作成者が管理画面の「当番開始年月」に入れた辞退予定年月日（目安のメモ）の年と月です（入っていない人は「—」）。見るだけの画面です。</p>
       </div>
     </div>
 
@@ -720,7 +720,7 @@
       <button class="btn btn-primary" onclick="openOpView('opannual')">各メンバーの年間設定</button>
       <button class="btn btn-primary" onclick="openOpAttendance()">出欠確認</button>
       <button class="btn btn-primary" onclick="openOpView('opcount')">割当確認</button>
-      <button class="btn btn-primary" onclick="openOpView('opstart')">当番開始年月</button>
+      <button class="btn btn-primary" onclick="openOpView('opstart')">当番開始・辞退予定年月</button>
       <button class="btn btn-primary" onclick="openOpView('opnye')">年末年始当番記録</button>
       <button class="btn btn-primary" onclick="openOpView('opfest')">祭典日当番者記録</button>
       <button class="btn btn-primary" onclick="openOpOther()">その他</button>
@@ -1080,7 +1080,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-11-2';
+const APP_FILE_VERSION = '2026-11-11-3';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -2920,7 +2920,7 @@ async function opxLoadRetire() {
 function opxRetireCell(plan) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(plan || '');
   if (!m) return '<span style="color:var(--text-hint)">—</span>';
-  return `${Number(m[1])}年${Number(m[2])}月${Number(m[3])}日`;
+  return `${Number(m[1])}年${Number(m[2])}月`;
 }
 function opxRenderStart(base, plans) {
   plans = plans || {};
