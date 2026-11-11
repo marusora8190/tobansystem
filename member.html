@@ -607,7 +607,7 @@
         <div id="opstatus-list" class="op-sum-list"></div>
         <div id="opstatus-msg" style="margin-top:8px;font-size:13px"></div>
       </div>
-      <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
+      <button class="btn op-close-bottom" onclick="closeOpViewToMenu()">閉じる</button>
     </div>
 
     <!-- 現場確認の担当者専用：ほかの詰員の代わりに支障日を入れる（「支障日登録（登録状況・確認）」の「入力」で開く。
@@ -669,7 +669,7 @@
           <button class="btn btn-primary" id="opa-save-btn" onclick="opaSave()" disabled>保存する</button>
         </div>
       </div>
-      <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
+      <button class="btn op-close-bottom" onclick="closeOpViewToMenu()">閉じる</button>
     </div>
 
     <!-- 現場確認の担当者専用：登録済み支障日一覧（日付を選ぶと、支障日の人・支障日でない人を出す。見るだけ） -->
@@ -694,7 +694,7 @@
         <p style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5">日付の下の赤い数字は、その日を支障日にしている人数です。日付を押すと、下に名前が出ます。</p>
         <div id="opdays-detail" style="margin-top:6px"></div>
       </div>
-      <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
+      <button class="btn op-close-bottom" onclick="closeOpViewToMenu()">閉じる</button>
     </div>
 
     <!-- 現場確認の担当者専用：カレンダー表示（admin.html の「カレンダー表示」と同じ当番表を、決定前の月も名前付きで見る。
@@ -720,7 +720,7 @@
         </table>
         <p style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.6">まだ決定していない月も、今の当番表の名前を出しています（詰員の「当番表」では、決定するまで名前は出ません）。今日から先の日は、マスを押すと当番の人を選び直せます（決定済みの月も直せます。決定したときの当番回数の記録は変わりません）。終わった日を直すときや、決定を取り消すときは、管理画面で行ってください。</p>
       </div>
-      <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
+      <button class="btn op-close-bottom" onclick="closeOpViewToMenu()">閉じる</button>
     </div>
 
     <!-- 現場確認の担当者専用：現場確認の担当者の選任（admin.html の出欠管理の「現場確認の担当者」のチェックと同じ。2026年11月11日〜） -->
@@ -734,7 +734,7 @@
         <button id="opsel-save" class="btn btn-primary" style="width:100%;margin-top:10px" onclick="opxSelSave()">保存する</button>
         <p style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.6">チェックを付けた人が「現場確認の担当者」になり、題名「支障日申請」を押すとこの選択が出るようになります（出欠確認・当番表の決定・当番の人の変更・ログインナンバーの一覧なども使えます）。ご自身のチェックは外せません（外すときは管理画面で）。変えた人の画面には、次にログインしたときから反映されます。</p>
       </div>
-      <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
+      <button class="btn op-close-bottom" onclick="closeOpViewToMenu()">閉じる</button>
     </div>
 
     <!-- 現場確認の担当者専用：割当確認（admin.html の「月割当て確認用」と同じ内容を見るだけ。2026年11月9日〜） -->
@@ -759,7 +759,7 @@
         <p style="font-size:11px;color:var(--text-muted);margin:-4px 0 6px;line-height:1.5;text-align:center">システム運用前の記録 ＋ これまでに「決定」した全期間の合計</p>
         <div id="opcount-total" class="opx-grid2"></div>
       </div>
-      <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
+      <button class="btn op-close-bottom" onclick="closeOpViewToMenu()">閉じる</button>
     </div>
 
     <!-- 現場確認の担当者専用：当番開始年月（admin.html の「当番開始年月」の表を見るだけ。2026年11月9日〜） -->
@@ -776,7 +776,7 @@
         </table>
         <p style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.6">当番表に残っている記録の中で、いちばん古い当番の月です。色の付いた行は、名簿でいちばん古い人です。辞退年月は、当番表作成者が管理画面の「当番開始年月」に入れた辞退予定年月日（目安のメモ）の年と月です（入っていない人は「—」）。見るだけの画面です。</p>
       </div>
-      <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
+      <button class="btn op-close-bottom" onclick="closeOpViewToMenu()">閉じる</button>
     </div>
 
     <!-- 現場確認の担当者専用：年末年始当番記録（admin.html の「年末年始当番記録」を見るだけ。2026年11月9日〜） -->
@@ -802,7 +802,7 @@
         <p style="font-size:11px;color:var(--text-muted);margin:-4px 0 6px;line-height:1.5;text-align:center">年末年始（12/28〜1/4）の当番に、これまで何回当たったか（多い順）</p>
         <div id="opnye-total"></div>
       </div>
-      <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
+      <button class="btn op-close-bottom" onclick="closeOpViewToMenu()">閉じる</button>
     </div>
 
     <!-- 現場確認の担当者専用：祭典日当番者記録（admin.html の「祭典日当番者記録」を見るだけ。2026年11月9日〜） -->
@@ -815,7 +815,7 @@
         <div id="opfest-list"></div>
         <p style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.6">祭典の日の当番者を、当番表から数えた回数（手入力の補正も足した合計）です。名簿から外れた人は出ません。見るだけの画面です。</p>
       </div>
-      <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
+      <button class="btn op-close-bottom" onclick="closeOpViewToMenu()">閉じる</button>
     </div>
 
   </div>
@@ -858,7 +858,7 @@
   <div id="op-other-bg" class="op-menu-bg hidden" onclick="if(event.target===this)closeOpOther()">
     <div class="op-menu op-other">
       <div id="op-other-body">読み込み中...</div>
-      <button class="btn" style="margin:10px 0 0" onclick="closeOpOther()">閉じる</button>
+      <button class="btn" style="margin:10px 0 0" onclick="closeOpOther(); onAppTitleTap();">閉じる</button>
     </div>
   </div>
 
@@ -1206,7 +1206,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-11-9';
+const APP_FILE_VERSION = '2026-11-11-10';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -2588,6 +2588,12 @@ function closeOpView() {
   switchTab(opLastNormalTab || 'input');
   if (opActiveTab) return; // 年間設定の変更を残すことを選んだとき
   window.scrollTo(0, 0);
+}
+// 画面のいちばん下の「閉じる」：開く前の画面に戻ってから、選択の画面（現場確認の担当者用）をもう一度出す（2026年11月11日〜）
+function closeOpViewToMenu() {
+  closeOpView();
+  if (opActiveTab) return; // 年間設定の変更を残すことを選んだとき
+  onAppTitleTap();
 }
 function openOpView(tab) {
   closeOpMenu();
