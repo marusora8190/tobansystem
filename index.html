@@ -309,6 +309,9 @@
   /* 担当者用の画面の「閉じる」（右上の小さいボタンと、いちばん下の幅いっぱいのボタン。2026年11月11日〜） */
   .op-close-top { display: flex; justify-content: flex-end; margin: 0 0 6px; }
   .op-close-top .btn { width: auto; padding: 6px 16px; font-size: 13px; margin: 0; }
+  /* 担当者用の「カレンダー表示」（2026年11月11日〜） */
+  .opcal-decide { display: block; width: 100%; font-size: 15px; font-weight: 700; padding: 12px; margin: 6px 0 8px; }
+  #opcal-body .day-cell.roster-cell { cursor: default; }
   .op-close-bottom { display: block; width: 100%; margin: 4px 0 12px; }
   .op-month-btns button { width: auto; height: auto; border-radius: 12px; padding: 2px 12px; font-size: 11px; color: var(--accent-dark); border: 1px solid var(--border-strong); background: #fff; cursor: pointer; font-family: inherit; }
   .op-sum-head { font-size: 12px; color: var(--text-muted); text-align: center; margin-bottom: 8px; }
@@ -644,6 +647,32 @@
       <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
     </div>
 
+    <!-- 現場確認の担当者専用：カレンダー表示（admin.html の「カレンダー表示」と同じ当番表を、決定前の月も名前付きで見る。
+         「当番表(当初)決定」のボタンもある〔取り消しは管理画面だけ〕。2026年11月11日〜） -->
+    <div id="tab-panel-opcal" class="hidden">
+      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpView()">閉じる</button></div>
+      <div class="card">
+        <div class="card-title" style="text-align:center">カレンダー表示</div>
+        <div class="month-nav">
+          <button onclick="opxShift('opcal',-1)" aria-label="前の月">◀</button>
+          <div>
+            <div class="month-label" id="opcal-label"></div>
+            <div id="opcal-sub" style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:2px"></div>
+            <div class="op-month-btns"><button onclick="opxCalSet(0)">今月</button><button onclick="opxCalSet(1)">翌月</button><button onclick="opxRefresh()">更新</button></div>
+          </div>
+          <button onclick="opxShift('opcal',1)" aria-label="次の月">▶</button>
+        </div>
+        <div id="opcal-msg" style="font-size:13px;text-align:center"></div>
+        <div id="opcal-status"></div>
+        <table class="cal">
+          <thead><tr id="opcal-dow-row"></tr></thead>
+          <tbody id="opcal-body"></tbody>
+        </table>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.6">まだ決定していない月も、今の当番表の名前を出しています（詰員の「当番表」では、決定するまで名前は出ません）。当番の人を直すときや、決定を取り消すときは、管理画面で行ってください。</p>
+      </div>
+      <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
+    </div>
+
     <!-- 現場確認の担当者専用：割当確認（admin.html の「月割当て確認用」と同じ内容を見るだけ。2026年11月9日〜） -->
     <div id="tab-panel-opcount" class="hidden">
       <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpView()">閉じる</button></div>
@@ -737,6 +766,7 @@
       <button class="btn btn-primary" onclick="openOpView('opdays')">登録済み支障日一覧</button>
       <button class="btn btn-primary" onclick="openOpView('opannual')">各メンバーの年間設定</button>
       <button class="btn btn-primary" onclick="openOpAttendance()">出欠確認</button>
+      <button class="btn btn-primary" onclick="openOpView('opcal')">カレンダー表示（当番表の決定）</button>
       <button class="btn btn-primary" onclick="openOpView('opcount')">割当確認</button>
       <button class="btn btn-primary" onclick="openOpView('opstart')">当番開始・辞退予定年月</button>
       <button class="btn btn-primary" onclick="openOpView('opnye')">年末年始当番記録</button>
@@ -1098,7 +1128,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-11-4';
+const APP_FILE_VERSION = '2026-11-11-5';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -2488,6 +2518,7 @@ function openOpView(tab) {
     return;
   }
   if (opxTabList().includes(tab)) {
+    if (tab === 'opcal') opxCalYM = null; // 開くたびに今月から
     switchTab(tab);
     if (opActiveTab !== tab) return; // 年間設定の変更を残すことを選んだとき
     window.scrollTo(0, 0);
@@ -2701,7 +2732,7 @@ function opRenderDayDetail(byDate) {
 //   checkin_operator_select_nye_past_records（2026年11月9日に追加）で読む。
 // ・admin.html の「辞退予定年月日（目安のメモ）」は、担当者には出さない（管理者だけの設定のため）。
 // =============================================
-function opxTabList() { return ['opcount', 'opstart', 'opnye', 'opfest']; }
+function opxTabList() { return ['opcal', 'opcount', 'opstart', 'opnye', 'opfest']; }
 const OPX_FESTIVALS = [
   { key: 'gantansai', name: '元旦祭', date: '1月1日', mmdd: '01-01' },
   { key: 'shunkitaisai', name: '春季大祭', date: '1月26日', mmdd: '01-26' },
@@ -2725,6 +2756,7 @@ const OPX_NYE_MD = ['12-28', '12-29', '12-30', '12-31', '01-01', '01-02', '01-03
 
 let opxCache = {};        // 読み込んだ内容の控え（「更新」・ログアウトで消す）
 let opxCountYM = null;    // 割当確認の年月 { y, m }
+let opxCalYM = null;      // カレンダー表示の年月 { y, m }（開くたびに今月にする）
 let opxNyeSeason = null;  // 年末年始当番記録の年度（12月側の年）
 let opxSeq = 0;
 
@@ -2772,18 +2804,21 @@ async function opxShow(tab) {
   const seq = ++opxSeq;
   const msgId = tab + '-msg';
   if (tab === 'opcount') opxCountLabel();
+  if (tab === 'opcal') opxCalLabel();
   if (tab === 'opnye') opxNyeLabel();
   showMsg(msgId, '読み込み中...', 'info');
   try {
     const base = await opxLoadBase();
     let extra = null;
     if (tab === 'opcount') extra = await opxLoadCount();
+    if (tab === 'opcal') extra = await opxLoadCal();
     if (tab === 'opnye') extra = await opxLoadNye();
     if (tab === 'opfest') extra = await opxLoadFest();
     if (tab === 'opstart') extra = await opxLoadRetire();
     if (seq !== opxSeq || opActiveTab !== tab) return;
     showMsg(msgId, '', '');
     if (tab === 'opcount') opxRenderCount(base, extra);
+    if (tab === 'opcal') opxRenderCal(base, extra);
     if (tab === 'opstart') opxRenderStart(base, extra);
     if (tab === 'opnye') opxRenderNye(base, extra);
     if (tab === 'opfest') opxRenderFest(base, extra);
@@ -2801,7 +2836,12 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && opActiveTab && opxTabList().includes(opActiveTab)) opxShow(opActiveTab);
 });
 function opxShift(tab, delta) {
-  if (tab === 'opcount') {
+  if (tab === 'opcal') {
+    let { y, m } = opxCalYM;
+    m += delta;
+    if (m < 1) { m = 12; y--; } else if (m > 12) { m = 1; y++; }
+    opxCalYM = { y, m };
+  } else if (tab === 'opcount') {
     let { y, m } = opxCountYM;
     m += delta;
     if (m < 1) { m = 12; y--; } else if (m > 12) { m = 1; y++; }
@@ -2811,6 +2851,119 @@ function opxShift(tab, delta) {
     opxNyeSeason = Math.min(max, Math.max(OPX_NYE_START, opxNyeSeason + delta));
   }
   opxShow(tab);
+}
+
+// ---- カレンダー表示（当番表の決定。2026年11月11日〜） ----
+// admin.html の「カレンダー表示」と同じ範囲（12月は12月1日〜翌年1月4日）で、日付・曜日・祝日・当番の人を出す。
+// 決定していない月も名前を出す（担当者だけの画面のため）。
+// 「当番表(当初)決定」はデータベースの仕組み operator_decide_month で行う
+// （admin.html の decideRosterPeriod と同じ：その月の決定・12月は年末年始も・確定記録）。取り消しはできない
+function opxCalSet(offset) {
+  const d = new Date();
+  let y = d.getFullYear(), m = d.getMonth() + 1 + offset;
+  if (m > 12) { m = 1; y++; }
+  opxCalYM = { y, m };
+  opxShow('opcal');
+}
+function opxCalLabel() {
+  if (!opxCalYM) { const d = new Date(); opxCalYM = { y: d.getFullYear(), m: d.getMonth() + 1 }; }
+  document.getElementById('opcal-label').textContent = `${opxCalYM.y}年${opxCalYM.m}月`;
+  document.getElementById('opcal-sub').textContent = `立教${toTenrikyoYear(opxCalYM.y)}年` + (opxCalYM.m === 12 ? `（12月1日〜翌年1月4日）` : '');
+}
+async function opxLoadCal() {
+  const r = await opCall(() => sbClient.from('roster_decisions').select('period_key,decided_at'));
+  if (r.error) throw r.error;
+  const decisions = {};
+  (r.data || []).forEach(x => { decisions[x.period_key] = x; });
+  return { decisions };
+}
+function opxCalDt(iso) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+function opxRenderCal(base, ex) {
+  const { y, m } = opxCalYM;
+  const pk = `${y}-${pad2(m)}`;
+  const nyeKey = m === 12 ? `nye-${y}` : null;
+  const label = `${y}年${m}月`;
+  const dec = ex.decisions[pk];
+  const nyeDec = nyeKey ? ex.decisions[nyeKey] : null;
+  const st = document.getElementById('opcal-status');
+  let html = '';
+  if (dec) {
+    html += `<div class="opx-status done">✓ ${label}は決定済みです（${opxCalDt(dec.decided_at)}）${nyeKey ? (nyeDec ? '<br>年末年始（12/28〜翌1/4）の分も決定済みです' : '<br>年末年始（12/28〜翌1/4）の分は、まだ決定していません') : ''}</div>`;
+    if (nyeKey && !nyeDec) html += `<button class="btn btn-primary opcal-decide" onclick="opxCalDecide()">📢 年末年始（12/28〜翌1/4）の分も決定する</button>`;
+  } else {
+    html += `<div class="opx-status draft">${label}は、まだ「当番表(当初)決定」がされていません（下書き）。</div>`;
+    html += `<button class="btn btn-primary opcal-decide" onclick="opxCalDecide()">📢 ${label}の当番表(当初)決定</button>`;
+  }
+  st.innerHTML = html;
+
+  document.getElementById('opcal-dow-row').innerHTML = DOW_JP.map((d, i) => `<th style="${i === 0 ? 'color:#c0392b' : i === 6 ? 'color:var(--info)' : ''}">${d}</th>`).join('');
+  const dayList = getCalendarDayList(y, m);
+  const first = dayList[0];
+  const firstDay = new Date(first.y, first.m - 1, first.d).getDay();
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+  let body = '<tr>';
+  for (let i = 0; i < firstDay; i++) body += '<td class="empty-cell"></td>';
+  dayList.forEach((day, idx) => {
+    const ds = `${day.y}-${pad2(day.m)}-${pad2(day.d)}`;
+    const dow = (firstDay + idx) % 7;
+    const isHol = !!holidays[ds];
+    const isNext = day.m !== m;
+    const e = base.roster[ds];
+    let nm = '';
+    if (e) nm = e.member_id != null ? opxNm(base, e.member_id) : (e.manual_assignee || '');
+    let cls = 'day-cell roster-cell';
+    if (dow === 0 || isHol) cls += ' sunday-col';
+    else if (dow === 6) cls += ' saturday-col';
+    if (ds === todayStr) cls += ' today-cell';
+    if (isNext) cls += ' next-month-day';
+    const holBadge = isHol ? '<span class="hol-badge" style="margin-top:0">休日</span>' : '';
+    const dayLabel = isNext ? `${day.m}/${day.d}` : `${day.d}日`;
+    const nameHtml = nm ? `<span class="duty-name${nm.length >= 5 ? ' name-long' : ''}">${opEsc(nm)}</span>` : '';
+    body += `<td><div class="${cls}"><div style="display:flex;align-items:center;justify-content:center;gap:2px;line-height:1"><span class="day-num">${dayLabel}</span>${holBadge}</div>${nameHtml}</div></td>`;
+    if ((firstDay + idx + 1) % 7 === 0 && idx < dayList.length - 1) body += '</tr><tr>';
+  });
+  body += '</tr>';
+  document.getElementById('opcal-body').innerHTML = body;
+  opxCalFit();
+}
+// 名前・日付の文字の大きさを、マスの幅に合わせる（「当番表」の fitDutyNameSizes と同じ計算）
+function opxCalFit() {
+  const cellEl = document.querySelector('#opcal-body td:not(.empty-cell) .day-cell');
+  if (!cellEl) return;
+  const w = cellEl.getBoundingClientRect().width;
+  if (!w) return;
+  const normalSize = Math.max(6, Math.min(11, w * 0.205));
+  const longSize = Math.max(5, Math.min(9, w * 0.165));
+  document.querySelectorAll('#opcal-body .duty-name:not(.name-long)').forEach(el => { el.style.fontSize = normalSize.toFixed(1) + 'px'; });
+  document.querySelectorAll('#opcal-body .duty-name.name-long').forEach(el => { el.style.fontSize = longSize.toFixed(1) + 'px'; });
+  const dn = Math.max(10, Math.min(13, w * 0.24));
+  document.querySelectorAll('#opcal-body .day-num').forEach(el => { el.style.fontSize = dn.toFixed(1) + 'px'; });
+}
+window.addEventListener('resize', () => { if (opActiveTab === 'opcal') opxCalFit(); });
+let opxCalBusy = false;
+async function opxCalDecide() {
+  if (opxCalBusy || !opxCalYM) return;
+  const { y, m } = opxCalYM;
+  const label = `${y}年${m}月`;
+  const nyeNote = m === 12 ? '\n（12月28日〜翌年1月4日の年末年始の分も、一緒に決定します）' : '';
+  if (!confirm(`${label}の当番表を決定し、詰員へ公開します。よろしいですか？${nyeNote}\n（決定を取り消すときは、管理画面で行います）`)) return;
+  opxCalBusy = true;
+  document.querySelectorAll('.opcal-decide').forEach(b => { b.disabled = true; b.textContent = '決定しています...'; });
+  try {
+    const r = await opCall(() => sbClient.rpc('operator_decide_month', { p_year: y, p_month: m }));
+    if (r.error) throw r.error;
+    await opxShow('opcal');
+    showMsg('opcal-msg', r.data === 'already' ? 'すでに決定済みでした。' : `${label}を決定しました。`, 'success');
+  } catch (e) {
+    alert('決定できませんでした。電波のある場所で、もう一度押してください。（' + (e.message || e) + '）');
+    await opxShow('opcal');
+  } finally {
+    opxCalBusy = false;
+  }
 }
 
 // ---- 割当確認 ----
