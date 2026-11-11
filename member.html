@@ -340,6 +340,7 @@
   .op-sum-item.st-done { background: #eef6e6; border-color: #9cc47a; }
   .op-sum-item.st-done .op-st { color: #3d7a1e; }
   .op-sum-item .btn { padding: 6px 12px; font-size: 13px; }
+  .op-sum-item .btn.opin-btn { padding: 6px 10px; background: #fff; border-color: var(--accent-dark); color: var(--accent-dark); }
   .day-cell .op-cnt { font-size: 9px; line-height: 1; margin-top: 2px; color: #a33; font-weight: 700; white-space: nowrap; }
   .day-cell.op-sel { background: var(--accent-dark); border-color: var(--accent-dark); color: #fff; }
   .day-cell.op-sel .op-cnt { color: #ffd0d0; }
@@ -601,12 +602,47 @@
           </div>
           <button onclick="opShiftMonth(1)" aria-label="次の月">▶</button>
         </div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;line-height:1.5">「確認」を押すと、その人のこの月の支障日が「確認済み」になり、本人の画面にも確認済みと出ます。12月は翌年1月4日までの分です。</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;line-height:1.5">「確認」を押すと、その人のこの月の支障日が「確認済み」になり、本人の画面にも確認済みと出ます。「入力」を押すと、その人の代わりに支障日を入れたり外したりできます（締切に関係なく入れられます。入れた日は「未確認」になります）。12月は翌年1月4日までの分です。</p>
         <div id="opstatus-head" class="op-sum-head"></div>
         <div id="opstatus-list" class="op-sum-list"></div>
         <div id="opstatus-msg" style="margin-top:8px;font-size:13px"></div>
       </div>
       <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
+    </div>
+
+    <!-- 現場確認の担当者専用：ほかの詰員の代わりに支障日を入れる（「支障日登録（登録状況・確認）」の「入力」で開く。
+         締切に関係なく入れられる。入れた日は未確認。だれが入れたかは残さない。2026年11月11日〜） -->
+    <div id="tab-panel-opinput" class="hidden">
+      <div class="op-close-top"><button class="btn btn-sm" onclick="opinClose()">閉じる</button></div>
+      <div class="card">
+        <div id="opin-who" style="text-align:center;font-size:18px;font-weight:700;color:var(--accent-dark);background:#fff7e6;border:1px solid #e0b45a;border-radius:var(--radius);padding:8px;margin-bottom:8px"></div>
+        <div class="month-nav">
+          <button onclick="opinShift(-1)" aria-label="前の月">◀</button>
+          <div>
+            <div class="month-label" id="opin-month-label"></div>
+            <div id="opin-month-sub" style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:2px"></div>
+          </div>
+          <button onclick="opinShift(1)" aria-label="次の月">▶</button>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin:4px 0 8px;line-height:1.5">支障日にする日を押して選び、下の「登録する」を押してください。登録済みの日を押すと取り消し（削除）を予約できます。締切に関係なく入れられます。入れた日は「未確認」になります。</p>
+        <div id="opin-banner"></div>
+        <table class="cal">
+          <thead><tr id="opin-dow-row"></tr></thead>
+          <tbody id="opin-body"></tbody>
+        </table>
+        <div class="legend">
+          <span><span class="sw" style="background:var(--danger-light);border:1.5px solid var(--danger)"></span>登録済み（未確認）</span>
+          <span><span class="sw" style="background:#e3f2d6;border:1.5px solid #7cb342"></span>確認済み</span>
+          <span><span class="sw" style="background:#fff3b0;border:1.5px solid #d4af00"></span>登録予定（未保存）</span>
+          <span><span class="sw" style="background:#eee;border:1.5px solid #bbb"></span>取消予定（未保存）</span>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="opin-save" onclick="opinSave()">登録する</button>
+          <button class="btn" onclick="opinReset()">選択をリセット</button>
+        </div>
+        <div id="opinput-msg" style="margin-top:8px;font-size:13px"></div>
+      </div>
+      <button class="btn op-close-bottom" onclick="opinClose()">閉じる</button>
     </div>
 
     <!-- 現場確認の担当者専用：各メンバーの年間設定（admin.html の「各メンバー年間設定」と同じ内容を、
@@ -1170,7 +1206,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-11-8';
+const APP_FILE_VERSION = '2026-11-11-9';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -1188,7 +1224,7 @@ async function checkNewAppVersion() {
 }
 // まだ保存していない入力があるかどうか（あるときは「先に保存する」のボタンを出す）
 function appVersionHasUnsaved() {
-  try { return (pendingRemove.size > 0) || (inputMode === 'available' ? availableModeTouched : pendingAdd.size > 0) || (typeof opActiveTab !== 'undefined' && opActiveTab === 'opannual' && opaDirtyCount() > 0); } catch (e) { return true; }
+  try { return (pendingRemove.size > 0) || (inputMode === 'available' ? availableModeTouched : pendingAdd.size > 0) || (typeof opActiveTab !== 'undefined' && opActiveTab === 'opannual' && opaDirtyCount() > 0) || (typeof opinAdd !== 'undefined' && opActiveTab === 'opinput' && (opinAdd.size + opinRemove.size) > 0); } catch (e) { return true; }
 }
 let appVersionRemindTimer = null;
 function showAppVersionLock() {
@@ -1574,6 +1610,11 @@ function switchTab(tab) {
   if (typeof opActiveTab !== 'undefined' && opActiveTab === 'opannual' && tab !== 'opannual' && opaDirtyCount() > 0) {
     if (!confirm('年間設定に保存していない変更があります。保存せずに移りますか？（変更は消えます）')) return;
     opaDiscard();
+  }
+  // 「入力」（ほかの詰員の代わりに支障日を入れる）で登録していない選択があるときも、移る前に確かめる（2026年11月11日〜）
+  if (typeof opActiveTab !== 'undefined' && opActiveTab === 'opinput' && tab !== 'opinput' && (opinAdd.size + opinRemove.size) > 0) {
+    if (!confirm('まだ登録していない選択があります。登録せずに移りますか？（選択は消えます）')) return;
+    opinAdd.clear(); opinRemove.clear();
   }
   document.getElementById('tab-btn-input').classList.toggle('active', tab === 'input');
   document.getElementById('tab-btn-roster').classList.toggle('active', tab === 'roster');
@@ -2666,18 +2707,163 @@ function opRenderStatus() {
     const nm = `<span class="op-nm">${opEsc(m.name)}</span>`;
     if (!s || s.total === 0) {
       nNone++;
-      return `<div class="op-sum-item st-none">${nm}<span class="op-st" style="font-weight:400">登録なし</span></div>`;
+      return `<div class="op-sum-item st-none">${nm}<span class="op-st" style="font-weight:400">登録なし${opinBtn(m.id)}</span></div>`;
     }
     if (s.confirmed >= s.total) {
       nDone++;
-      return `<div class="op-sum-item st-done">${nm}<span class="op-st">✓確認済 ${s.total}件<button class="btn" onclick="opSetConfirmed(${m.id}, false)">取消</button></span></div>`;
+      return `<div class="op-sum-item st-done">${nm}<span class="op-st">✓確認済 ${s.total}件${opinBtn(m.id)}<button class="btn" onclick="opSetConfirmed(${m.id}, false)">取消</button></span></div>`;
     }
     nWait++;
-    return `<div class="op-sum-item st-wait">${nm}<span class="op-st">未確認 ${s.total - s.confirmed}/${s.total}件<button class="btn btn-primary" onclick="opSetConfirmed(${m.id}, true)">確認</button></span></div>`;
+    return `<div class="op-sum-item st-wait">${nm}<span class="op-st">未確認 ${s.total - s.confirmed}/${s.total}件${opinBtn(m.id)}<button class="btn btn-primary" onclick="opSetConfirmed(${m.id}, true)">確認</button></span></div>`;
   }).join('');
   document.getElementById('opstatus-head').textContent = `未確認 ${nWait}人 ／ 確認済 ${nDone}人 ／ 登録なし ${nNone}人`;
   document.getElementById('opstatus-list').innerHTML = html;
 }
+// ---- ほかの詰員の代わりに支障日を入れる（「入力」。2026年11月11日〜） ----
+// 詰員本人の「支障日入力」と同じカレンダーで、押した日を登録予定・取消予定にして「登録する」で保存する。
+// 保存はデータベースの仕組み operator_set_member_unavail（担当者だけ。締切に関係なく入れられる。
+// 入れた日は理由なし・未確認。だれが入れたかの印は残さない）。可能日入力（空いている日を選ぶ形）は無い
+var opinMember = null;              // { id, name }
+var opinYM = null;                  // { y, m }
+var opinAdd = new Set(), opinRemove = new Set();
+var opinReg = new Set(), opinConf = new Set();
+let opinSaving = false;
+function opinBtn(mid) { return `<button class="btn opin-btn" onclick="opinOpen(${mid})">入力</button>`; }
+function opinOpen(mid) {
+  if (!isOperator()) return;
+  const m = (opMembers || []).find(x => x.id === mid);
+  if (!m) return;
+  opinMember = { id: m.id, name: m.name };
+  opinYM = { y: opYear, m: opMonth };
+  opinAdd = new Set(); opinRemove = new Set();
+  switchTab('opinput');
+  if (opActiveTab !== 'opinput') return;
+  window.scrollTo(0, 0);
+  showMsg('opinput-msg', '', '');
+  opxShow('opinput');
+}
+function opinDirtyOk() {
+  if (opinAdd.size + opinRemove.size === 0) return true;
+  if (!confirm('まだ登録していない選択があります。登録せずに移りますか？（選択は消えます）')) return false;
+  opinAdd.clear(); opinRemove.clear();
+  return true;
+}
+function opinClose() {
+  if (!opinDirtyOk()) return;
+  // 支障日登録（登録状況・確認）に戻り、同じ月を読み直す
+  if (opinYM) { opYear = opinYM.y; opMonth = opinYM.m; }
+  openOpView('opstatus');
+}
+function opinShift(delta) {
+  if (!opinYM || !opinDirtyOk()) return;
+  let { y, m } = opinYM;
+  m += delta;
+  if (m < 1) { m = 12; y--; } else if (m > 12) { m = 1; y++; }
+  opinYM = { y, m };
+  showMsg('opinput-msg', '', '');
+  opxShow('opinput');
+}
+async function opinLoad() {
+  const { y, m } = opinYM;
+  const days = getCalendarDayList(y, m);
+  const f = days[0], l = days[days.length - 1];
+  const from = `${f.y}-${pad2(f.m)}-${pad2(f.d)}`, to = `${l.y}-${pad2(l.m)}-${pad2(l.d)}`;
+  const r = await opCall(() => sbClient.from('unavailable_dates').select('blocked_date,confirmed').eq('member_id', opinMember.id).gte('blocked_date', from).lte('blocked_date', to));
+  if (r.error) throw r.error;
+  opinReg = new Set(); opinConf = new Set();
+  (r.data || []).forEach(x => { opinReg.add(x.blocked_date); if (x.confirmed) opinConf.add(x.blocked_date); });
+  // 読み直したときに、もう登録済みになった日・もう無くなった日の予約は外す
+  [...opinAdd].forEach(d => { if (opinReg.has(d)) opinAdd.delete(d); });
+  [...opinRemove].forEach(d => { if (!opinReg.has(d)) opinRemove.delete(d); });
+  return null;
+}
+function opinRender() {
+  if (!opinMember || !opinYM) return;
+  const { y, m } = opinYM;
+  document.getElementById('opin-who').textContent = `${opinMember.name} さんの支障日を入力しています`;
+  document.getElementById('opin-month-label').textContent = getMonthLabel(y, m);
+  document.getElementById('opin-month-sub').textContent = getMonthSubNote(y, m);
+  document.getElementById('opin-dow-row').innerHTML = DOW_JP.map((d, i) => `<th style="${i === 0 ? 'color:#c0392b' : i === 6 ? 'color:var(--info)' : ''}">${d}</th>`).join('');
+  const days = getCalendarDayList(y, m);
+  const first = days[0];
+  const firstDay = new Date(first.y, first.m - 1, first.d).getDay();
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+  let html = '<tr>';
+  for (let i = 0; i < firstDay; i++) html += '<td class="empty-cell"></td>';
+  days.forEach((day, idx) => {
+    const ds = `${day.y}-${pad2(day.m)}-${pad2(day.d)}`;
+    const dow = (firstDay + idx) % 7;
+    const isHol = !!holidays[ds];
+    const reg = opinReg.has(ds), conf = opinConf.has(ds);
+    const pAdd = opinAdd.has(ds), pRem = opinRemove.has(ds);
+    const isNext = day.m !== m;
+    let cls = 'day-cell';
+    if (dow === 0 || isHol) cls += ' sunday-col';
+    else if (dow === 6) cls += ' saturday-col';
+    if (ds === todayStr) cls += ' today-cell';
+    if (reg && !pRem) cls += conf ? ' confirmed' : ' registered';
+    if (pRem) cls += ' pending-remove';
+    if (pAdd) cls += ' pending-add';
+    if (isNext) cls += ' next-month-day';
+    const check = (reg && !pRem && conf) ? '<span class="confirm-check">✓</span>' : '';
+    const holBadge = isHol ? '<span class="hol-badge">休日</span>' : '';
+    const label = isNext ? `${day.m}/${day.d}` : `${day.d}日`;
+    html += `<td><div class="${cls}" onclick="opinToggle('${ds}')">${check}<span class="day-num">${label}</span>${holBadge}</div></td>`;
+    if ((firstDay + idx + 1) % 7 === 0 && idx < days.length - 1) html += '</tr><tr>';
+  });
+  html += '</tr>';
+  document.getElementById('opin-body').innerHTML = html;
+  const total = opinReg.size;
+  let c = 0; opinReg.forEach(d => { if (opinConf.has(d)) c++; });
+  const bn = document.getElementById('opin-banner');
+  if (!total) { bn.className = ''; bn.textContent = ''; }
+  else if (c >= total) { bn.className = 'confirm-banner ok'; bn.textContent = `✓ 確認済み（${total}件すべて）`; }
+  else { bn.className = 'confirm-banner pending'; bn.textContent = `確認待ちがあります（確認済み ${c}／${total}件）`; }
+  const n = opinAdd.size + opinRemove.size;
+  const btn = document.getElementById('opin-save');
+  btn.disabled = n === 0 || opinSaving;
+  btn.textContent = n ? `登録する（${opinAdd.size ? opinAdd.size + '日追加' : ''}${opinAdd.size && opinRemove.size ? '・' : ''}${opinRemove.size ? opinRemove.size + '日取消' : ''}）` : '登録する';
+}
+function opinToggle(ds) {
+  if (opinSaving) return;
+  if (opinReg.has(ds)) { if (opinRemove.has(ds)) opinRemove.delete(ds); else opinRemove.add(ds); }
+  else { if (opinAdd.has(ds)) opinAdd.delete(ds); else opinAdd.add(ds); }
+  opinRender();
+}
+function opinReset() {
+  opinAdd.clear(); opinRemove.clear();
+  showMsg('opinput-msg', '', '');
+  opinRender();
+}
+async function opinSave() {
+  if (opinSaving || !opinMember) return;
+  const add = [...opinAdd].sort(), rem = [...opinRemove].sort();
+  if (!add.length && !rem.length) return;
+  const lines = [];
+  if (add.length) lines.push(`支障日にする：${add.length}日`);
+  if (rem.length) lines.push(`取り消す：${rem.length}日`);
+  if (!confirm(`${opinMember.name} さんの支障日を次のとおり登録します。よろしいですか？\n\n${lines.join('\n')}`)) return;
+  opinSaving = true;
+  const btn = document.getElementById('opin-save');
+  btn.disabled = true; btn.textContent = '登録しています...';
+  try {
+    const r = await opCall(() => sbClient.rpc('operator_set_member_unavail', { p_member_id: opinMember.id, p_add: add, p_remove: rem }));
+    if (r.error) throw r.error;
+    opinAdd.clear(); opinRemove.clear();
+    opinSaving = false;
+    await opxShow('opinput');
+    const parts = [];
+    if (add.length) parts.push(`${add.length}日登録`);
+    if (rem.length) parts.push(`${rem.length}日取消`);
+    showMsg('opinput-msg', parts.join('・') + 'しました ✓（未確認です。確認するときは「閉じる」で戻って「確認」を押してください）', 'success');
+  } catch (e) {
+    opinSaving = false;
+    opinRender();
+    showMsg('opinput-msg', '登録できませんでした。電波のある場所で、もう一度押してください。（' + opEsc(e.message || e) + '）', 'error');
+  }
+}
+
 let opConfirmBusy = false;
 async function opSetConfirmed(memberId, toConfirmed) {
   if (opConfirmBusy || !isOperator()) return;
@@ -2774,7 +2960,7 @@ function opRenderDayDetail(byDate) {
 //   checkin_operator_select_nye_past_records（2026年11月9日に追加）で読む。
 // ・admin.html の「辞退予定年月日（目安のメモ）」は、担当者には出さない（管理者だけの設定のため）。
 // =============================================
-function opxTabList() { return ['opcal', 'opcount', 'opstart', 'opnye', 'opfest', 'opsel']; }
+function opxTabList() { return ['opcal', 'opcount', 'opstart', 'opnye', 'opfest', 'opsel', 'opinput']; }
 const OPX_FESTIVALS = [
   { key: 'gantansai', name: '元旦祭', date: '1月1日', mmdd: '01-01' },
   { key: 'shunkitaisai', name: '春季大祭', date: '1月26日', mmdd: '01-26' },
@@ -2850,8 +3036,9 @@ async function opxShow(tab) {
   if (tab === 'opnye') opxNyeLabel();
   showMsg(msgId, '読み込み中...', 'info');
   try {
-    const base = await opxLoadBase();
+    const base = tab === 'opinput' ? null : await opxLoadBase();
     let extra = null;
+    if (tab === 'opinput') extra = await opinLoad();
     if (tab === 'opcount') extra = await opxLoadCount();
     if (tab === 'opcal') extra = await opxLoadCal();
     if (tab === 'opsel') extra = await opxLoadSel();
@@ -2863,6 +3050,7 @@ async function opxShow(tab) {
     if (tab === 'opcount') opxRenderCount(base, extra);
     if (tab === 'opcal') opxRenderCal(base, extra);
     if (tab === 'opsel') opxRenderSel(extra);
+    if (tab === 'opinput') opinRender();
     if (tab === 'opstart') opxRenderStart(base, extra);
     if (tab === 'opnye') opxRenderNye(base, extra);
     if (tab === 'opfest') opxRenderFest(base, extra);
