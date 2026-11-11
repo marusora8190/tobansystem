@@ -305,10 +305,22 @@
   .op-menu { background: #fff; border-radius: var(--radius-lg); padding: 16px; width: calc(100% - 40px); max-width: 320px; box-shadow: 0 8px 30px rgba(0,0,0,0.25); flex-shrink: 0; }
   .op-menu .op-menu-title { font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 10px; }
   .op-menu .btn { width: 100%; margin-bottom: 8px; font-size: 15px; padding: 14px 16px; }
+  /* 選択の画面は、ボタンの行を低くして、1列のまま画面に収まるようにする（2026年11月11日〜） */
+  #op-menu-bg { padding: 12px 0 12px; }
+  #op-menu-bg .op-menu { padding: 10px 12px; }
+  #op-menu-bg .op-menu .op-menu-title { margin-bottom: 6px; font-size: 12px; }
+  #op-menu-bg .op-menu .btn { padding: 8px 10px; margin-bottom: 5px; font-size: 14px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .op-month-btns { display: flex; justify-content: center; gap: 6px; margin-top: 4px; }
   /* 担当者用の画面の「閉じる」（右上の小さいボタンと、いちばん下の幅いっぱいのボタン。2026年11月11日〜） */
   .op-close-top { display: flex; justify-content: flex-end; margin: 0 0 6px; }
   .op-close-top .btn { width: auto; padding: 6px 16px; font-size: 13px; margin: 0; }
+  /* 担当者用の「現場確認の担当者の選任」（2026年11月11日〜） */
+  .opsel-list { display: flex; flex-direction: column; gap: 4px; }
+  .opsel-row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; font-size: 16px; cursor: pointer; }
+  .opsel-row input { width: 22px; height: 22px; flex-shrink: 0; }
+  .opsel-row.on { background: var(--accent-light); border-color: #c8d8b4; }
+  .opsel-row .no { margin-left: auto; font-size: 12px; color: var(--text-muted); }
+  .opsel-row.self { opacity: .8; cursor: default; }
   /* 担当者用の「カレンダー表示」（2026年11月11日〜） */
   .opcal-decide { display: block; width: 100%; font-size: 15px; font-weight: 700; padding: 12px; margin: 6px 0 8px; }
   #opcal-body .day-cell.roster-cell { cursor: default; }
@@ -675,6 +687,20 @@
       <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
     </div>
 
+    <!-- 現場確認の担当者専用：現場確認の担当者の選任（admin.html の出欠管理の「現場確認の担当者」のチェックと同じ。2026年11月11日〜） -->
+    <div id="tab-panel-opsel" class="hidden">
+      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpView()">閉じる</button></div>
+      <div class="card">
+        <div class="card-title" style="text-align:center">現場確認の担当者の選任</div>
+        <div class="op-month-btns" style="margin-bottom:8px"><button onclick="opxRefresh()">更新</button></div>
+        <div id="opsel-msg" style="font-size:13px;text-align:center"></div>
+        <div id="opsel-list" class="opsel-list"></div>
+        <button id="opsel-save" class="btn btn-primary" style="width:100%;margin-top:10px" onclick="opxSelSave()">保存する</button>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.6">チェックを付けた人が「現場確認の担当者」になり、題名「支障日申請」を押すとこの選択が出るようになります（出欠確認・当番表の決定・当番の人の変更・ログインナンバーの一覧なども使えます）。ご自身のチェックは外せません（外すときは管理画面で）。変えた人の画面には、次にログインしたときから反映されます。</p>
+      </div>
+      <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
+    </div>
+
     <!-- 現場確認の担当者専用：割当確認（admin.html の「月割当て確認用」と同じ内容を見るだけ。2026年11月9日〜） -->
     <div id="tab-panel-opcount" class="hidden">
       <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpView()">閉じる</button></div>
@@ -764,15 +790,16 @@
   <div id="op-menu-bg" class="op-menu-bg hidden" onclick="if(event.target===this)closeOpMenu()">
     <div class="op-menu">
       <div class="op-menu-title">現場確認の担当者用</div>
+      <button class="btn btn-primary" onclick="openOpView('opcal')">カレンダー表示（当番表の決定）</button>
       <button class="btn btn-primary" onclick="openOpView('opstatus')">支障日登録（登録状況・確認）</button>
       <button class="btn btn-primary" onclick="openOpView('opdays')">登録済み支障日一覧</button>
       <button class="btn btn-primary" onclick="openOpView('opannual')">各メンバーの年間設定</button>
       <button class="btn btn-primary" onclick="openOpAttendance()">出欠確認</button>
-      <button class="btn btn-primary" onclick="openOpView('opcal')">カレンダー表示（当番表の決定）</button>
       <button class="btn btn-primary" onclick="openOpView('opcount')">割当確認</button>
       <button class="btn btn-primary" onclick="openOpView('opstart')">当番開始・辞退予定年月</button>
       <button class="btn btn-primary" onclick="openOpView('opnye')">年末年始当番記録</button>
       <button class="btn btn-primary" onclick="openOpView('opfest')">祭典日当番者記録</button>
+      <button class="btn btn-primary" onclick="openOpView('opsel')">現場確認の担当者の選任</button>
       <button class="btn btn-primary" onclick="openOpOther()">その他</button>
       <button class="btn" style="margin-bottom:0" onclick="closeOpMenu()">閉じる</button>
     </div>
@@ -1143,7 +1170,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-11-6';
+const APP_FILE_VERSION = '2026-11-11-7';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -2747,7 +2774,7 @@ function opRenderDayDetail(byDate) {
 //   checkin_operator_select_nye_past_records（2026年11月9日に追加）で読む。
 // ・admin.html の「辞退予定年月日（目安のメモ）」は、担当者には出さない（管理者だけの設定のため）。
 // =============================================
-function opxTabList() { return ['opcal', 'opcount', 'opstart', 'opnye', 'opfest']; }
+function opxTabList() { return ['opcal', 'opcount', 'opstart', 'opnye', 'opfest', 'opsel']; }
 const OPX_FESTIVALS = [
   { key: 'gantansai', name: '元旦祭', date: '1月1日', mmdd: '01-01' },
   { key: 'shunkitaisai', name: '春季大祭', date: '1月26日', mmdd: '01-26' },
@@ -2827,6 +2854,7 @@ async function opxShow(tab) {
     let extra = null;
     if (tab === 'opcount') extra = await opxLoadCount();
     if (tab === 'opcal') extra = await opxLoadCal();
+    if (tab === 'opsel') extra = await opxLoadSel();
     if (tab === 'opnye') extra = await opxLoadNye();
     if (tab === 'opfest') extra = await opxLoadFest();
     if (tab === 'opstart') extra = await opxLoadRetire();
@@ -2834,6 +2862,7 @@ async function opxShow(tab) {
     showMsg(msgId, '', '');
     if (tab === 'opcount') opxRenderCount(base, extra);
     if (tab === 'opcal') opxRenderCal(base, extra);
+    if (tab === 'opsel') opxRenderSel(extra);
     if (tab === 'opstart') opxRenderStart(base, extra);
     if (tab === 'opnye') opxRenderNye(base, extra);
     if (tab === 'opfest') opxRenderFest(base, extra);
@@ -3053,6 +3082,55 @@ async function opxCalDecide() {
     await opxShow('opcal');
   } finally {
     opxCalBusy = false;
+  }
+}
+
+// ---- 現場確認の担当者の選任（2026年11月11日〜） ----
+// 在籍中の詰員を ID の順に出し、「現場確認の担当者」（is_checkin_operator）の印を付け外しする。
+// 保存はデータベースの仕組み operator_set_checkin_operator（担当者だけ使える。自分の印は外せない）
+let opxSelRows = [];
+async function opxLoadSel() {
+  const r = await opCall(() => sbClient.from('members').select('id,name,member_no,staff_id,is_checkin_operator').eq('is_active', true));
+  if (r.error) throw r.error;
+  return (r.data || []).slice().sort((a, b) => (parseInt(a.staff_id) || 9999) - (parseInt(b.staff_id) || 9999));
+}
+function opxRenderSel(rows) {
+  opxSelRows = rows;
+  const me = currentMember ? currentMember.id : null;
+  document.getElementById('opsel-list').innerHTML = rows.map(m => {
+    const self = m.id === me;
+    const no = (m.member_no !== null && m.member_no !== undefined && m.member_no !== '') ? String(m.member_no).padStart(4, '0') : '—';
+    return `<label class="opsel-row${m.is_checkin_operator ? ' on' : ''}${self ? ' self' : ''}">` +
+      `<input type="checkbox" data-mid="${m.id}"${m.is_checkin_operator ? ' checked' : ''}${self ? ' disabled' : ''} onchange="this.parentElement.classList.toggle('on', this.checked)">` +
+      `<span>${opEsc(m.name)}${self ? '<small style="color:var(--text-muted)">（ご自身）</small>' : ''}</span><span class="no">${no}</span></label>`;
+  }).join('') || '<div style="text-align:center;color:var(--text-hint)">名簿に人がいません</div>';
+  const btn = document.getElementById('opsel-save');
+  btn.disabled = false; btn.textContent = '保存する';
+}
+async function opxSelSave() {
+  const changed = [];
+  document.querySelectorAll('#opsel-list input[data-mid]').forEach(b => {
+    const id = parseInt(b.getAttribute('data-mid'), 10);
+    const m = opxSelRows.find(x => x.id === id);
+    if (m && !b.disabled && !!m.is_checkin_operator !== b.checked) changed.push({ id, on: b.checked, name: m.name });
+  });
+  if (!changed.length) { showMsg('opsel-msg', '変更はありません。', 'success'); return; }
+  const lines = changed.map(c => `${c.name}：${c.on ? '担当者にする' : '担当者から外す'}`).join('\n');
+  if (!confirm(`次のとおり変えます。よろしいですか？\n\n${lines}`)) return;
+  const btn = document.getElementById('opsel-save');
+  btn.disabled = true; btn.textContent = '保存しています...';
+  let done = 0;
+  try {
+    for (const c of changed) {
+      const r = await opCall(() => sbClient.rpc('operator_set_checkin_operator', { p_member_id: c.id, p_on: c.on }));
+      if (r.error) throw r.error;
+      done++;
+    }
+    await opxShow('opsel');
+    showMsg('opsel-msg', '保存しました。', 'success');
+  } catch (e) {
+    await opxShow('opsel');
+    showMsg('opsel-msg', `保存できませんでした（${done}人分は保存済み）。電波のある場所で、もう一度押してください。（${opEsc(e.message || e)}）`, 'error');
   }
 }
 
