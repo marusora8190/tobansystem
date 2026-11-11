@@ -306,6 +306,10 @@
   .op-menu .op-menu-title { font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 10px; }
   .op-menu .btn { width: 100%; margin-bottom: 8px; font-size: 15px; padding: 14px 16px; }
   .op-month-btns { display: flex; justify-content: center; gap: 6px; margin-top: 4px; }
+  /* 担当者用の画面の「閉じる」（右上の小さいボタンと、いちばん下の幅いっぱいのボタン。2026年11月11日〜） */
+  .op-close-top { display: flex; justify-content: flex-end; margin: 0 0 6px; }
+  .op-close-top .btn { width: auto; padding: 6px 16px; font-size: 13px; margin: 0; }
+  .op-close-bottom { display: block; width: 100%; margin: 4px 0 12px; }
   .op-month-btns button { width: auto; height: auto; border-radius: 12px; padding: 2px 12px; font-size: 11px; color: var(--accent-dark); border: 1px solid var(--border-strong); background: #fff; cursor: pointer; font-family: inherit; }
   .op-sum-head { font-size: 12px; color: var(--text-muted); text-align: center; margin-bottom: 8px; }
   .op-sum-list { display: flex; flex-direction: column; gap: 5px; }
@@ -568,6 +572,7 @@
     <!-- 現場確認の担当者専用：支障日登録（登録状況・確認）。admin.html の「支障日登録」の
          「📊 登録状況・確認」と同じ確認・取り消しができる（支障日の登録・削除はできない） -->
     <div id="tab-panel-opstatus" class="hidden">
+      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpView()">閉じる</button></div>
       <div class="card">
         <div class="card-title" style="text-align:center">支障日登録（登録状況・確認）</div>
         <div class="month-nav">
@@ -584,11 +589,13 @@
         <div id="opstatus-list" class="op-sum-list"></div>
         <div id="opstatus-msg" style="margin-top:8px;font-size:13px"></div>
       </div>
+      <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
     </div>
 
     <!-- 現場確認の担当者専用：各メンバーの年間設定（admin.html の「各メンバー年間設定」と同じ内容を、
          スマホでは月ごとに全員を縦に並べて直す。保存は変えた人の分だけ。2026年11月4日〜） -->
     <div id="tab-panel-opannual" class="hidden">
+      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpView()">閉じる</button></div>
       <div class="card">
         <div class="card-title" style="text-align:center">各メンバーの年間設定</div>
         <div class="month-nav">
@@ -609,10 +616,12 @@
           <button class="btn btn-primary" id="opa-save-btn" onclick="opaSave()" disabled>保存する</button>
         </div>
       </div>
+      <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
     </div>
 
     <!-- 現場確認の担当者専用：登録済み支障日一覧（日付を選ぶと、支障日の人・支障日でない人を出す。見るだけ） -->
     <div id="tab-panel-opdays" class="hidden">
+      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpView()">閉じる</button></div>
       <div class="card">
         <div class="card-title" style="text-align:center">登録済み支障日一覧</div>
         <div class="month-nav">
@@ -632,10 +641,12 @@
         <p style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5">日付の下の赤い数字は、その日を支障日にしている人数です。日付を押すと、下に名前が出ます。</p>
         <div id="opdays-detail" style="margin-top:6px"></div>
       </div>
+      <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
     </div>
 
     <!-- 現場確認の担当者専用：割当確認（admin.html の「月割当て確認用」と同じ内容を見るだけ。2026年11月9日〜） -->
     <div id="tab-panel-opcount" class="hidden">
+      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpView()">閉じる</button></div>
       <div class="card">
         <div class="card-title" style="text-align:center">割当確認</div>
         <div class="month-nav">
@@ -655,10 +666,12 @@
         <p style="font-size:11px;color:var(--text-muted);margin:-4px 0 6px;line-height:1.5;text-align:center">システム運用前の記録 ＋ これまでに「決定」した全期間の合計</p>
         <div id="opcount-total" class="opx-grid2"></div>
       </div>
+      <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
     </div>
 
     <!-- 現場確認の担当者専用：当番開始年月（admin.html の「当番開始年月」の表を見るだけ。2026年11月9日〜） -->
     <div id="tab-panel-opstart" class="hidden">
+      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpView()">閉じる</button></div>
       <div class="card">
         <div class="card-title" style="text-align:center">当番開始・辞退予定年月</div>
         <div class="op-month-btns" style="margin-bottom:8px"><button onclick="opxRefresh()">更新</button></div>
@@ -670,10 +683,12 @@
         </table>
         <p style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.6">当番表に残っている記録の中で、いちばん古い当番の月です。色の付いた行は、名簿でいちばん古い人です。辞退年月は、当番表作成者が管理画面の「当番開始年月」に入れた辞退予定年月日（目安のメモ）の年と月です（入っていない人は「—」）。見るだけの画面です。</p>
       </div>
+      <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
     </div>
 
     <!-- 現場確認の担当者専用：年末年始当番記録（admin.html の「年末年始当番記録」を見るだけ。2026年11月9日〜） -->
     <div id="tab-panel-opnye" class="hidden">
+      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpView()">閉じる</button></div>
       <div class="card">
         <div class="card-title" style="text-align:center">年末年始当番記録</div>
         <div class="month-nav">
@@ -694,10 +709,12 @@
         <p style="font-size:11px;color:var(--text-muted);margin:-4px 0 6px;line-height:1.5;text-align:center">年末年始（12/28〜1/4）の当番に、これまで何回当たったか（多い順）</p>
         <div id="opnye-total"></div>
       </div>
+      <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
     </div>
 
     <!-- 現場確認の担当者専用：祭典日当番者記録（admin.html の「祭典日当番者記録」を見るだけ。2026年11月9日〜） -->
     <div id="tab-panel-opfest" class="hidden">
+      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpView()">閉じる</button></div>
       <div class="card">
         <div class="card-title" style="text-align:center">祭典日当番者記録</div>
         <div class="op-month-btns" style="margin-bottom:8px"><button onclick="opxRefresh()">更新</button></div>
@@ -705,6 +722,7 @@
         <div id="opfest-list"></div>
         <p style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.6">祭典の日の当番者を、当番表から数えた回数（手入力の補正も足した合計）です。名簿から外れた人は出ません。見るだけの画面です。</p>
       </div>
+      <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
     </div>
 
   </div>
@@ -1080,7 +1098,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-11-3';
+const APP_FILE_VERSION = '2026-11-11-4';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -1497,6 +1515,7 @@ function switchTab(tab) {
   document.getElementById('tab-panel-opannual').classList.toggle('hidden', tab !== 'opannual');
   // 担当者用の見るだけの4つの画面（2026年11月9日〜）
   opxTabList().forEach(k => document.getElementById('tab-panel-' + k).classList.toggle('hidden', tab !== k));
+  if (tab === 'input' || tab === 'roster' || tab === 'chotome') opLastNormalTab = tab;
   opActiveTab = (tab === 'opstatus' || tab === 'opdays' || tab === 'opannual' || opxTabList().includes(tab)) ? tab : null;
   if (tab === 'roster') {
     // データの再取得は初回のみ。ただし文字サイズの再調整は毎回行う（画面回転などに対応するため）
@@ -2449,6 +2468,13 @@ function opDefaultMonth() {
   let y = d.getFullYear(), m = d.getMonth() + 2; // 翌月
   if (m > 12) { m = 1; y++; }
   opYear = y; opMonth = m;
+}
+// 担当者用の画面の「閉じる」：その画面を開く前に見ていた画面（支障日入力・当番表・お勤め時間）に戻る（2026年11月11日〜）
+var opLastNormalTab = 'input'; // var にして、読み込みの途中で switchTab が呼ばれても止まらないようにする
+function closeOpView() {
+  switchTab(opLastNormalTab || 'input');
+  if (opActiveTab) return; // 年間設定の変更を残すことを選んだとき
+  window.scrollTo(0, 0);
 }
 function openOpView(tab) {
   closeOpMenu();
