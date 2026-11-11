@@ -1170,7 +1170,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-11-7';
+const APP_FILE_VERSION = '2026-11-11-8';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -3026,6 +3026,10 @@ async function opxCalEditSave() {
   btn.disabled = true; btn.textContent = '確かめています...';
   try {
     const d = new Date(ds + 'T00:00:00');
+    // 管理画面でロックしている日は、変えてよいか確かめる（印は出さない。変えてもロックはそのまま。2026年11月11日〜）
+    const lk = await opCall(() => sbClient.from('annual_roster').select('locked').eq('duty_date', ds));
+    if (lk.error) throw lk.error;
+    if ((lk.data || []).some(x => x.locked) && !confirm('この日は管理画面でロックされています。それでも変えますか？')) { btn.disabled = false; btn.textContent = '保存する'; return; }
     // 管理画面と同じ確かめ：支障日・日祝当番の月でない休日
     const u = await opCall(() => sbClient.from('unavailable_dates').select('id').eq('member_id', mid).eq('blocked_date', ds));
     if (u.error) throw u.error;
