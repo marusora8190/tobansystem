@@ -312,6 +312,8 @@
   /* 担当者用の「カレンダー表示」（2026年11月11日〜） */
   .opcal-decide { display: block; width: 100%; font-size: 15px; font-weight: 700; padding: 12px; margin: 6px 0 8px; }
   #opcal-body .day-cell.roster-cell { cursor: default; }
+  #opcal-body .day-cell.roster-cell.opcal-can { cursor: pointer; }
+  #opcal-body .day-cell.roster-cell.opcal-past { opacity: .75; }
   .op-close-bottom { display: block; width: 100%; margin: 4px 0 12px; }
   .op-month-btns button { width: auto; height: auto; border-radius: 12px; padding: 2px 12px; font-size: 11px; color: var(--accent-dark); border: 1px solid var(--border-strong); background: #fff; cursor: pointer; font-family: inherit; }
   .op-sum-head { font-size: 12px; color: var(--text-muted); text-align: center; margin-bottom: 8px; }
@@ -668,7 +670,7 @@
           <thead><tr id="opcal-dow-row"></tr></thead>
           <tbody id="opcal-body"></tbody>
         </table>
-        <p style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.6">まだ決定していない月も、今の当番表の名前を出しています（詰員の「当番表」では、決定するまで名前は出ません）。当番の人を直すときや、決定を取り消すときは、管理画面で行ってください。</p>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.6">まだ決定していない月も、今の当番表の名前を出しています（詰員の「当番表」では、決定するまで名前は出ません）。今日から先の日は、マスを押すと当番の人を選び直せます（決定済みの月も直せます。決定したときの当番回数の記録は変わりません）。終わった日を直すときや、決定を取り消すときは、管理画面で行ってください。</p>
       </div>
       <button class="btn op-close-bottom" onclick="closeOpView()">閉じる</button>
     </div>
@@ -773,6 +775,19 @@
       <button class="btn btn-primary" onclick="openOpView('opfest')">祭典日当番者記録</button>
       <button class="btn btn-primary" onclick="openOpOther()">その他</button>
       <button class="btn" style="margin-bottom:0" onclick="closeOpMenu()">閉じる</button>
+    </div>
+  </div>
+
+  <!-- 現場確認の担当者専用：「カレンダー表示」で日のマスを押して出す、当番の人を選び直す画面（今日から先の日だけ。2026年11月11日〜） -->
+  <div id="opcal-edit-bg" class="op-menu-bg hidden" onclick="if(event.target===this)opxCalEditClose()">
+    <div class="op-menu">
+      <div class="op-menu-title">当番の人を変える</div>
+      <div id="opcal-edit-date" style="font-size:18px;font-weight:700;text-align:center;margin-bottom:4px"></div>
+      <div id="opcal-edit-now" style="font-size:13px;text-align:center;color:var(--text-muted);margin-bottom:10px"></div>
+      <select id="opcal-edit-sel" style="width:100%;font-size:17px;padding:10px;margin-bottom:10px;border:1px solid var(--border-strong);border-radius:var(--radius);background:#fff"></select>
+      <div id="opcal-edit-msg" style="font-size:13px;margin-bottom:8px"></div>
+      <button id="opcal-edit-save" class="btn btn-primary" onclick="opxCalEditSave()">保存する</button>
+      <button class="btn" style="margin-bottom:0" onclick="opxCalEditClose()">やめる</button>
     </div>
   </div>
 
@@ -1128,7 +1143,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-11-5';
+const APP_FILE_VERSION = '2026-11-11-6';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -2436,7 +2451,7 @@ function onAppTitleTap() {
 }
 // 選択の画面・「その他」を出しているあいだは、後ろの画面が動かないようにする（2026年11月10日〜）
 function opMenuLockUpdate() {
-  const open = ['op-menu-bg', 'op-other-bg'].some(id => { const e = document.getElementById(id); return e && !e.classList.contains('hidden'); });
+  const open = ['op-menu-bg', 'op-other-bg', 'opcal-edit-bg'].some(id => { const e = document.getElementById(id); return e && !e.classList.contains('hidden'); });
   document.body.classList.toggle('op-menu-open', open);
 }
 // 選択の「出欠確認」：行事の出欠確認を開く（2026年11月4日〜。電波の無い場所でも開ける。
@@ -2920,15 +2935,90 @@ function opxRenderCal(base, ex) {
     else if (dow === 6) cls += ' saturday-col';
     if (ds === todayStr) cls += ' today-cell';
     if (isNext) cls += ' next-month-day';
+    const can = ds >= todayStr;
+    cls += can ? ' opcal-can' : ' opcal-past';
     const holBadge = isHol ? '<span class="hol-badge" style="margin-top:0">休日</span>' : '';
     const dayLabel = isNext ? `${day.m}/${day.d}` : `${day.d}日`;
     const nameHtml = nm ? `<span class="duty-name${nm.length >= 5 ? ' name-long' : ''}">${opEsc(nm)}</span>` : '';
-    body += `<td><div class="${cls}"><div style="display:flex;align-items:center;justify-content:center;gap:2px;line-height:1"><span class="day-num">${dayLabel}</span>${holBadge}</div>${nameHtml}</div></td>`;
+    body += `<td><div class="${cls}"${can ? ` onclick="opxCalEditOpen('${ds}')"` : ''}><div style="display:flex;align-items:center;justify-content:center;gap:2px;line-height:1"><span class="day-num">${dayLabel}</span>${holBadge}</div>${nameHtml}</div></td>`;
     if ((firstDay + idx + 1) % 7 === 0 && idx < dayList.length - 1) body += '</tr><tr>';
   });
   body += '</tr>';
   document.getElementById('opcal-body').innerHTML = body;
+  opxCalLastBase = base;
   opxCalFit();
+}
+// ---- カレンダー表示：当番の人を選び直す（今日から先の日だけ。2026年11月11日〜） ----
+// 当番の人（member_id）だけを変える。データベースの仕組み operator_set_duty_member で保存する
+// （手入力の氏名・備考・ロックは今のまま。決定済みの月も直せる。確定記録は変えない）。
+// 管理画面（saveDaySchedule）と同じく、支障日・日祝当番の月でない休日のときは確かめる
+let opxCalLastBase = null;
+let opxCalEditDate = null;
+function opxCalEditOpen(ds) {
+  const base = opxCalLastBase;
+  if (!base) return;
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+  if (ds < todayStr) return;
+  opxCalEditDate = ds;
+  const d = new Date(ds + 'T00:00:00');
+  const hol = holidays[ds];
+  document.getElementById('opcal-edit-date').innerHTML = `${d.getMonth() + 1}月${d.getDate()}日（${DOW_JP[d.getDay()]}）${hol ? `<span style="color:#c0392b;font-size:13px"> ${opEsc(hol === true ? '休日' : hol)}</span>` : ''}`;
+  const e = base.roster[ds];
+  let cur = '';
+  if (e) cur = e.member_id != null ? opxNm(base, e.member_id) : (e.manual_assignee || '');
+  document.getElementById('opcal-edit-now').textContent = '今の当番：' + (cur || '（まだ決まっていません）');
+  const curId = e && e.member_id != null ? e.member_id : null;
+  const sel = document.getElementById('opcal-edit-sel');
+  sel.innerHTML = '<option value="">-- 当番の人を選んでください --</option>' +
+    base.active.map(m => `<option value="${m.id}"${m.id === curId ? ' selected' : ''}>${opEsc(m.name)}</option>`).join('');
+  document.getElementById('opcal-edit-msg').textContent = '';
+  const btn = document.getElementById('opcal-edit-save');
+  btn.disabled = false; btn.textContent = '保存する';
+  document.getElementById('opcal-edit-bg').classList.remove('hidden');
+  opMenuLockUpdate();
+}
+function opxCalEditClose() {
+  document.getElementById('opcal-edit-bg').classList.add('hidden');
+  opxCalEditDate = null;
+  opMenuLockUpdate();
+}
+async function opxCalEditSave() {
+  const ds = opxCalEditDate;
+  if (!ds) return;
+  const sel = document.getElementById('opcal-edit-sel');
+  const mid = sel.value ? parseInt(sel.value, 10) : null;
+  const msg = document.getElementById('opcal-edit-msg');
+  if (!mid) { msg.style.color = 'var(--danger)'; msg.textContent = '当番の人を選んでください。'; return; }
+  const base = opxCalLastBase;
+  const e = base && base.roster[ds];
+  if (e && e.member_id === mid) { opxCalEditClose(); return; }
+  const btn = document.getElementById('opcal-edit-save');
+  btn.disabled = true; btn.textContent = '確かめています...';
+  try {
+    const d = new Date(ds + 'T00:00:00');
+    // 管理画面と同じ確かめ：支障日・日祝当番の月でない休日
+    const u = await opCall(() => sbClient.from('unavailable_dates').select('id').eq('member_id', mid).eq('blocked_date', ds));
+    if (u.error) throw u.error;
+    if ((u.data || []).length > 0 && !confirm('この日は支障日です。それでもよろしいですか？')) { btn.disabled = false; btn.textContent = '保存する'; return; }
+    if (d.getDay() === 0 || holidays[ds]) {
+      const pr = await opCall(() => sbClient.from('annual_plans').select('holiday_months').eq('member_id', mid).eq('year', d.getFullYear()));
+      if (pr.error) throw pr.error;
+      const hm = ((pr.data && pr.data[0] && pr.data[0].holiday_months) || []).map(Number);
+      if (!hm.includes(d.getMonth() + 1) && !confirm('この日は休日です。それでもよろしいですか？')) { btn.disabled = false; btn.textContent = '保存する'; return; }
+    }
+    btn.textContent = '保存しています...';
+    const r = await opCall(() => sbClient.rpc('operator_set_duty_member', { p_date: ds, p_member_id: mid }));
+    if (r.error) throw r.error;
+    opxCalEditClose();
+    await opxShow('opcal');
+    showMsg('opcal-msg', `${d.getMonth() + 1}月${d.getDate()}日の当番を ${opEsc(opxNm(base, mid))} さんにしました。`, 'success');
+  } catch (err) {
+    btn.disabled = false; btn.textContent = '保存する';
+    const m = String((err && err.message) || err);
+    msg.style.color = 'var(--danger)';
+    msg.textContent = /past date/.test(m) ? '終わった日は直せません。' : ('保存できませんでした。電波のある場所で、もう一度押してください。（' + m + '）');
+  }
 }
 // 名前・日付の文字の大きさを、マスの幅に合わせる（「当番表」の fitDutyNameSizes と同じ計算）
 function opxCalFit() {
