@@ -590,7 +590,7 @@
     <!-- 現場確認の担当者専用：支障日登録（登録状況・確認）。admin.html の「支障日登録」の
          「📊 登録状況・確認」と同じ確認・取り消しができる（支障日の登録・削除はできない） -->
     <div id="tab-panel-opstatus" class="hidden">
-      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpView()">閉じる</button></div>
+      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpViewToMenu()">閉じる</button></div>
       <div class="card">
         <div class="card-title" style="text-align:center">支障日登録（登録状況・確認）</div>
         <div class="month-nav">
@@ -648,7 +648,7 @@
     <!-- 現場確認の担当者専用：各メンバーの年間設定（admin.html の「各メンバー年間設定」と同じ内容を、
          スマホでは月ごとに全員を縦に並べて直す。保存は変えた人の分だけ。2026年11月4日〜） -->
     <div id="tab-panel-opannual" class="hidden">
-      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpView()">閉じる</button></div>
+      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpViewToMenu()">閉じる</button></div>
       <div class="card">
         <div class="card-title" style="text-align:center">各メンバーの年間設定</div>
         <div class="month-nav">
@@ -674,7 +674,7 @@
 
     <!-- 現場確認の担当者専用：登録済み支障日一覧（日付を選ぶと、支障日の人・支障日でない人を出す。見るだけ） -->
     <div id="tab-panel-opdays" class="hidden">
-      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpView()">閉じる</button></div>
+      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpViewToMenu()">閉じる</button></div>
       <div class="card">
         <div class="card-title" style="text-align:center">登録済み支障日一覧</div>
         <div class="month-nav">
@@ -700,7 +700,7 @@
     <!-- 現場確認の担当者専用：カレンダー表示（admin.html の「カレンダー表示」と同じ当番表を、決定前の月も名前付きで見る。
          「当番表(当初)決定」のボタンもある〔取り消しは管理画面だけ〕。2026年11月11日〜） -->
     <div id="tab-panel-opcal" class="hidden">
-      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpView()">閉じる</button></div>
+      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpViewToMenu()">閉じる</button></div>
       <div class="card">
         <div class="card-title" style="text-align:center">カレンダー表示</div>
         <div class="month-nav">
@@ -725,7 +725,7 @@
 
     <!-- 現場確認の担当者専用：現場確認の担当者の選任（admin.html の出欠管理の「現場確認の担当者」のチェックと同じ。2026年11月11日〜） -->
     <div id="tab-panel-opsel" class="hidden">
-      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpView()">閉じる</button></div>
+      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpViewToMenu()">閉じる</button></div>
       <div class="card">
         <div class="card-title" style="text-align:center">現場確認の担当者の選任</div>
         <div class="op-month-btns" style="margin-bottom:8px"><button onclick="opxRefresh()">更新</button></div>
@@ -739,7 +739,7 @@
 
     <!-- 現場確認の担当者専用：割当確認（admin.html の「月割当て確認用」と同じ内容を見るだけ。2026年11月9日〜） -->
     <div id="tab-panel-opcount" class="hidden">
-      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpView()">閉じる</button></div>
+      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpViewToMenu()">閉じる</button></div>
       <div class="card">
         <div class="card-title" style="text-align:center">割当確認</div>
         <div class="month-nav">
@@ -764,7 +764,7 @@
 
     <!-- 現場確認の担当者専用：当番開始年月（admin.html の「当番開始年月」の表を見るだけ。2026年11月9日〜） -->
     <div id="tab-panel-opstart" class="hidden">
-      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpView()">閉じる</button></div>
+      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpViewToMenu()">閉じる</button></div>
       <div class="card">
         <div class="card-title" style="text-align:center">当番開始・辞退予定年月</div>
         <div class="op-month-btns" style="margin-bottom:8px"><button onclick="opxRefresh()">更新</button></div>
@@ -781,7 +781,7 @@
 
     <!-- 現場確認の担当者専用：年末年始当番記録（admin.html の「年末年始当番記録」を見るだけ。2026年11月9日〜） -->
     <div id="tab-panel-opnye" class="hidden">
-      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpView()">閉じる</button></div>
+      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpViewToMenu()">閉じる</button></div>
       <div class="card">
         <div class="card-title" style="text-align:center">年末年始当番記録</div>
         <div class="month-nav">
@@ -807,7 +807,7 @@
 
     <!-- 現場確認の担当者専用：祭典日当番者記録（admin.html の「祭典日当番者記録」を見るだけ。2026年11月9日〜） -->
     <div id="tab-panel-opfest" class="hidden">
-      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpView()">閉じる</button></div>
+      <div class="op-close-top"><button class="btn btn-sm" onclick="closeOpViewToMenu()">閉じる</button></div>
       <div class="card">
         <div class="card-title" style="text-align:center">祭典日当番者記録</div>
         <div class="op-month-btns" style="margin-bottom:8px"><button onclick="opxRefresh()">更新</button></div>
@@ -1206,7 +1206,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-11-10';
+const APP_FILE_VERSION = '2026-11-12-1';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -2196,6 +2196,8 @@ async function openAttendanceModal(silent) {
 function closeAttendanceModal() {
   const bg = document.getElementById('attendance-modal-bg');
   if (bg) bg.classList.remove('open');
+  // 出欠確認は担当者用の選択から開くため、閉じたら選択の画面（現場確認の担当者用）をもう一度出す（2026年11月12日〜）
+  if (isOperator()) onAppTitleTap();
 }
 
 // =============================================
@@ -2589,7 +2591,8 @@ function closeOpView() {
   if (opActiveTab) return; // 年間設定の変更を残すことを選んだとき
   window.scrollTo(0, 0);
 }
-// 画面のいちばん下の「閉じる」：開く前の画面に戻ってから、選択の画面（現場確認の担当者用）をもう一度出す（2026年11月11日〜）
+// 担当者用の画面の「閉じる」（右上・いちばん下とも）：開く前の画面に戻ってから、選択の画面（現場確認の担当者用）をもう一度出す
+// （2026年11月11日〜。右上の「閉じる」も2026年11月12日からこちら）
 function closeOpViewToMenu() {
   closeOpView();
   if (opActiveTab) return; // 年間設定の変更を残すことを選んだとき
