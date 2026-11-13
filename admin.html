@@ -746,6 +746,22 @@
           </table>
         </div>
       </div>
+      <div class="card" id="keep-login-card">
+        <div class="card-title">名簿から削除したあともログインできる人</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">ここに出ている人は、名簿から削除（辞退）したあとも、今までと同じ番号で管理画面（0＋番号）と詰員用の画面に入れます。当番表作成には出てきません。</div>
+        <div class="table-wrap">
+          <table class="members-table">
+            <thead><tr><th>ID</th><th>ログインナンバー</th><th>氏名</th><th></th></tr></thead>
+            <tbody id="keep-login-body"><tr><td colspan="4" style="text-align:center;color:var(--text-hint)">読み込み中...</td></tr></tbody>
+          </table>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px">
+          <span style="font-size:12px;color:var(--text-muted)">削除済みの人にログインを残す：</span>
+          <select id="keep-login-add-select" style="min-width:200px"></select>
+          <button class="btn btn-sm" onclick="addKeepLoginFromSelect()">ログインを残す</button>
+        </div>
+        <div id="keep-login-msg" style="margin-top:4px"></div>
+      </div>
     </div>
     <div id="page-mc2" class="page">
       <div class="section-title" style="margin-bottom:2px;font-size:14px;">月ごとの当番回数（メンバー横並び表示）</div>
@@ -1594,6 +1610,8 @@
             <li>member.html（詰員用）は、詰員がそれぞれ自分の番号でログインします。</li>
             <li>当番表・確定記録などの書き換えや削除は、管理者のログインでしかできません。詰員は自分の支障日だけ登録・削除できます。</li>
             <li>ログインナンバーは、この画面にもマスターファイルにも書いていません。</li>
+            <li>2026年11月13日から、名簿とは関係なく admin.html に入れる「管理者専用ログインナンバー」が1つあります。番号そのものはデータベースにも置かず、元に戻せない形（暗号の形）だけを置いています。番号を変えたいときは、Claudeに頼みます。</li>
+            <li>詰員名簿で「削除」するときに「ログインを残す」を選んだ人は、辞退したあとも今までと同じ番号で admin.html・member.html に入れます（担当者の画面もそのまま使えます）。止めるときは、詰員名簿管理のいちばん下「名簿から削除したあともログインできる人」の「ログインを止める」を押します。</li>
             <li>①は②〜⑥とは別の、①専用のデータベースを使っています。</li>
             <li>2026年10月30日から、データベースに新しく作る表には、アプリから使う権限が自動では付かなくなりました（Supabaseの仕様変更）。新しい表を作るときは、権限（GRANT）・RLS・守り方の決まり（ポリシー）を一緒に付けるよう、Claudeに頼みます（くわしくは依頼メモの【6】）。付け忘れると、アプリで「permission denied」と出ます。10月29日までに作った表は今までどおりで、直す必要はありません。</li>
           </ul>
@@ -2968,7 +2986,11 @@ async function loadMembers() {
   allMembersLoaded = true;
   members = data || [];
   members.sort((a, b) => (parseInt(a.staff_id) || 9999) - (parseInt(b.staff_id) || 9999));
+  // 名簿から削除した人（ログインを残す人の欄で使う。2026年11月13日〜）
+  inactiveMembers = (allData || []).filter(m => !m.is_active);
+  inactiveMembers.sort((a, b) => (parseInt(a.staff_id) || 9999) - (parseInt(b.staff_id) || 9999) || (a.id - b.id));
   renderMembersTable();
+  renderKeepLoginSection();
   prefillNextMemberIds();
   refreshEventsPageMemberViews();
   return members;
@@ -2982,7 +3004,8 @@ function prefillNextMemberIds() {
   const noInput = document.getElementById('m-no');
   if (!staffIdInput || !noInput) return;
   if (staffIdInput.value.trim() || noInput.value.trim()) return; // 入力中のものは上書きしない
-  const maxStaffId = members.reduce((max, m) => {
+  // 名簿から削除してもログインを残している人の番号と重ならないよう、その人たちも数に入れる（2026年11月13日〜）
+  const maxStaffId = members.concat(inactiveMembers.filter(m => m.keep_login)).reduce((max, m) => {
     const v = parseInt(m.staff_id);
     return (!isNaN(v) && v > max) ? v : max;
   }, 0);
@@ -4868,9 +4891,59 @@ async function addMember() {
 
 async function deactivateMember(id) {
   if (!confirm('このメンバーを削除しますか？\n（辞退として扱い、以後の当番表作成から外れます）\n\n名簿から外すのは、その人の最後の当番が終わってからにしてください。')) return;
-  await sbClient.rpc('admin_update_member', { p_id: id, p_patch: { is_active: false } });
+  // 削除したあともログインを残すかを聞く（2026年11月13日〜）
+  const m = members.find(x => String(x.id) === String(id));
+  const nm = m && m.name ? m.name + ' さん' : 'この人';
+  const keep = confirm(`${nm}のログインを、削除したあとも残しますか？\n\n「OK」……ログインを残す（管理画面・詰員用の画面に、今までと同じ番号で入れます。担当者の画面もそのまま使えます）\n「キャンセル」……ログインも止める（今までどおり）\n\n※あとから詰員名簿管理のいちばん下で、止める・残すを変えられます。`);
+  const { error } = await sbClient.rpc('admin_update_member', { p_id: id, p_patch: { is_active: false, keep_login: keep } });
+  if (error) { alert('削除できませんでした：' + error.message); return; }
   await loadMembers();
   populateMemberSelects();
+}
+
+// =============================================
+// 名簿から削除したあともログインできる人（2026年11月13日〜）
+// members.keep_login が true の人は、is_active が false でも login-admin・login-member で入れる。
+// =============================================
+let inactiveMembers = [];
+function keepLoginEsc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function renderKeepLoginSection() {
+  const body = document.getElementById('keep-login-body');
+  const sel = document.getElementById('keep-login-add-select');
+  if (!body || !sel) return;
+  const kept = inactiveMembers.filter(m => m.keep_login);
+  const noText = m => (m.member_no !== null && m.member_no !== undefined && m.member_no !== '') ? String(m.member_no).padStart(4, '0') : '—';
+  body.innerHTML = kept.length
+    ? kept.map(m => `<tr>
+        <td style="text-align:center">${keepLoginEsc(m.staff_id ?? '—')}</td>
+        <td style="text-align:center">${keepLoginEsc(noText(m))}</td>
+        <td style="font-weight:600">${keepLoginEsc(m.name || '')}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="setKeepLogin('${m.id}', false)">ログインを止める</button></td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" style="text-align:center;color:var(--text-hint)">いません</td></tr>';
+  const cand = inactiveMembers.filter(m => !m.keep_login && m.member_no !== null && m.member_no !== undefined && m.member_no !== '');
+  sel.innerHTML = '<option value="">（削除済みの人を選ぶ）</option>' +
+    cand.map(m => `<option value="${keepLoginEsc(m.id)}">${keepLoginEsc(m.name || '')}（ID ${keepLoginEsc(m.staff_id ?? '—')}・${keepLoginEsc(noText(m))}）</option>`).join('');
+}
+async function setKeepLogin(id, on) {
+  const m = inactiveMembers.find(x => String(x.id) === String(id));
+  const nm = m && m.name ? m.name + ' さん' : 'この人';
+  const msg = on
+    ? `${nm}のログインを残しますか？\n（名簿から削除したまま、管理画面・詰員用の画面に今までと同じ番号で入れるようになります）`
+    : `${nm}のログインを止めますか？\n（止めると、管理画面・詰員用の画面に入れなくなります。記録は消えません）`;
+  if (!confirm(msg)) return;
+  const { error } = await sbClient.rpc('admin_update_member', { p_id: id, p_patch: { keep_login: on } });
+  if (error) { showMsg('keep-login-msg', error.message, 'error'); return; }
+  showMsg('keep-login-msg', on ? `${nm}のログインを残しました` : `${nm}のログインを止めました`, 'success');
+  await loadMembers();
+  populateMemberSelects();
+}
+function addKeepLoginFromSelect() {
+  const sel = document.getElementById('keep-login-add-select');
+  if (!sel || !sel.value) { showMsg('keep-login-msg', '削除済みの人を選んでください', 'error'); return; }
+  setKeepLogin(sel.value, true);
 }
 
 // =============================================
@@ -8210,6 +8283,10 @@ async function seedBasicHolidays() {
 // =============================================
 // ログイン（詰員番号ベースの管理者ログインナンバー）
 // =============================================
+// 次のどちらかで入れる（判定はどちらも login-admin〔サーバー側〕で行う）。
+//  ・管理者専用ログインナンバー（2026年11月13日〜）：名簿と関係のない番号。番号そのものはこのファイルにも
+//    データベースにも置かず、データベースには元に戻せない形（暗号の形）だけを置いている。
+//  ・名簿から削除したあともログインを残す印（keep_login）の付いた人は、削除後も「0＋詰員番号」で入れる（2026年11月13日〜）。
 // 現在在籍している詰員の「詰員番号」の先頭に「0」を付けた番号を、管理者ログインナンバーとして扱う。
 // 例：詰員番号1029番の方なら管理者ログインナンバーは「01029」。
 // 新しく詰員が加わった場合も、その方の詰員番号に「0」を付けた番号が自動的に管理者ログインナンバーになる
@@ -8226,6 +8303,7 @@ async function seedBasicHolidays() {
 // 使っており、ログイン画面はUI上の入り口チェックに過ぎなかった）。
 let loginChecking = false;
 let adminLoginNumberRaw = ''; // ログイン画面で入力された生の値（例："01050"）をそのまま保持しておく
+let adminLoginIsMaster = false; // 管理者専用ログインナンバー（名簿と関係のない番号）で入ったとき true（2026年11月13日〜）
 async function checkLoginPassword() {
   if (loginChecking) return;
   const input = document.getElementById('login-password');
@@ -8266,6 +8344,7 @@ async function checkLoginPassword() {
     });
 
     adminLoginNumberRaw = val;
+    adminLoginIsMaster = !!result.master;
     msgEl.textContent = '';
     unlockApp();
   } catch (e) {
@@ -8292,6 +8371,8 @@ function handleCalTitleRightClick(event) {
   if (event.target.closest('#cal-settings-toggle-btn, #cal-update-btn, #cal-update-msg')) return true; // ボタン等は通常の右クリックのままにする
   event.preventDefault();
   if (!adminLoginNumberRaw) return false;
+  // 管理者専用ログインナンバーで入ったときは、本人の詰員番号が無いため開かない
+  if (adminLoginIsMaster) return false;
   const memberNo = adminLoginNumberRaw.slice(1);
   window.open('member.html?k=' + encodeURIComponent(memberNo), '_blank');
   return false;
@@ -8304,7 +8385,7 @@ function handleCalTitleRightClick(event) {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-05-3';
+const APP_FILE_VERSION = '2026-11-13-1';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
