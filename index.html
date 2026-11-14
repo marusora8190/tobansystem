@@ -418,6 +418,10 @@
   #tab-panel-opstart .opx-tbl th { padding: 4px 3px; }
   #tab-panel-opstart .opx-tbl td.opx-n { white-space: nowrap; }
   #tab-panel-opstart .opx-tbl td.opx-r { font-size: 14px; }
+  .opx-sort { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .opx-sort > span { font-size: 12px; color: var(--text-muted); }
+  .opx-sort button { border-radius: 8px; padding: 5px 10px; font-size: 13px; color: var(--text); border: 1px solid var(--border-strong); background: #fff; cursor: pointer; font-family: inherit; }
+  .opx-sort button.on { background: var(--accent-light); font-weight: 700; }
   .opx-tbl td.opx-hol { color: var(--danger); font-weight: 700; }
   .opx-fest { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; margin-bottom: 6px; background: #fff; }
   .opx-fest-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
@@ -768,13 +772,14 @@
       <div class="card">
         <div class="card-title" style="text-align:center">当番開始・辞退予定年月</div>
         <div class="op-month-btns" style="margin-bottom:8px"><button onclick="opxRefresh()">更新</button></div>
+        <div class="opx-sort"><span>並び順：</span><button type="button" id="opstart-sort-roster" onclick="opxStartSort('roster')">名簿の順</button><button type="button" id="opstart-sort-retire" onclick="opxStartSort('retire')">辞退予定年月日の早い順</button></div>
         <div id="opstart-msg" style="font-size:13px;text-align:center"></div>
         <div id="opstart-oldest" style="font-size:13px;line-height:1.6;margin-bottom:8px"></div>
         <table class="opx-tbl">
           <thead><tr><th style="text-align:center">番号</th><th>氏名</th><th style="text-align:right">当番開始年月</th><th style="text-align:right;line-height:1.3">辞退年月<br>（目安のメモ）</th></tr></thead>
           <tbody id="opstart-body"></tbody>
         </table>
-        <p style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.6">当番表に残っている記録の中で、いちばん古い当番の月です。色の付いた行は、名簿でいちばん古い人です。辞退年月は、当番表作成者が管理画面の「当番開始年月」に入れた辞退予定年月日（目安のメモ）の年と月です（入っていない人は「—」）。見るだけの画面です。</p>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.6">当番表に残っている記録の中で、いちばん古い当番の月です。色の付いた行は、名簿でいちばん古い人です。「並び順」で、名簿の順か、辞退予定年月日の早い順（入っていない人は下に、名簿の順）に並べ替えられます。辞退年月は、当番表作成者が管理画面の「当番開始年月」に入れた辞退予定年月日（目安のメモ）の年と月です（入っていない人は「—」）。見るだけの画面です。</p>
       </div>
       <button class="btn op-close-bottom" onclick="closeOpViewToMenu()">閉じる</button>
     </div>
@@ -1206,7 +1211,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-12-1';
+const APP_FILE_VERSION = '2026-11-14-1';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -2997,7 +3002,7 @@ let opxCalYM = null;      // カレンダー表示の年月 { y, m }（開くた
 let opxNyeSeason = null;  // 年末年始当番記録の年度（12月側の年）
 let opxSeq = 0;
 
-function opxClear() { opxCache = {}; }
+function opxClear() { opxCache = {}; opxStartLast = null; }
 // 1000件ずつに分けて全部読む（並び順が毎回同じになるよう order を付ける）
 async function opxFetchAll(table, cols, build, orderCols) {
   const all = [];
@@ -3470,8 +3475,25 @@ function opxRetireCell(plan) {
   if (!m) return '<span style="color:var(--text-hint)">—</span>';
   return `${Number(m[1])}年${Number(m[2])}月`;
 }
+// 並び順（'roster'＝名簿の順、'retire'＝辞退予定年月日の早い順）。画面の中だけで覚え、保存しない。
+// 並べ替えは、いちばん最近読んだ内容で描き直すだけ（データベースは読み直さない）
+let opxStartSortMode = 'roster';
+let opxStartLast = null;
+function opxStartSort(mode) {
+  opxStartSortMode = (mode === 'retire') ? 'retire' : 'roster';
+  if (opxStartLast) opxRenderStart(opxStartLast.base, opxStartLast.plans);
+  else opxStartSortMark();
+}
+function opxStartSortMark() {
+  [['roster', 'opstart-sort-roster'], ['retire', 'opstart-sort-retire']].forEach(([mode, id]) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('on', opxStartSortMode === mode);
+  });
+}
 function opxRenderStart(base, plans) {
   plans = plans || {};
+  opxStartLast = { base, plans };
+  opxStartSortMark();
   const norm = s => String(s == null ? '' : s).replace(/[\s　]+/g, '');
   const nameToId = {};
   base.active.forEach(m => { const k = norm(m.name); if (k) nameToId[k] = m.id; });
@@ -3491,7 +3513,20 @@ function opxRenderStart(base, plans) {
     const names = base.active.filter(m => oldIds.has(m.id)).map(m => opEsc(m.name) + 'さん').join('・');
     oe.innerHTML = `名簿でいちばん古い人：<strong>${names}</strong>（${ymLabel(oldest)}から）`;
   } else oe.textContent = '名簿の人の当番の記録はまだありません。';
-  document.getElementById('opstart-body').innerHTML = base.active.map(m => {
+  // 辞退予定年月日の早い順（admin.html と同じ：日付の無い人は下に、名簿の順で並べる）
+  let rows = base.active.slice();
+  if (opxStartSortMode === 'retire') {
+    const okPlan = v => /^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : '';
+    rows = base.active.map((m, i) => ({ m, i, p: okPlan(plans[String(m.id)]) }))
+      .sort((a, b) => {
+        if (a.p && b.p) return a.p < b.p ? -1 : a.p > b.p ? 1 : a.i - b.i;
+        if (a.p) return -1;
+        if (b.p) return 1;
+        return a.i - b.i;
+      })
+      .map(x => x.m);
+  }
+  document.getElementById('opstart-body').innerHTML = rows.map(m => {
     const f = first[m.id];
     const sid = (m.staff_id !== null && m.staff_id !== undefined) ? m.staff_id : '';
     return `<tr${oldIds.has(m.id) ? ' class="opx-oldest"' : ''}><td class="opx-c">${opEsc(sid)}</td><td class="opx-n">${opEsc(m.name)}</td>` +
