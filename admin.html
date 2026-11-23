@@ -1301,7 +1301,7 @@
 
     <div id="page-events" class="page">
       <div class="section-title">出欠管理</div>
-      <div class="alert alert-info">詰員全員参加の行事（勤詰会・詰員慰労(中元)・詰員慰労(歳暮)など）の出欠を管理します。出欠状況の表には、詰員1名につき1行で「事前連絡」（メールなどで受けた事前の出欠回答を管理者が入力）と「当日出欠」（行事当日、実際にその場にいた詰員を管理者が記録）の2つの欄が並びます。どちらの欄も「出席」「欠席」ボタンで記録し、同じボタンをもう一度押すと未回答／未確認に戻ります。詰員慰労(中元)・詰員慰労(歳暮)は日付が決まっているため、その日に annual_roster 上で当番の詰員は、押さなくても最初から自動的に「当番」として表示されます（「当番」は1名だけのため、他の詰員を手動で「当番」にすることはできません）。同じ行事を次の機会にも使い回す場合は、「クリア」ボタンで前回分の出欠表を消去できます。</div>
+      <div class="alert alert-info">詰員全員参加の行事（勤詰会・詰員慰労(中元)・詰員慰労(歳暮)など）の出欠を管理します。出欠状況の表には、詰員1名につき1行で「事前連絡」（メールなどで受けた事前の出欠回答を管理者が入力）と「当日出欠」（行事当日、実際にその場にいた詰員を管理者が記録）の2つの欄が並びます。どちらの欄も「出席」「欠席」ボタンで記録し、同じボタンをもう一度押すと未回答／未確認に戻ります。詰員慰労(中元)・詰員慰労(歳暮)は日付が決まっているため、その日に annual_roster 上で当番の詰員は、押さなくても最初から自動的に「神殿当番」として表示され、その行事は欠席として数えます（「神殿当番」は1名だけのため、他の詰員を手動で「神殿当番」にすることはできません）。同じ行事を次の機会にも使い回す場合は、「クリア」ボタンで前回分の出欠表を消去できます。</div>
 
       <div class="card">
         <div class="card-title">現場確認の担当者</div>
@@ -1738,7 +1738,7 @@
               <tr><td>年末年始当番予定</td><td>年末年始期間（12/28〜1/4）の候補者選びと当番割り当てを行う</td></tr>
               <tr><td>年末年始当番記録</td><td>年度ごとの年末年始当番の記録と、メンバーごとの通算回数を確認する</td></tr>
               <tr><td>本部祭典日・本部お勤め時間</td><td>本部の年間祭典日と、印刷①に使う朝づとめ・夕づとめの時刻を設定する</td></tr>
-              <tr><td>出欠管理</td><td>各行事の出欠状況を確認する（annual_rosterで自動判定された当番の詰員は自動的に「当番」として集計される）。出欠状況の表は詰員1名につき1行で、「事前連絡」（詰員がメールなどで事前に連絡してきた場合、管理者が代わりに入力できる）と「当日出欠」（行事当日に実際にいた詰員を記録する）の2つの欄がある。どちらの欄も「出席」「欠席」ボタンで記録し、同じボタンをもう一度押すと未回答／未確認に戻る（「当番」は1名だけのため、annual_rosterで決まった詰員以外を手動で「当番」にすることはできない）。行事名の横の「クリア」ボタンで、その行事の出欠表をまとめて消去できる（勤詰会など毎回使い回す行事で、前回分をリセットしたいときに使う）。ページ上部で、詰員用アプリから現場確認ができる担当者と、担当者のスマホに表示する行事を選択できる</td></tr>
+              <tr><td>出欠管理</td><td>各行事の出欠状況を確認する（annual_rosterで自動判定された当番の詰員は自動的に「神殿当番」と表示され、欠席として集計される）。出欠状況の表は詰員1名につき1行で、「事前連絡」（詰員がメールなどで事前に連絡してきた場合、管理者が代わりに入力できる）と「当日出欠」（行事当日に実際にいた詰員を記録する）の2つの欄がある。どちらの欄も「出席」「欠席」ボタンで記録し、同じボタンをもう一度押すと未回答／未確認に戻る（「当番」は1名だけのため、annual_rosterで決まった詰員以外を手動で「当番」にすることはできない）。行事名の横の「クリア」ボタンで、その行事の出欠表をまとめて消去できる（勤詰会など毎回使い回す行事で、前回分をリセットしたいときに使う）。ページ上部で、詰員用アプリから現場確認ができる担当者と、担当者のスマホに表示する行事を選択できる</td></tr>
               <tr><td>祭典日当番者記録</td><td>本部祭典日ごとの当番回数を自動集計し、必要に応じて手入力で補正する</td></tr>
               <tr><td>システムの仕組み</td><td>GitHub・Supabase・admin.html・member.htmlのつながりを図で確認する（確認専用）</td></tr>
               <tr><td>設　定</td><td>このアプリのURL・修正を頼むときの手順・消してはいけない機能・バックアップなど、管理に必要なことを確認する（確認専用）</td></tr>
@@ -1975,8 +1975,8 @@
               <li>上部のタブで対象の行事を選びます（「行事名を入力」タブは3つあり、それぞれ独立してイレギュラー行事を管理できます。タブ名をクリックすると自由に名前を付けられ、次に開いたときも同じ名前で表示されます。各タブの中で、新しく名前・日付を入力して「追加する」を押すと一覧に追加されます）。</li>
               <li>勤詰会・詰員慰労(中元)・詰員慰労(歳暮)は「日付」欄に日付を入力して「保存する」を押します（年の入力欄はなく、日付だけで管理します。勤詰会は日付が未定のまま保存することもできます）。</li>
               <li>保存すると下に出欠状況の表が表示され、詰員1名につき1行で「事前連絡」（詰員がメールなどで事前に連絡してきた内容を管理者が代わりに入力する欄）と「当日出欠」（行事当日に実際にいた詰員を管理者が記録する欄）が並びます。どちらも「出席」「欠席」ボタンで記録し、同じボタンをもう一度押すと未回答／未確認に戻ります。</li>
-              <li>その行事の日付にannual_rosterで当番が決まっている詰員は、ボタンを押さなくても最初から「当番」バッジで自動表示されます（当番は1名だけのため、他の詰員を手動で「当番」にすることはできません）。</li>
-              <li>出欠状況の表の見出し行、「事前連絡」の左側にある「全員出席」ボタン（どの行事タブでも同じ位置に表示されます）を押すと、当番の詰員を除く全員の事前連絡が一括で「出席」になります（当番の詰員はボタンを押しても「当番」のまま変わりません）。</li>
+              <li>その行事の日付にannual_rosterで当番が決まっている詰員は、ボタンを押さなくても最初から「神殿当番」バッジで自動表示され、欠席として数えます（神殿当番は1名だけのため、他の詰員を手動で「神殿当番」にすることはできません）。</li>
+              <li>出欠状況の表の見出し行、「事前連絡」の左側にある「全員出席」ボタン（どの行事タブでも同じ位置に表示されます）を押すと、当番の詰員を除く全員の事前連絡が一括で「出席」になります（当番の詰員はボタンを押しても「神殿当番」のまま変わりません）。</li>
               <li>「クリア（出欠表を消去）」で、日付はそのまま残して出欠の記録だけを消去できます（勤詰会など毎回使い回す行事で、前回分をリセットしたいときに使います）。「保存した行事を削除」を押すと、日付を含めたその行事の保存内容と出欠記録がすべて削除され、未保存の状態に戻ります。</li>
               <li>出欠状況カードの「🖨 印刷」を押すと、氏名・事前連絡・当日出欠を一覧表にした印刷用の画面が別ウィンドウで開きます。</li>
               <li>画面上部の「現場確認の担当者」欄で、詰員用アプリ（member.html）から当日出欠を記録できる詰員（現場確認担当者）を選び、「保存する」を押します。</li>
@@ -2568,7 +2568,7 @@ async function renderEventAttendanceSummary(eventId, eventDate, containerId, sil
   const rows = members.map(m => {
     if (onDutyMemberId === m.id) {
       advDuty++; ciDuty++;
-      return `<tr><td style="text-align:left">${m.name}</td><td style="text-align:center"><span class="ev-checkin-duty-badge">当番</span></td><td style="text-align:center"><span class="ev-checkin-duty-badge">当番</span></td></tr>`;
+      return `<tr><td style="text-align:left">${m.name}</td><td style="text-align:center"><span class="ev-checkin-duty-badge">神殿当番</span></td><td style="text-align:center"><span class="ev-checkin-duty-badge">神殿当番</span></td></tr>`;
     }
     const st = statusByMember[m.id] || '';
     if (st === 'present') present++; else if (st === 'absent') absent++; else if (st === 'duty') advDuty++; else none++;
@@ -2591,19 +2591,17 @@ async function renderEventAttendanceSummary(eventId, eventDate, containerId, sil
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:2px;font-size:13px">
       <span style="font-weight:600">事前連絡：</span>
       <span>出席: <b>${present}</b>名</span>
-      <span>欠席: <b>${absent}</b>名</span>
-      <span>当番: <b>${advDuty}</b>名</span>
+      <span>欠席: <b>${absent + advDuty}</b>名${advDuty ? `（うち神殿当番 ${advDuty}名）` : ''}</span>
       <span>未回答: <b>${none}</b>名</span>
     </div>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;font-size:13px">
       <span style="font-weight:600">当日出欠：</span>
       <span>出席: <b>${ciPresent}</b>名</span>
-      <span>欠席: <b>${ciAbsent}</b>名</span>
-      <span>当番: <b>${ciDuty}</b>名</span>
+      <span>欠席: <b>${ciAbsent + ciDuty}</b>名${ciDuty ? `（うち神殿当番 ${ciDuty}名）` : ''}</span>
       <span>未確認: <b>${ciNone}</b>名</span>
       <span style="color:var(--text-hint)">（全${members.length}名）</span>
     </div>
-    <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px">詰員がメールなどで事前に出欠を連絡してきた場合は、「事前連絡」欄から管理者が代わりに入力できます。「当日出欠」欄は、行事当日に実際にいた詰員を記録する欄です。どちらも「出席」「欠席」ボタンで記録し、同じボタンをもう一度押すと未回答／未確認に戻ります（annual_rosterで自動判定された当番は、押さなくても最初から「当番」と表示されます）。</p>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px">詰員がメールなどで事前に出欠を連絡してきた場合は、「事前連絡」欄から管理者が代わりに入力できます。「当日出欠」欄は、行事当日に実際にいた詰員を記録する欄です。どちらも「出席」「欠席」ボタンで記録し、同じボタンをもう一度押すと未回答／未確認に戻ります（annual_rosterで自動判定された当番は、押さなくても最初から「神殿当番」と表示され、その行事は欠席として数えます）。</p>
     <div class="table-wrap"><table><thead><tr><th style="text-align:left">氏名</th><th style="text-align:center"><button type="button" class="btn btn-sm" onclick="bulkSetAllPresent('${containerId}')" title="当番の詰員を除く全員の事前連絡を「出席」にします">全員出席</button> 事前連絡</th><th style="text-align:center">当日出欠</th></tr></thead><tbody>${rows}</tbody></table></div>
   `;
 }
@@ -7495,7 +7493,7 @@ function printEventAttendance(containerId) {
   if (!table) { alert('印刷できる出欠状況がありません。行事を保存すると出欠表が表示されます。'); return; }
   const cellText = (td) => {
     if (!td) return '';
-    if (td.querySelector('.ev-checkin-duty-badge')) return '当番';
+    if (td.querySelector('.ev-checkin-duty-badge')) return '神殿当番';
     const activeBtn = td.querySelector('button.active');
     return activeBtn ? activeBtn.textContent.trim() : '';
   };
@@ -8385,7 +8383,7 @@ function handleCalTitleRightClick(event) {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-13-1';
+const APP_FILE_VERSION = '2026-11-24-1';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {

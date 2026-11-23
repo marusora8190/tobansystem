@@ -1211,7 +1211,7 @@ function doLogout() {
 // ※このファイルを直したときは、必ず APP_FILE_VERSION を新しい値に変えること（変えないと知らせが出ない）
 // 電波が無いときや読み込めないときは、何もしない（今までどおり使える）
 // =============================================
-const APP_FILE_VERSION = '2026-11-14-1';
+const APP_FILE_VERSION = '2026-11-24-1';
 let appVersionLocked = false;
 let appVersionLastCheck = 0;
 async function checkNewAppVersion() {
@@ -2324,12 +2324,12 @@ async function renderCheckinEventCard(ev, switchEvents) {
   // まだ送っていない記録（このスマホに保存した分）も重ねて表示する
   const checkinByMember = chkApplyQueue(ev.id, evData.checkin);
 
-  // 当日出欠で「出席」と記録されている詰員数（当番の詰員も、その場にいるため出席者に含める）
-  let presentCount = 0;
+  // 当日出欠で「出席」「欠席」と表示されている詰員数（神殿当番の詰員は、その行事を欠席するため欠席者に含める）
+  let presentCount = 0, absentCount = 0;
   const rows = allMembersCache.map(m => {
     if (onDutyMemberId === m.id) {
-      presentCount++;
-      return `<tr><td class="mchk-name">${m.name}</td><td style="text-align:center"><span class="mchk-duty-badge">当番</span></td></tr>`;
+      absentCount++;
+      return `<tr><td class="mchk-name">${m.name}</td><td style="text-align:center"><span class="mchk-duty-badge">神殿当番</span></td></tr>`;
     }
     // 当日出欠がまだ未記録で、事前連絡（管理者ファイルで記録された事前回答）が「欠席」の
     // 詰員は、担当者の入力の手間を減らすため「欠」を自動的に表示しておく。
@@ -2341,6 +2341,7 @@ async function renderCheckinEventCard(ev, switchEvents) {
     const realCiStatus = checkinByMember[m.id] || '';
     const dispCiStatus = realCiStatus || (attByMember[m.id] === 'absent' ? 'absent' : '');
     if (dispCiStatus === 'present') presentCount++;
+    else if (dispCiStatus === 'absent') absentCount++;
     return `<tr>
       <td class="mchk-name">${m.name}</td>
       <td><div class="mchk-btn-group">
@@ -2358,7 +2359,7 @@ async function renderCheckinEventCard(ev, switchEvents) {
       <div class="attendance-event-title">${ev.name}</div>
       <button type="button" class="btn btn-sm mchk-close-btn" onclick="closeAttendanceModal()">閉じる</button>
       <div class="attendance-event-date">${ev.event_date || '日付未定'}</div>
-      <div class="mchk-present-count">出席者：${presentCount}名</div>
+      <div class="mchk-present-count">出席者：${presentCount}名　欠席者：${absentCount}名</div>
       <div class="mchk-net" id="mchk-net"></div>
     </div>
     <div class="mchk-list"><table class="mchk-table">
